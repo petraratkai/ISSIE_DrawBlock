@@ -27,17 +27,23 @@ type Orientation =  Horizontal | Vertical
 type SnapPosition = High | Mid | Low
 
 ///
+type WireType = Radial | Modern | Jump
+
+///
+type Mode = Manual | Auto
+
+///
 type Segment = 
     {
         Id : SegmentId
         Index: int
-        Start: XYPos
-        End: XYPos
+        Length : float
         Dir: Orientation
         HostId: ConnectionId
         /// List of x-coordinate values of segment jumps. Only used on horizontal segments.
-        JumpCoordinateList: list<float * SegmentId>
+        IntersectCoordinateList: list<float * SegmentId>
         Draggable : bool
+        Manual : bool
     }
 
 
@@ -51,6 +57,10 @@ type Wire =
         Color: HighLightColor
         Width: int
         Segments: list<Segment>
+        Type : WireType
+        StartPos : XYPos
+        EndPos : XYPos
+        Orientation : Orientation
     }
 
     with static member stickLength = 16.0
@@ -69,6 +79,7 @@ type Model =
         LastMousePos: XYPos
         ErrorWires: list<ConnectionId>
         Notifications: Option<string>
+        Type : WireType
     }
 
 //----------------------------Message Type-----------------------------------//
