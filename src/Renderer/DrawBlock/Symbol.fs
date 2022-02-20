@@ -37,11 +37,11 @@ type Symbol =
         Opacity: float
         Moving: bool
         STransform: STransform
-        PortOrientation: Map<string, Edge>
-        TopPorts: string list
-        BottomPorts: string list
-        LeftPorts: string list
-        RightPorts: string list
+        PortOrientation: Map<PortId, Edge>
+        TopPorts: PortId list
+        BottomPorts: PortId list
+        LeftPorts: PortId list
+        RightPorts: PortId list
     }
 
 type Model = {
