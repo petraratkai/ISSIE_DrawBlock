@@ -22,7 +22,7 @@ type STransform = {Rotation: Rotation; flipped: bool}
 
 type Edge = | Top | Bottom | Left | Right
 
-type PortId = | InputPortId | OutputPortId
+type PortId = | InputId of InputPortId | OutputId of OutputPortId //this breaks everything somehow
 
 type Symbol =
     {
@@ -38,10 +38,10 @@ type Symbol =
         Moving: bool
         STransform: STransform
         PortOrientation: Map<string, Edge>
-        TopPorts: PortId list
-        BottomPorts: PortId list
-        LeftPorts: PortId list
-        RightPorts: PortId list
+        TopPorts: string list
+        BottomPorts: string list
+        LeftPorts: string list
+        RightPorts: string list
     }
 
 type Model = {
