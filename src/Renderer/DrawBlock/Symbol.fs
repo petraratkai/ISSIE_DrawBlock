@@ -16,6 +16,14 @@ open System.Text.RegularExpressions
 let GridSize = 30 
 
 /// ---------- SYMBOL TYPES ---------- ///
+type Rotation = | Degree0 | Degree90 | Degree180 | Degree270
+
+type STransform = {Rotation: Rotation; flipped: bool}
+
+type Edge = | Top | Bottom | Left | Right
+
+type PortId = | InputPortId | OutputPortId
+
 type Symbol =
     {
         Pos: XYPos
@@ -28,12 +36,18 @@ type Symbol =
         ShowOutputPorts: bool
         Opacity: float
         Moving: bool
+        STransform: STransform
+        PortOrientation: Map<string, Edge>
+        TopPorts: PortId list
+        BottomPorts: PortId list
+        LeftPorts: PortId list
+        RightPorts: PortId list
     }
 
 type Model = {
     Symbols: Map<ComponentId, Symbol>
     CopiedSymbols: Map<ComponentId, Symbol>
-    Ports: Map<string, Port>                            // string since it's for both input and output ports
+    Ports: Map<PortId, Port>                            // string since it's for both input and output ports
 
     InputPortsConnected:  Set<InputPortId>              // we can use a set since we only care if an input port 
                                                         // is connected or not (if so it is included) in the set 
@@ -505,15 +519,15 @@ let getBoundingBoxofSymbol (sym:Symbol): BoundingBox =
 
 let getBoundingBoxes (symModel: Model): Map<ComponentId, BoundingBox> =
     Map.map (fun sId (sym:Symbol) -> (getBoundingBoxofSymbol sym)) symModel.Symbols
-    
-let getOneBoundingBox (symModel: Model) (compid: ComponentId ): BoundingBox =
+   
+let getOneBoundingBox (symModel: Model) (compid: ComponentId ): BoundingBox = //call it getBoundingBox
     let symb = Map.find compid symModel.Symbols
     getBoundingBoxofSymbol symb
 
 
 //--------------------- GETTING PORTS AND THEIR LOCATIONS INTERFACE FUNCTIONS-------------------------------
 // Helpers
-let getSymbolPos (symbolModel: Model) compId =
+let getSymbolPos (symbolModel: Model) compId = //makes sense
     let symbol = Map.find compId symbolModel.Symbols
     symbol.Pos
 
@@ -531,7 +545,7 @@ let getInputPortsPositionMap (model: Model) (symbols: Symbol list)  =
 /// Bad
 let getOutputPortsPositionMap (model: Model) (symbols: Symbol list)  = //These function add the coordinates of the symbol too
     symbols
-    |> List.collect (fun sym -> List.map (fun p -> sym,p) sym.Compo.OutputPorts)
+    |> List.collect (fun sym -> List.map (fun p -> sym,p) sym.Compo.OutputPorts) //gets the output ports of each symbol
     |> List.map (fun (sym,port) -> (OutputPortId port.Id , posAdd (getPortPosModel model port) (sym.Pos)))
     |> Map.ofList
 
@@ -591,7 +605,7 @@ let getOnePortLocationNew (symModel: Model) (portId : string) (pType: PortType) 
             List.tryFind (fun (po:Port) -> po.Id = portId) comp.InputPorts
         else
             List.tryFind (fun (po:Port) -> po.Id = portId) comp.OutputPorts
-        |> Option.map (fun port -> posAdd (getPortPosModel symModel port) (sym.Pos)))
+        |> Option.map (fun port -> posAdd (getPortPosModel symModel port) (sym.Pos))) //pick first then apply function
 
 
 /// Returns the locations of a given input portId and output portId
@@ -771,7 +785,7 @@ let pasteSymbols (symModel: Model) (mPos: XYPos) : (Model * ComponentId list) =
         symModel.CopiedSymbols
         |> Map.toList
         |> List.map snd
-
+    //can just find min element no need to sort
     match List.sortBy (fun sym -> sym.Pos.X) oldSymbolsList with
     | baseSymbol :: _ ->
         let basePos = posAdd baseSymbol.Pos { X = (float baseSymbol.Compo.W) / 2.0; Y = (float baseSymbol.Compo.H) / 2.0 }
@@ -806,7 +820,7 @@ let getEquivalentCopiedPorts (model: Model) (copiedIds) (pastedIds) (InputPortId
     let foundPastedPorts =
         List.zip copiedIds pastedIds
         |> List.map (fun (compId1, compId2) -> findEquivalentPorts compId1 compId2)
-    
+    //could maybe do List.fold
     let foundPastedInputPort = List.collect (function | Some a, _ -> [a] | _ -> []) foundPastedPorts
     let foundPastedOutputPort = List.collect (function | _, Some b -> [b] | _ -> []) foundPastedPorts
     
