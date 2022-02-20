@@ -20,7 +20,7 @@ let minSegLen = 5.
 //------------------------------BusWire Types-----------------------------//
 //------------------------------------------------------------------------//
 
-///
+/// 
 type Orientation =  Horizontal | Vertical
 
 ///
@@ -30,7 +30,7 @@ type SnapPosition = High | Mid | Low
 type WireType = Radial | Modern | Jump
 
 ///
-type Mode = Manual | Auto
+type RoutingMode = Manual | Auto
 
 ///
 type Segment = 
@@ -38,12 +38,11 @@ type Segment =
         Id : SegmentId
         Index: int
         Length : float
-        Dir: Orientation
         HostId: ConnectionId
         /// List of x-coordinate values of segment jumps. Only used on horizontal segments.
         IntersectCoordinateList: list<float * SegmentId>
         Draggable : bool
-        Manual : bool
+        Mode : RoutingMode
     }
 
 
@@ -60,7 +59,7 @@ type Wire =
         Type : WireType
         StartPos : XYPos
         EndPos : XYPos
-        Orientation : Orientation
+        InitialOrientation : Orientation
     }
 
     with static member stickLength = 16.0
