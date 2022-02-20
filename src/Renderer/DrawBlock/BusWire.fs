@@ -102,58 +102,65 @@ type Msg =
     | LoadConnections of list<Connection> // For Issie Integration
 
 //-------------------------Debugging functions---------------------------------//
-let ppSId (sId:SegmentId) =
-    sId
-    |> (fun (SegmentId x) -> x)
-    |> Seq.toList
-    |> (fun chars -> chars[0..2])
-    |> List.map string
-    |> String.concat ""
 
-let ppS (seg:Segment) =
-    sprintf $"|{seg.Index}:{ppSId seg.Id}|"
+/// Formats a SegmentId for logging purposes.
+let formatId (Id:SegmentId) =
+    Id
+    |> (fun (SegmentId str) -> str)
+    |> (fun str -> str[0..2])
 
-let ppWId (wId:ConnectionId) =
-        wId
-        |> (fun (ConnectionId x) -> x)
-        |> Seq.toList
-        |> (fun chars -> chars[0..2])
-        |> List.map string
-        |> String.concat ""
+/// Logs the given SegmentId and returns it unchanged. Used for debugging.
+let logSegmentId (Id:SegmentId) =
+    printfn $"{formatId Id}"; Id
 
+/// Logs the given Segment and returns it unchanged. Used for debugging.
+let logSegment (seg:Segment) =
+    printfn $"|{seg.Index}:{formatId seg.Id}|"; seg
+
+/// Logs the given ConnectionId and returns it unchanged. Used for debugging.
+let logConnectionId (Id:ConnectionId) =
+        Id
+        |> (fun (ConnectionId str) -> str)
+        |> (fun str -> printfn $"{str[0..2]}"; Id)
+
+/// Formats an intersection map for logging purposes.
+let formatIntersectionMap (m:Map<SegmentId, (ConnectionId * SegmentId) list>) =
+    m
+    |> Map.toList
+    |> List.map (fun (segId, lst) ->
+        List.map (snd >> formatId) lst
+        |> (fun segs -> sprintf $"""<{formatId segId}->[{String.concat ";" segs}]"""))
+        |> String.concat ";\n"
+
+/// Logs the intersection maps of a given model and returns it unchanged. Used for debugging
+let logIntersectionMaps (model:Model) =
+    printfn "\n------------------\nFromHorizontalToVerticalSegmentIntersections:"
+    printfn $"{formatIntersectionMap model.FromHorizontalToVerticalSegmentIntersections}"
+    printfn "FromVerticalToHorizontalSegmentIntersections:"
+    printfn $"{formatIntersectionMap model.FromVerticalToHorizontalSegmentIntersections}"
+    printfn "------------------\n"
+    model // TODO: Check how "jumps" (now called intersect coordinates) in segments should now be printed
+
+// Left in to check how jumps were printed
+(* 
 let ppMaps (model:Model) =
-    let mhv = model.FromHorizontalToVerticalSegmentIntersections
-    let mvh = model.FromVerticalToHorizontalSegmentIntersections
-    let m1 =
-        mhv
-        |> Map.toList
-        |> List.map (fun (sid,lst) ->
-            List.map (snd >> ppSId) lst
-            |> (fun segs -> sprintf $"""<{ppSId sid}->[{String.concat ";" segs}]>"""))
-            |> String.concat ";\n"
-    let m2 =
-        mvh
-        |> Map.toList
-        |> List.map (fun (sid,lst) ->
-            List.map (snd >> ppSId) lst
-            |> (fun segs -> sprintf $"""<{ppSId sid}->[{String.concat ";" segs}]>"""))
-            |> String.concat ";\n"
     let jumps =
         model.WX
         |> Map.toList
-        |> List.map (fun (wId,w) ->
-            sprintf $"Wire: {w.Segments |> List.collect (fun seg -> seg.JumpCoordinateList |> List.map (fun (f, sid) -> ppSId sid))}")
+        |> List.map (fun (wId,w) -> 
+            sprintf $"Wire: {w.Segments |> List.collect (fun seg -> seg.IntersectCoordinateList |> List.map (fun (f, sid) -> formatId sid))}")
             
     printfn $"\n------------------\nMapHV:\n {m1} \n MapVH\n{m2} \nJumps:\n {jumps}\n------------------\n"
+*)
 
-
-
+// Will need to be reworked, potentially with relseg fold
+(*
 let ppSeg seg (model: Model) = 
         let cid,sid = seg
         let wire = model.WX[cid]
         let sg = List.find (fun (s:Segment) -> s.Id = sid ) wire.Segments
         let pxy (xy: XYPos) = sprintf $"{(xy.X,xy.Y)}"
-        sprintf $"""[{ppSId sg.Id}: {pxy sg.Start}->{pxy sg.End}]-{match sg.Dir with | Vertical -> "V" | _ -> "H"}-{sg.Index}"""
+        sprintf $"""[{formatId sg.Id}: {pxy sg.Start}->{pxy sg.End}]-{match sg.Dir with | Vertical -> "V" | _ -> "H"}-{sg.Index}"""
 
 let pp segs (model: Model)= 
     segs
@@ -166,7 +173,7 @@ let pp segs (model: Model)=
             sprintf $"""[{pxy sg.Start}->{pxy sg.End}]-{match sg.Dir with | Vertical -> "V" | _ -> "H"}-{sg.Index}"""
         | None -> "XX")
     |> String.concat ";"
-
+*)
 //-------------------------------Implementation code----------------------------//
 
 /// Wire to Connection
