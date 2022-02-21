@@ -77,9 +77,11 @@ type Msg =
 
 //---------------------------------helper types and functions----------------//
 
+//Calculates the difference between coordinates
 let posDiff (a:XYPos) (b:XYPos) =
     {X=a.X-b.X; Y=a.Y-b.Y}
 
+//Adds two coordinates
 let posAdd (a:XYPos) (b:XYPos) =
     {X=a.X+b.X; Y=a.Y+b.Y}
 
@@ -111,7 +113,9 @@ let prefix compType =
     | RAM1 _ -> "RAM"
     | AsyncRAM1 _ -> "ARAM"
     | Custom c ->
-        c.Name + (if c.Name |> Seq.last |> System.Char.IsDigit then "." else "")
+        c.Name + (if c.Name 
+                    |> Seq.last 
+                    |> System.Char.IsDigit then "." else "")
     | Constant1 _ -> "C"
     | BusCompare _ -> "EQ"
     | Decode4 -> "DEC"
@@ -129,7 +133,7 @@ let gateDecoderType (comp:Component) =
     | Xor | Xnor -> "=1"
     | Not -> "1"
     | Decode4 -> "Decode"
-    | NbitsAdder n -> title "Adder" n
+    | NbitsAdder n -> title "Adder" n   //title outputs "Adder (n-1..0)"
     | Register n | RegisterE n-> title "Register" n
     | AsyncROM1 _ -> "Async-ROM"
     | ROM1 _ -> "Sync-ROM"
@@ -263,7 +267,7 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
       InWidth1 = None
       Colour = "lightgrey"
       Id = ComponentId id
-      Compo = comp
+      Component = comp
       Opacity = 1.0
       Moving = false
     }
@@ -273,8 +277,8 @@ let addToPortModel (model: Model) (sym: Symbol) =
     let addOnePort (currentPorts: Map<string, Port>) (port: Port) =
         Map.add port.Id port currentPorts
     
-    let addedInputPorts = (model.Ports, sym.Compo.InputPorts) ||> List.fold addOnePort
-    (addedInputPorts, sym.Compo.OutputPorts) ||> List.fold addOnePort
+    let addedInputPorts = (model.Ports, sym.Component.InputPorts) ||> List.fold addOnePort
+    (addedInputPorts, sym.Component.OutputPorts) ||> List.fold addOnePort
 
 //-----------------------------------------GET PORT POSITION---------------------------------------------------
 // Function that calculates the positions of the ports 
@@ -296,7 +300,7 @@ let getPortPos (comp: Component) (port:Port) =
     let posY = (float(comp.H))* (( index + gap )/( float( ports.Length ) + 2.0*gap - 1.0))  // the ports are created so that they are equidistant
     {X = posX; Y = posY}
 let getPortPosModel (model: Model) (port:Port) =
-    getPortPos (Map.find (ComponentId port.HostId) model.Symbols).Compo port
+    getPortPos (Map.find (ComponentId port.HostId) model.Symbols).Component port
 
 
 //-----------------------------------------DRAWING HELPERS ---------------------------------------------------
@@ -473,7 +477,7 @@ let private renderSymbol =
         fun (props : RenderSymbolProps) ->
             let symbol = props.Symbol
             let ({X=fX; Y=fY}:XYPos) = symbol.Pos
-            g ([ Style [ Transform(sprintf "translate(%fpx, %fpx)" fX fY) ] ]) (compSymbol props.Symbol props.Symbol.Compo symbol.Colour symbol.ShowInputPorts symbol.ShowOutputPorts symbol.Opacity)
+            g ([ Style [ Transform(sprintf "translate(%fpx, %fpx)" fX fY) ] ]) (compSymbol props.Symbol props.Symbol.Component symbol.Colour symbol.ShowInputPorts symbol.ShowOutputPorts symbol.Opacity)
             
         , "Symbol"
         , equalsButFunctions
@@ -506,11 +510,11 @@ let view (model : Model) (dispatch : Msg -> unit) =
     )
     |> ofList
     |> TimeHelpers.instrumentInterval "SymbolView" start
-
+    
 //------------------------GET BOUNDING BOXES FUNCS--------------------------------used by sheet.
 // Function that returns the bounding box of a symbol. It is defined by the height and the width as well as the x,y position of the symbol
 let getBoundingBoxofSymbol (sym:Symbol): BoundingBox =
-    {X = float(sym.Pos.X) ; Y = float(sym.Pos.Y) ; H = float(sym.Compo.H) ; W = float(sym.Compo.W)}
+    {X = float(sym.Pos.X) ; Y = float(sym.Pos.Y) ; H = float(sym.Component.H) ; W = float(sym.Component.W)}
 
 let getBoundingBoxes (symModel: Model): Map<ComponentId, BoundingBox> =
     Map.map (fun sId (sym:Symbol) -> (getBoundingBoxofSymbol sym)) symModel.Symbols
