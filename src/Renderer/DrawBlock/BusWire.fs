@@ -175,6 +175,27 @@ let pp segs (model: Model)=
 *)
 //-------------------------------Implementation code----------------------------//
 
+/// <summary> Applies a function which requires the segment start and end positions to the segments in a wire, 
+/// threading an accumulator argument through the computation. Essentially a List.fold applied to the list of segments of a wire. </summary>
+/// <remarks> This is used in cases where absolute segment positions are required. 
+/// These positions are computed on the fly and passed to the folder function. </remarks>
+/// <param name="folder"> The function to update the state given the segment start and end positions, current state and segment itself.</param>
+/// <param name="state"> The initial state.</param>
+/// <param name="wire"> The wire containing the segment list we are folding over.</param>
+/// <returns> The final state value </returns>
+let foldOverSegs folder state wire =
+    let initPos = wire.StartPos
+    let initOrientation = wire.InitialOrientation
+    ((state, initPos, initOrientation), wire.Segments)
+    ||> List.fold (fun (currState, currPos, currOrientation) seg -> 
+        let (nextPos, nextOrientation) = 
+            match currOrientation with
+            | Horizontal -> { currPos with X = currPos.X + seg.Length }, Vertical
+            | Vertical -> { currPos with Y = currPos.Y + seg.Length }, Horizontal
+        let nextState = folder currPos nextPos currState seg
+        (nextState, nextPos, nextOrientation))
+    |> (fun (state, _, _) -> state)
+
 /// Wire to Connection
 let segmentsToVertices (segList:Segment list) = 
     let firstCoord = (segList[0].Start.X, segList[0].Start.Y)
@@ -771,39 +792,18 @@ let distanceFromPointToSegment (point : XYPos) (segStart : XYPos) (segEnd : XYPo
         let denom = sqrt (  (x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)  )
         numer/denom
 
-/// <summary> Applies a function which requires the segment start and end positions to the segments in a wire, 
-/// threading an accumulator argument through the computation. Essentially a List.fold applied to the list of segments of a wire. </summary>
-/// <remarks> This is used in cases where absolute segment positions are required. 
-/// These positions are computed on the fly and passed to the folder function. </remarks>
-/// <param name="folder"> The function to update the state given the segment start and end positions, current state and segment itself.</param>
-/// <param name="state"> The initial state.</param>
-/// <param name="wire"> The wire containing the segment list we are folding over.</param>
-/// <returns> The final state value </returns>
-let foldOverSegs folder state wire =
-    let initPos = wire.StartPos
-    let initOrientation = wire.InitialOrientation
-    ((state, initPos, initOrientation), wire.Segments)
-    ||> List.fold (fun (currState, currPos, currOrientation) seg -> 
-        let (nextPos, nextOrientation) = 
-            match currOrientation with
-            | Horizontal -> { currPos with X = currPos.X + seg.Length }, Vertical
-            | Vertical -> { currPos with Y = currPos.Y + seg.Length }, Horizontal
-        let nextState = folder currPos nextPos currState seg
-        (nextState, nextPos, nextOrientation))
-    |> (fun (state, _, _) -> state)
         
-
 /// Finds the Id of the closest segment in a wire to a mouse click using euclidean distance
 let getClickedSegment (model : Model) (wireId : ConnectionId) (mouse : XYPos) : SegmentId =
     let closestSegment segStart segEnd state (seg : Segment) =
         let currDistance = distanceFromPointToSegment mouse segStart segEnd
         match state with
         | Some (minId, minDistance) -> if currDistance < minDistance then Some (seg.Id, currDistance) else Some (minId, minDistance)
-        | None -> Some (seg.Id, currDistance)
+        | None -> Some (seg.Id, currDistance) // Needed to deal with initial case
     
     match foldOverSegs closestSegment None model.Wires[wireId] with
     | Some (segmentId, _) -> segmentId
-    | None -> failwithf "getClosestSegment was given a wire with no segments"
+    | None -> failwithf "getClosestSegment was given a wire with no segments" // Should never happen
 
 
 let checkSegmentAngle (seg:Segment) (name:string) = // pretty sure this was used for debugging, I can kill this
