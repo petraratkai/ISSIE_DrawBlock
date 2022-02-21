@@ -86,7 +86,7 @@ Symbols2
 - uuid: universally unique identifier
 - in PasteSymbol need to increase the counter
 
-
+Component has top left X,Y, symbol has center
 
 Extension idea:
 when component selected it can be moved with the arrow keys

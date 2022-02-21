@@ -22,6 +22,8 @@ type STransform = {Rotation: Rotation; flipped: bool}
 
 type Edge = | Top | Bottom | Left | Right
 
+type PortId = | InputId of InputPortId | OutputId of OutputPortId
+
 type Symbol =
     {
         Pos: XYPos
@@ -111,7 +113,7 @@ let prefix compType =
     | RAM1 _ -> "RAM"
     | AsyncRAM1 _ -> "ARAM"
     | Custom c ->
-        c.Name + (if c.Name |> Seq.last |> System.Char.IsDigit then "." else "")
+        c.Name.ToUpper() + (if c.Name |> Seq.last |> System.Char.IsDigit then "." else "")
     | Constant1 _ -> "C"
     | BusCompare _ -> "EQ"
     | Decode4 -> "DEC"
@@ -508,117 +510,95 @@ let view (model : Model) (dispatch : Msg -> unit) =
     |> TimeHelpers.instrumentInterval "SymbolView" start
 
 //------------------------GET BOUNDING BOXES FUNCS--------------------------------used by sheet.
-// Function that returns the bounding box of a symbol. It is defined by the height and the width as well as the x,y position of the symbol
-let getBoundingBoxofSymbol (sym:Symbol): BoundingBox =
-    {X = float(sym.Pos.X) ; Y = float(sym.Pos.Y) ; H = float(sym.Component.H) ; W = float(sym.Component.W)}
+/// Returns the bounding box of a symbol. It is defined by the height and the width as well as the x,y position of the symbol. TODO: handle rotation -> should be goof
+let getSymbolBoundingBox (sym:Symbol): BoundingBox =
+    let h,w = match sym.STransform.Rotation with
+        | Degree0 | Degree180 -> sym.Component.H, sym.Component.W
+        | _ -> sym.Component.W, sym.Component.H
 
+    {X = float(sym.Pos.X) ; Y = float(sym.Pos.Y) ; H = float(h) ; W = float(w)}
+
+/// Returns all the bounding boxes of all components in the model
 let getBoundingBoxes (symModel: Model): Map<ComponentId, BoundingBox> =
-    Map.map (fun sId (sym:Symbol) -> (getBoundingBoxofSymbol sym)) symModel.Symbols
-   
-let getBoundingBox (symModel: Model) (compid: ComponentId ): BoundingBox = //call it getBoundingBox
+    Map.map (fun sId (sym:Symbol) -> (getSymbolBoundingBox sym)) symModel.Symbols
+
+/// Returns bounding box of a component based on component id
+let getBoundingBox (symModel: Model) (compid: ComponentId ): BoundingBox = 
     let symb = Map.find compid symModel.Symbols
-    getBoundingBoxofSymbol symb
+    getSymbolBoundingBox symb
 
 
 //--------------------- GETTING PORTS AND THEIR LOCATIONS INTERFACE FUNCTIONS-------------------------------
 // Helpers
-let getSymbolPos (symbolModel: Model) compId = //makes sense
+/// Returns the center coordinates of a Symbol
+let getSymbolPos (symbolModel: Model) compId = //makes sense or should we have getSymbol?
     let symbol = Map.find compId symbolModel.Symbols
     symbol.Pos
 
-/// This is quite slow, because it gets the whole maps.
-/// It is used in getInputPortLocation for a single port!!
-/// Bad
-let getInputPortsPositionMap (model: Model) (symbols: Symbol list)  = 
+/// returns the string of a PortId
+let getPortIdStr (portId: PortId) = 
+    match portId with
+    | InputId (InputPortId id) -> id
+    | OutputId (OutputPortId id) -> id
+
+/// Returns the location of a given portId, with good efficiency
+let getPortLocation (model: Model) (portId : string) : XYPos=
+    let port = model.Ports[portId]
+    let symbolId = ComponentId port.HostId
+    let sym = model.Symbols[symbolId]
+    getPortPos sym.Component port + sym.Pos
+
+/// Returns the location of an input port based on their portId
+let getInputPortLocation (model:Model) (portId: InputPortId)  = 
+    let id = getPortIdStr (InputId portId)
+    getPortLocation model id
+
+/// Returns the location of an output port based on their portId
+let getOutputPortLocation (model:Model) (portId : OutputPortId) =
+    let id = getPortIdStr (OutputId portId)
+    getPortLocation model id
+
+/// Returns the locations of a given input port and output port based on their portId
+let getTwoPortLocations (model: Model) (inputPortId: InputPortId ) (outputPortId: OutputPortId) =
+    (getInputPortLocation model inputPortId, getOutputPortLocation model outputPortId)
+
+///Returns the input port positions of the specified symbols in model
+///only called in getPortLocations, might need more refactoring
+let getInputPortsLocationMap (model: Model) (symbols: Symbol list)  = 
+    let getSymbolInputPortsLoc sym =
+        sym.Component.InputPorts |> List.map (fun port -> (InputPortId port.Id, (getPortPos sym.Component port) + (sym.Pos)))
+        
     symbols
-    |> List.collect (fun sym -> List.map (fun p -> sym,p) sym.Component.InputPorts)
-    |> List.map (fun (sym,port) -> (InputPortId port.Id, posAdd (getPortPosModel model port) (sym.Pos)))
+    |> List.collect getSymbolInputPortsLoc
     |> Map.ofList
 
-/// This is quite slow, because it gets the whole maps.
-/// It is used in getOutputPortLocation for a single port!!
-/// Bad
-let getOutputPortsPositionMap (model: Model) (symbols: Symbol list)  = //These function add the coordinates of the symbol too
+/// Returns the output port positions of the specified symbols in model
+/// only called in getPortLocations might need more refactoring
+let getOutputPortsLocationMap (model: Model) (symbols: Symbol list)  =
+    let getSymbolOutputPortsLoc sym =
+        sym.Component.OutputPorts |> List.map (fun port -> (OutputPortId port.Id, (getPortPos sym.Component port) + (sym.Pos)))
+        
     symbols
-    |> List.collect (fun sym -> List.map (fun p -> sym,p) sym.Component.OutputPorts) //gets the output ports of each symbol
-    |> List.map (fun (sym,port) -> (OutputPortId port.Id , posAdd (getPortPosModel model port) (sym.Pos)))
+    |> List.collect getSymbolOutputPortsLoc
     |> Map.ofList
 
-///Returns the port object associated with a given portId
-let getPort (symModel: Model) (portId: string) =
-    symModel.Ports[portId]
 
 ///Returns all the port locations of the given components   
-let getPortLocations (symbolModel: Model) (sIds: ComponentId list) = 
-    let getSymbols = 
-        symbolModel.Symbols 
-        |> Map.filter (fun sId sym  -> List.contains sId sIds)
+let getPortLocations (model: Model) (symbolIds: ComponentId list) = 
+    let symbols = 
+        model.Symbols 
+        |> Map.filter (fun symbolId _  -> List.contains symbolId symbolIds)
         |> Map.toList
         |> List.map snd
         
-    let getInputPortMap = getInputPortsPositionMap symbolModel getSymbols
-    let getOutputPortMap = getOutputPortsPositionMap symbolModel getSymbols
+    let getInputPortMap = getInputPortsLocationMap model symbols
+    let getOutputPortMap = getOutputPortsLocationMap model symbols
        
-    getInputPortMap , getOutputPortMap
+    getInputPortMap , getOutputPortMap 
 
-///Returns the location of an input portId  
-let getInputPortLocation (model:Model) (portId: InputPortId)  = 
-    let allSymbols =
-        model.Symbols
-        |> Map.toList
-        |> List.map snd
-        
-    getInputPortsPositionMap model allSymbols 
-    |> Map.find (portId)
-    
-
-//Returns the location of an output portId
-let getOutputPortLocation (model:Model) (portId : OutputPortId) =
-    let allSymbols =
-        model.Symbols
-        |> Map.toList
-        |> List.map snd
-        
-    getOutputPortsPositionMap model allSymbols 
-    |> Map.find (portId)     
-
-///Returns the location of a given portId
-let getOnePortLocation (symModel: Model) (portId : string) (pType: PortType)=
-        match pType with
-        | PortType.Input ->
-            getInputPortLocation symModel (InputPortId portId)
-        | PortType.Output ->
-            getOutputPortLocation symModel (OutputPortId portId)   
-            
-/// Returns the location of a given portId, with better efficiency
-/// This is still slow, the ports should be looked up from a map of ports
-let getOnePortLocationNew (symModel: Model) (portId : string) (pType: PortType) : XYPos=
-    symModel.Symbols
-    |> Map.pick (fun key sym -> 
-        let comp = sym.Component
-        if pType = PortType.Input then
-            List.tryFind (fun (po:Port) -> po.Id = portId) comp.InputPorts
-        else
-            List.tryFind (fun (po:Port) -> po.Id = portId) comp.OutputPorts
-        |> Option.map (fun port -> posAdd (getPortPosModel symModel port) (sym.Pos))) //pick first then apply function
-
-
-/// Returns the locations of a given input portId and output portId
-let getTwoPortLocations (symModel: Model) (inPortId: InputPortId ) (outPortId: OutputPortId) =
-    match inPortId, outPortId with
-    | InputPortId inputId, OutputPortId outputId ->
-        (getOnePortLocationNew symModel inputId PortType.Input, getOnePortLocationNew symModel outputId PortType.Output)
-
-/// Interface function to get componentIds of the copied symbols
-let getCopiedSymbols (symModel: Model) : (ComponentId list) =
-    symModel.CopiedSymbols
-    |> Map.toList
-    |> List.map fst
-
-/// Function to filter out terminal non-letter characters.
-/// Modified to capitalise labels
-let filterString (string: string) = 
-    string.ToUpper()
+/// Function to remove terminal digits from string. maybe refactor it later
+let removeCount (string: string) = 
+    string
     |> Seq.rev
     |> Seq.skipWhile System.Char.IsDigit
     |> Seq.rev
@@ -626,11 +606,79 @@ let filterString (string: string) =
     |> String.concat ""
    
 ///Returns the number of the component label (i.e. the number 1 from IN1 or ADDER16.1)
-let regex (str : string) = 
+let getCount (str : string) = 
     let index = Regex.Match(str, @"\d+$")
     match index with
     | null -> 0
     | _ -> int index.Value
+
+let samePrefix target symbol =
+    let compType = symbol.Component.Type
+    match target with
+    | Not | And | Or | Xor | Nand | Nor | Xnor ->
+        compType = Not || compType = And 
+        || compType = Or || compType = Xor
+        || compType = Nand || compType = Nor
+        || compType = Xnor
+    | DFF | DFFE -> compType = DFF || compType = DFFE
+    | Register _ | RegisterE _ -> 
+        match compType with 
+        | Register _ | RegisterE _ -> true
+        | _ -> false
+    | Constant1 _ ->
+        match compType with 
+        | Constant1 _ -> true
+        | _ -> false
+    | Input _ -> 
+        match compType with 
+            | Input _ -> true
+            | _ -> false
+    | Output _ -> 
+        match compType with
+        | Output _ -> true
+        | _ -> false
+    | Viewer _ ->
+        match compType with
+        | Viewer _ -> true
+        | _ -> false
+    | BusSelection _ ->
+        match compType with
+        | BusSelection _ -> true
+        | _ -> false
+    | BusCompare _ ->
+        match compType with
+        | BusCompare _ -> true
+        | _ -> false
+    | NbitsAdder _  ->
+        match compType with
+        | NbitsAdder _ -> true
+        | _ -> false
+    | NbitsXor _ ->
+        match compType with
+        | NbitsXor _ -> true
+        | _ -> false
+    | AsyncROM1 _ ->
+        match sym.Component.Type with 
+        | AsyncROM1 _ -> true
+        | _ -> false
+    | ROM1 _ ->
+        match sym.Component.Type with 
+        | ROM1 _ -> true
+        | _ -> false
+    | RAM1 _ ->
+        match sym.Component.Type with 
+        | RAM1 _ -> true
+        | _ -> false
+    | AsyncRAM1 _ ->
+        match sym.Component.Type with 
+        | AsyncRAM1 _ -> true
+        | _ -> false)
+
+    | _ ->
+         listSymbols
+         |> List.filter (fun sym -> sym.Component.Type = compType)
+
+
 
 let getCompList compType listSymbols =
     match compType with 
@@ -740,7 +788,7 @@ let getIndex listSymbols compType =
     | _ ->
         if List.isEmpty symbolList then 1 
         else symbolList
-            |> List.map (fun sym -> regex sym.Component.Label)
+            |> List.map (fun sym -> getCount sym.Component.Label)
             |> List.max
             |> (+) 1
         |> string
@@ -750,7 +798,7 @@ let labelGenNumber (model: Model) (compType: ComponentType) (label : string) =
     let listSymbols = List.map snd (Map.toList model.Symbols) 
     match compType with
     | IOLabel -> label
-    | _ -> filterString label + (getIndex listSymbols compType)
+    | _ -> removeCount label + (getIndex listSymbols compType)
 
 ///Generates the label for a component type
 let generateLabel (model: Model) (compType: ComponentType) : string =
@@ -761,8 +809,8 @@ let generateLabel (model: Model) (compType: ComponentType) : string =
 let pasteSymbols (symModel: Model) (mPos: XYPos) : (Model * ComponentId list) =
     let createNewSymbol (basePos: XYPos) ((currSymbolModel, pastedIdsList) : Model * ComponentId List) (oldSymbol: Symbol): Model * ComponentId List =
         let newId = JSHelpers.uuid()
-        let posDiff = posDiff oldSymbol.Pos basePos
-        let newPos = posAdd posDiff mPos
+        let posDiff = oldSymbol.Pos - basePos
+        let newPos = posDiff + mPos
         
         let pastedSymbol =
             { oldSymbol with
@@ -783,7 +831,7 @@ let pasteSymbols (symModel: Model) (mPos: XYPos) : (Model * ComponentId list) =
     //can just find min element no need to sort
     match List.sortBy (fun sym -> sym.Pos.X) oldSymbolsList with
     | baseSymbol :: _ ->
-        let basePos = posAdd baseSymbol.Pos { X = (float baseSymbol.Component.W) / 2.0; Y = (float baseSymbol.Component.H) / 2.0 }
+        let basePos = baseSymbol.Pos + { X = (float baseSymbol.Component.W) / 2.0; Y = (float baseSymbol.Component.H) / 2.0 }
         
         ((symModel, []), oldSymbolsList) ||> List.fold (createNewSymbol basePos)
     | [] -> symModel, []
@@ -1079,3 +1127,13 @@ let extractComponents (symModel: Model) : Component list =
     symModel.Symbols
     |> Map.toList
     |> List.map (fun (key, _) -> extractComponent symModel key)
+
+///Returns the port object associated with a given portId
+let getPort (symModel: Model) (portId: string) =
+    symModel.Ports[portId]
+
+/// Interface function to get componentIds of the copied symbols
+let getCopiedSymbols (symModel: Model) : (ComponentId list) =
+    symModel.CopiedSymbols
+    |> Map.toList
+    |> List.map fst
