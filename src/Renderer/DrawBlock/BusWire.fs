@@ -760,9 +760,9 @@ let segmentIntersectsBoundingBoxCoordinates (segIn : Segment) (bb : BoundingBox)
 
 /// This distance is given a point and a segment
 /// and it returns the distance between them.
-let distanceFromPointToSegment (point : XYPos) (segment : Segment) : float = 
+let distanceFromPointToSegment (point : XYPos) (segStart : XYPos) (segEnd : XYPos) : float = 
     let x0, y0 = point.X, abs point.Y
-    let x1, y1, x2, y2 = abs segment.Start.X, abs segment.Start.Y, abs segment.End.X, abs segment.End.Y
+    let x1, y1, x2, y2 = abs segStart.X, abs segStart.Y, abs segEnd.X, abs segEnd.Y
 
     if (x1 = x2) then abs (x1 - x0)
     elif (y1 = y2) then abs (y1 - y0)
@@ -771,33 +771,40 @@ let distanceFromPointToSegment (point : XYPos) (segment : Segment) : float =
         let denom = sqrt (  (x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)  )
         numer/denom
 
-/// Given the current state of the BusWire model,
-/// a ConnectionId and an BoundingBox,
-/// this function returns a list of Segments of the
-/// wire corresponding to the given id that intersect the bounding box.
-let getIntersectingSegments (model:Model) (wireId:ConnectionId) (selectBox:BoundingBox) : list<Segment> =     
-    model.Wires[wireId].Segments
-    |> List.filter (fun seg -> fst(segmentIntersectsBoundingBoxCoordinates seg selectBox))
+/// <summary> Applies a function which requires the segment start and end positions to the segments in a wire, 
+/// threading an accumulator argument through the computation. Essentially a List.fold applied to the list of segments of a wire. </summary>
+/// <remarks> This is used in cases where absolute segment positions are required. 
+/// These positions are computed on the fly and passed to the folder function. </remarks>
+/// <param name="folder"> The function to update the state given the segment start and end positions, current state and segment itself.</param>
+/// <param name="state"> The initial state.</param>
+/// <param name="wire"> The wire containing the segment list we are folding over.</param>
+/// <returns> The final state value </returns>
+let foldOverSegs folder state wire =
+    let initPos = wire.StartPos
+    let initOrientation = wire.InitialOrientation
+    ((state, initPos, initOrientation), wire.Segments)
+    ||> List.fold (fun (currState, currPos, currOrientation) seg -> 
+        let (nextPos, nextOrientation) = 
+            match currOrientation with
+            | Horizontal -> { currPos with X = currPos.X + seg.Length }, Vertical
+            | Vertical -> { currPos with Y = currPos.Y + seg.Length }, Horizontal
+        let nextState = folder currPos nextPos currState seg
+        (nextState, nextPos, nextOrientation))
+    |> (fun (state, _, _) -> state)
+        
 
+/// Finds the Id of the closest segment in a wire to a mouse click using euclidean distance
+let getClickedSegment (model : Model) (wireId : ConnectionId) (mouse : XYPos) : SegmentId =
+    let closestSegment segStart segEnd state (seg : Segment) =
+        let currDistance = distanceFromPointToSegment mouse segStart segEnd
+        match state with
+        | Some (minId, minDistance) -> if currDistance < minDistance then Some (seg.Id, currDistance) else Some (minId, minDistance)
+        | None -> Some (seg.Id, currDistance)
+    
+    match foldOverSegs closestSegment None model.Wires[wireId] with
+    | Some (segmentId, _) -> segmentId
+    | None -> failwithf "getClosestSegment was given a wire with no segments"
 
-//Finds the closest segment in a wire to a point using euclidean distance
-let getClosestSegment (model : Model) (wireId : ConnectionId) (pos : XYPos) : Segment =
-    model.Wires[wireId].Segments
-    |> List.minBy (
-        fun seg -> 
-            distanceFromPointToSegment pos seg)
-
-/// Function called when a wire has been clicked, so no need to be an option
-let getClickedSegment (model:Model) (wireId: ConnectionId) (pos: XYPos) : SegmentId =
-    let boundingBox = {X = pos.X - 5.0; Y = pos.Y - 5.0; H = 10.0; W = 10.0}
-    let intersectingSegments = getIntersectingSegments model wireId boundingBox
-
-    //getIntersecting segments may not return anything at low resolutions as the mouse was not on any segment, but in range of the wire bbox
-    //In this case just return the segment closest to mouse position
-    //TODO - should it just do this anyway?
-    if List.isEmpty intersectingSegments 
-    then (getClosestSegment model wireId pos).Id
-    else (List.head intersectingSegments).Id
 
 let checkSegmentAngle (seg:Segment) (name:string) = // pretty sure this was used for debugging, I can kill this
     match seg.Dir with
