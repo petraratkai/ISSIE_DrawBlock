@@ -133,24 +133,26 @@ let formatIntersectionMap (m:Map<SegmentId, (ConnectionId * SegmentId) list>) =
 
 /// Logs the intersection maps of a given model and returns it unchanged. Used for debugging
 let logIntersectionMaps (model:Model) =
+    let intersections =
+        let formatSegmentIntersections segments =
+            segments
+            |> List.collect (fun segment -> 
+                segment.IntersectCoordinateList
+                |> List.map (fun (_, id) -> formatId id))
+
+        model.Wires
+        |> Map.toList
+        |> List.map (fun (_, wire) -> 
+            sprintf $"Wire: {formatSegmentIntersections wire.Segments}")
+
     printfn "\n------------------\nFromHorizontalToVerticalSegmentIntersections:"
     printfn $"{formatIntersectionMap model.FromHorizontalToVerticalSegmentIntersections}"
     printfn "FromVerticalToHorizontalSegmentIntersections:"
     printfn $"{formatIntersectionMap model.FromVerticalToHorizontalSegmentIntersections}"
-    printfn "------------------\n"
-    model // TODO: Check how "jumps" (now called intersect coordinates) in segments should now be printed
-
-// Left in to check how jumps were printed
-(* 
-let ppMaps (model:Model) =
-    let jumps =
-        model.WX
-        |> Map.toList
-        |> List.map (fun (wId,w) -> 
-            sprintf $"Wire: {w.Segments |> List.collect (fun seg -> seg.IntersectCoordinateList |> List.map (fun (f, sid) -> formatId sid))}")
-            
-    printfn $"\n------------------\nMapHV:\n {m1} \n MapVH\n{m2} \nJumps:\n {jumps}\n------------------\n"
-*)
+    printfn $"Intersections"
+    printfn $"{intersections}"
+    printfn "------------------"
+    model
 
 // Will need to be reworked, potentially with relseg fold
 (*
