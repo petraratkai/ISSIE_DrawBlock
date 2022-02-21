@@ -28,7 +28,7 @@ type Symbol =
         InWidth0: int option
         InWidth1: int option
         Id : ComponentId       
-        Compo : Component                 
+        Component : Component                 
         Colour: string
         ShowInputPorts: bool
         ShowOutputPorts: bool
