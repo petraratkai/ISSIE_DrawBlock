@@ -20,7 +20,7 @@ let minSegLen = 5.
 //------------------------------BusWire Types-----------------------------//
 //------------------------------------------------------------------------//
 
-/// 
+/// Represents the orientation of a wire segment
 type Orientation =  Horizontal | Vertical
 
 ///
@@ -29,7 +29,7 @@ type SnapPosition = High | Mid | Low
 ///
 type WireType = Radial | Modern | Jump
 
-///
+/// Represents how a wire segment is currently being routed
 type RoutingMode = Manual | Auto
 
 ///
@@ -686,7 +686,9 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
     g [] [(g [] wires); symbols]
     |> TimeHelpers.instrumentInterval "WireView" start
 
-
+//---------------------------------------------------------------------------------//
+//--------------------STS219 CODE SECTION STARTS-------------------------------------//
+//---------------------------------------------------------------------------------//
 
 /// This function is given two couples of
 /// points that define two line segments and it returns:
@@ -722,7 +724,7 @@ let getTopLeftAndBottomRightCorner (box : BoundingBox) : XYPos * XYPos =
 /// - (true, None) if the segment is fully included inside the bounding box
 /// - (true, Some coordinate)  if the segment intersects the bounding box
 let segmentIntersectsBoundingBoxCoordinates (segIn : Segment) (bb : BoundingBox) : bool * Option<XYPos> =
-    let seg = makeSegPos segIn
+    let seg = makeSegPos segIn // We don't need this
     let ({X = x; Y = y} : XYPos), ({X = a; Y = b} : XYPos) = getTopLeftAndBottomRightCorner bb
     let w , h = (a-x), (b-y) // a = x+w;  b = y+h
     let x1, y1, x2, y2 = seg.Start.X, seg.Start.Y, seg.End.X, seg.End.Y 
@@ -773,7 +775,7 @@ let distanceFromPointToSegment (point : XYPos) (segment : Segment) : float =
 /// IDs of the wires to be rerouted (i.e. updated) as inputs,
 /// it REROUTES ALL THE GIVEN WIRES using the default wire
 /// shapes defined and it returns the model updated.
-let routeGivenWiresBasedOnPortPositions (wiresToBeRouted : list<ConnectionId>) (model : Model) : Model = 
+let routeGivenWiresBasedOnPortPositions (wiresToBeRouted : list<ConnectionId>) (model : Model) : Model = //I'm pretty sure this is never used?
     let updatedWireMap = 
         wiresToBeRouted
         |> List.map (fun id -> model.WX[id])
@@ -819,7 +821,7 @@ let getClickedSegment (model:Model) (wireId: ConnectionId) (pos: XYPos) : Segmen
     then (getClosestSegment model wireId pos).Id
     else (List.head intersectingSegments).Id
 
-let checkSegmentAngle (seg:Segment) (name:string) = // wtf is the point of this
+let checkSegmentAngle (seg:Segment) (name:string) = // pretty sure this was used for debugging, I can kill this
     match seg.Dir with
     | Vertical -> abs (abs seg.Start.X - abs seg.End.X) < 0.000001
     | Horizontal -> abs (abs seg.Start.Y - abs seg.End.Y) < 0.000001
@@ -827,7 +829,7 @@ let checkSegmentAngle (seg:Segment) (name:string) = // wtf is the point of this
         if not ok then  
             printfn $"Weird segment '{name}':\n{seg}\n\n fails angle checking")
 
-let segPointsLeft seg = // This seems oddly specific, pretty sure it's never used ?
+let segPointsLeft seg = // This seems oddly specific, pretty sure it's never used ? (I can kill?)
     abs seg.Start.X > abs seg.End.X && seg.Dir = Horizontal
 
 let segXDelta seg = abs seg.End.X - abs seg.Start.X
@@ -964,46 +966,62 @@ let init () = // Doesn't seem that harmful, revisit if we change the model type
         LastMousePos = {X = 0.0; Y = 0.0};
         ErrorWires = []
         Notifications = None
+        Type = Jump
     } , Cmd.none
 
-///Returns the wires connected to a list of components given by componentIds
-let getConnectedWires (wModel : Model) (compIds : list<ComponentId>) =
-    let inputPorts, outputPorts = Symbol.getPortLocations wModel.Symbol compIds
-
-    wModel.WX
+/// Returns a list of all the wires in the given model
+let getWireList (model: Model) =
+    model.WX
     |> Map.toList
-    |> List.map snd // Get list of wires from model
-    |> List.filter (fun wire -> Map.containsKey wire.InputPort inputPorts || Map.containsKey wire.OutputPort outputPorts) // make this a function (containsWirePort)
+    |> List.map snd
+
+/// Returns a list of wire IDs that meet the given condition
+let getFilteredIdList condition wireL = 
+    wireL
+    |> List.filter condition
     |> List.map (fun wire -> wire.Id)
-    |> List.distinct // Can we even have duplicate wires?
+    |> List.distinct
+
+///Returns the IDs of the wires in the model connected to a list of components given by componentIds
+let getConnectedWires (wModel: Model) (compIds: list<ComponentId>) =
+    let containsPorts wire =
+        let inputPorts, outputPorts =
+            Symbol.getPortLocations wModel.Symbol compIds
+
+        Map.containsKey wire.InputPort inputPorts
+        || Map.containsKey wire.OutputPort outputPorts
+
+    wModel
+    |> getWireList
+    |> getFilteredIdList containsPorts
 
 ///Returns a tuple of: wires connected to inputs ONLY, wires connected to outputs ONLY, wires connected to both inputs and outputs
-let filterWiresByCompMoved (wModel : Model) (compIds : list<ComponentId>) = // Is a tuple really a good way to go?
-        let inputPorts, outputPorts = Symbol.getPortLocations wModel.Symbol compIds
-        let lst = // bad name, wireList (make this a helper function, it's used somewhere else)
-            wModel.WX
-            |> Map.toList
-            |> List.map snd
+let filterWiresByCompMoved (wModel: Model) (compIds: list<ComponentId>) = 
+    let inputPorts, outputPorts =
+        Symbol.getPortLocations wModel.Symbol compIds
 
-        let inputWires =
-            lst
-            |> List.filter (fun wire -> Map.containsKey wire.InputPort inputPorts) // Does this do what the XML comment says?
-            |> List.map (fun wire -> wire.Id)
-            |> List.distinct // Again same question with distinct
+    let containsInputPort wire =
+        Map.containsKey wire.InputPort inputPorts
 
-        let outputWires =
-            lst // This could be a function (similar to above)
-            |> List.filter (fun wire -> Map.containsKey wire.OutputPort outputPorts)
-            |> List.map (fun wire -> wire.Id)
-            |> List.distinct
+    let containsOutputPort wire =
+        Map.containsKey wire.OutputPort outputPorts
 
-        let fullyConnected =
-            lst
-            |> List.filter (fun wire -> Map.containsKey wire.InputPort inputPorts && Map.containsKey wire.OutputPort outputPorts)
-            |> List.map (fun wire -> wire.Id)
-            |> List.distinct
+    let containsBothPort wire =
+        containsInputPort wire && containsOutputPort wire
 
-        (inputWires, outputWires, fullyConnected)
+    let wireList = getWireList wModel
+
+    let inputWires =
+        wireList |> getFilteredIdList containsInputPort
+
+    let outputWires =
+        wireList |> getFilteredIdList containsOutputPort
+
+    let fullyConnected =
+        wireList |> getFilteredIdList containsBothPort
+
+    (inputWires, outputWires, fullyConnected)
+
 
 //Returns a newly autorouted wire given a model and wire
 let autorouteWire (model : Model) (wire : Wire) : Wire =
@@ -1157,7 +1175,11 @@ let updateWire (model : Model) (wire : Wire) (inOut : bool) =
         partialAutoRoute wire.Segments newPort
     |> Option.map (fun segs -> {wire with Segments = segs})
     |> Option.defaultValue (autorouteWire model wire)
-// End of sts219
+
+//---------------------------------------------------------------------------------//
+//--------------------STS219 CODE SECTION ENDS-------------------------------------//
+//---------------------------------------------------------------------------------//
+
 let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
     let mutable neWX = model.WX
     // Arrays are faster to check than lists
