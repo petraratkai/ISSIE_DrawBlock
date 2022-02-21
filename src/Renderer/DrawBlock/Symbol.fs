@@ -631,8 +631,8 @@ let samePrefix target symbol =
         | _ -> false
     | Input _ -> 
         match compType with 
-            | Input _ -> true
-            | _ -> false
+        | Input _ -> true
+        | _ -> false
     | Output _ -> 
         match compType with
         | Output _ -> true
@@ -673,109 +673,11 @@ let samePrefix target symbol =
         match compType with 
         | AsyncRAM1 _ -> true
         | _ -> false
-
     | _ -> target = compType
 
-
-
 let getCompList compType listSymbols =
-    match compType with 
-       | Not | And | Or | Xor | Nand | Nor | Xnor -> 
-            listSymbols
-            |> List.filter (fun sym ->
-                (sym.Component.Type = Not || sym.Component.Type = And 
-                || sym.Component.Type = Or || sym.Component.Type = Xor
-                || sym.Component.Type = Nand || sym.Component.Type = Nor
-                || sym.Component.Type = Xnor)
-                )
-       | DFF | DFFE -> 
-            listSymbols
-            |> List.filter (fun sym ->
-                (sym.Component.Type = DFF || sym.Component.Type = DFFE))
-       //The following components require this pattern matching in order to correctly identify all of the components in the circuit of that type
-       //Normally this is because they are defined by a width as well as a type
-       | Register _ | RegisterE _ ->
-            listSymbols
-            |> List.filter (fun sym ->
-                match sym.Component.Type with 
-                | Register _ | RegisterE _ -> true
-                | _ -> false)
-       | Constant1 _ ->
-            listSymbols
-            |> List.filter (fun sym ->
-                match sym.Component.Type with 
-                | Constant1 _ -> true
-                | _ -> false)
-       | Input _ ->
-           listSymbols
-           |> List.filter (fun sym ->
-               match sym.Component.Type with 
-               | Input _ -> true
-               | _ -> false)
-       | Output _ ->
-           listSymbols
-           |> List.filter (fun sym ->
-               match sym.Component.Type with 
-               | Output _ -> true
-               | _ -> false)
-       | Viewer _ ->
-           listSymbols
-           |> List.filter (fun sym ->
-               match sym.Component.Type with 
-               | Viewer _ -> true
-               | _ -> false)
-       | BusSelection _ ->
-           listSymbols
-           |> List.filter (fun sym ->
-               match sym.Component.Type with 
-               | BusSelection _ -> true
-               | _ -> false)
-       | BusCompare _ ->
-           listSymbols
-           |> List.filter (fun sym ->
-               match sym.Component.Type with 
-               | BusCompare _ -> true
-               | _ -> false)
-       | NbitsAdder _ ->
-           listSymbols
-           |> List.filter (fun sym ->
-               match sym.Component.Type with 
-               | NbitsAdder _ -> true
-               | _ -> false)
-       | NbitsXor _ ->
-           listSymbols
-           |> List.filter (fun sym ->
-               match sym.Component.Type with 
-               | NbitsXor _ -> true
-               | _ -> false)
-       | AsyncROM1 _ ->
-           listSymbols
-           |> List.filter (fun sym ->
-               match sym.Component.Type with 
-               | AsyncROM1 _ -> true
-               | _ -> false)
-       | ROM1 _ ->
-           listSymbols
-           |> List.filter (fun sym ->
-               match sym.Component.Type with 
-               | ROM1 _ -> true
-               | _ -> false)
-       | RAM1 _ ->
-           listSymbols
-           |> List.filter (fun sym ->
-               match sym.Component.Type with 
-               | RAM1 _ -> true
-               | _ -> false)
-       | AsyncRAM1 _ ->
-           listSymbols
-           |> List.filter (fun sym ->
-               match sym.Component.Type with 
-               | AsyncRAM1 _ -> true
-               | _ -> false)
-
-       | _ ->
-            listSymbols
-            |> List.filter (fun sym -> sym.Component.Type = compType)
+    listSymbols
+    |> List.filter (samePrefix compType)
 
 let getIndex listSymbols compType =
     let symbolList = 
