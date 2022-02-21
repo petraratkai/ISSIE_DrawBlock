@@ -658,25 +658,23 @@ let samePrefix target symbol =
         | NbitsXor _ -> true
         | _ -> false
     | AsyncROM1 _ ->
-        match sym.Component.Type with 
+        match compType with 
         | AsyncROM1 _ -> true
         | _ -> false
     | ROM1 _ ->
-        match sym.Component.Type with 
+        match compType with 
         | ROM1 _ -> true
         | _ -> false
     | RAM1 _ ->
-        match sym.Component.Type with 
+        match compType with 
         | RAM1 _ -> true
         | _ -> false
     | AsyncRAM1 _ ->
-        match sym.Component.Type with 
+        match compType with 
         | AsyncRAM1 _ -> true
-        | _ -> false)
+        | _ -> false
 
-    | _ ->
-         listSymbols
-         |> List.filter (fun sym -> sym.Component.Type = compType)
+    | _ -> target = compType
 
 
 
