@@ -22,8 +22,6 @@ type STransform = {Rotation: Rotation; flipped: bool}
 
 type Edge = | Top | Bottom | Left | Right
 
-type PortId = | InputId of InputPortId | OutputId of OutputPortId //this breaks everything somehow
-
 type Symbol =
     {
         Pos: XYPos
@@ -37,17 +35,14 @@ type Symbol =
         Opacity: float
         Moving: bool
         STransform: STransform
-        PortOrientation: Map<PortId, Edge>
-        TopPorts: PortId list
-        BottomPorts: PortId list
-        LeftPorts: PortId list
-        RightPorts: PortId list
+        PortOrientation: Map<string, Edge>
+        PortOrder: Map<Edge, string list> //stores the order of ports on each edge
     }
 
 type Model = {
     Symbols: Map<ComponentId, Symbol>
     CopiedSymbols: Map<ComponentId, Symbol>
-    Ports: Map<PortId, Port>                            // string since it's for both input and output ports
+    Ports: Map<string, Port>                            // string since it's for both input and output ports
 
     InputPortsConnected:  Set<InputPortId>              // we can use a set since we only care if an input port 
                                                         // is connected or not (if so it is included) in the set 
