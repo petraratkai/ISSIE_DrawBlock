@@ -87,7 +87,6 @@ let posAdd (a:XYPos) (b:XYPos) =
 
 let posOf x y = {X=x;Y=y}
 
-
 // ----- helper functions for titles ----- //
 
 ///Insert titles compatible with greater than 1 buswidth
@@ -113,9 +112,10 @@ let prefix compType =
     | RAM1 _ -> "RAM"
     | AsyncRAM1 _ -> "ARAM"
     | Custom c ->
-        c.Name + (if c.Name 
-                    |> Seq.last 
-                    |> System.Char.IsDigit then "." else "")
+        let name = c.Name + (if c.Name 
+                                |> Seq.last 
+                                |> System.Char.IsDigit then "." else "")
+        name.ToUpper()
     | Constant1 _ -> "C"
     | BusCompare _ -> "EQ"
     | Decode4 -> "DEC"
