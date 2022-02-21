@@ -366,7 +366,7 @@ let isAllVisible (model: Model)(conns: ConnectionId list) (comps: ComponentId li
         |> List.fold (&&) true
     let cVisible =
         comps
-        |> List.map (Symbol.getOneBoundingBox model.Wire.Symbol)
+        |> List.map (Symbol.getBoundingBox model.Wire.Symbol)
         |> List.map isBBoxAllVisible
         |> List.fold (&&) true
     wVisible && cVisible
@@ -927,7 +927,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
     | UpdateBoundingBoxes -> { model with BoundingBoxes = Symbol.getBoundingBoxes model.Wire.Symbol }, Cmd.none
     | UpdateSingleBoundingBox compId ->
         match Map.containsKey compId model.BoundingBoxes with
-        | true -> {model with BoundingBoxes = model.BoundingBoxes.Add (compId, (Symbol.getOneBoundingBox model.Wire.Symbol compId))}, Cmd.none
+        | true -> {model with BoundingBoxes = model.BoundingBoxes.Add (compId, (Symbol.getBoundingBox model.Wire.Symbol compId))}, Cmd.none
         | false -> model, Cmd.none
     | UpdateScrollPos (scrollX, scrollY) ->
         let scrollDif = posDiff { X = scrollX; Y = scrollY } model.ScrollPos
