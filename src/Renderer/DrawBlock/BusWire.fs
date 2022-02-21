@@ -1102,11 +1102,8 @@ let partialAutoRoute (segs: Segment list) (newPortPos: XYPos) = // This is a pha
     let newWirePos = {newPortPos with X = newPortPos.X + (abs wirePos.X - portPos.X) }
     let (diff:XYPos) = {X=newPortPos.X-portPos.X; Y= newPortPos.Y - portPos.Y}
     let lastAutoIndex =
-        let isNegative (pos:XYPos) = pos.X < 0.0 || pos.Y < 0.0
-        let isAutoSeg seg = 
-            not (isNegative seg.Start || isNegative seg.End) // Can be simplified once we use boolean logic
         segs
-        |> List.takeWhile isAutoSeg
+        |> List.takeWhile (fun seg -> seg.Mode = Auto)
         |> List.length
         |> (fun n -> if n > 5 then None else Some (n + 1))
     let scaleBeforeSegmentEnd segIndex = // Gonna need to figure out wtf this bs does
@@ -1144,24 +1141,11 @@ let partialAutoRoute (segs: Segment list) (newPortPos: XYPos) = // This is a pha
     |> Option.bind checkTopology
     |> Option.bind scaleBeforeSegmentEnd
 
-
-///Returns the new positions keeping manual coordinates negative, and auto coordinates positive
-let negXYPos (pos : XYPos) (diff : XYPos) : XYPos = // Again can change once we remove abs
-    let newPos = Symbol.posAdd (getAbsXY pos) diff
-    if pos.X < 0. || pos.Y < 0. then {X = - newPos.X; Y = - newPos.Y}
-    else newPos
-
-///Moves a wire by a specified amount by adding a XYPos to each start and end point of each segment
-let moveWire (wire : Wire) (diff : XYPos) = // Will rework with relative segments   
-    {wire with 
-        Segments = 
-            wire.Segments
-            |> List.map (fun seg -> 
-                {seg with
-                    Start = negXYPos seg.Start diff
-                    End = negXYPos seg.End diff
-                })
-    }
+/// Moves a wire by the XY amounts specified by displacement
+let moveWire (wire: Wire) (displacement: XYPos) =
+    { wire with
+          StartPos = Symbol.posAdd wire.StartPos displacement
+          EndPos = Symbol.posAdd wire.EndPos displacement }
 
 /// Re-routes a single wire in the model when its ports move.
 /// Tries to preserve manual routing when this makes sense, otherwise re-routes with autoroute.
