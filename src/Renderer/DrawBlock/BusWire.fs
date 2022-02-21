@@ -771,28 +771,6 @@ let distanceFromPointToSegment (point : XYPos) (segment : Segment) : float =
         let denom = sqrt (  (x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)  )
         numer/denom
 
-/// This function takes the current state of the model and the
-/// IDs of the wires to be rerouted (i.e. updated) as inputs,
-/// it REROUTES ALL THE GIVEN WIRES using the default wire
-/// shapes defined and it returns the model updated.
-let routeGivenWiresBasedOnPortPositions (wiresToBeRouted : list<ConnectionId>) (model : Model) : Model = //I'm pretty sure this is never used?
-    let updatedWireMap = 
-        wiresToBeRouted
-        |> List.map (fun id -> model.Wires[id])
-        |> List.map
-            (
-                fun wire -> 
-                    let posTuple = Symbol.getTwoPortLocations (model.Symbol) (wire.InputPort) (wire.OutputPort)
-                    (wire.Id, {wire with Segments = makeInitialSegmentsList wire.Id posTuple})
-            )
-        |> Map.ofList
-    
-    let newWX = 
-        model.Wires
-        |> Map.map (fun id wire -> if Map.containsKey id updatedWireMap then updatedWireMap[id] else wire)
-
-    {model with Wires = newWX}
-
 /// Given the current state of the BusWire model,
 /// a ConnectionId and an BoundingBox,
 /// this function returns a list of Segments of the
@@ -831,31 +809,6 @@ let checkSegmentAngle (seg:Segment) (name:string) = // pretty sure this was used
 
 let segPointsLeft seg = // This seems oddly specific, pretty sure it's never used ? (I can kill?)
     abs seg.Start.X > abs seg.End.X && seg.Dir = Horizontal
-
-let segXDelta seg = abs seg.End.X - abs seg.Start.X
-
-/// change the middle X coordinate of the joined ends of two segments (seg0 is LH, seg1 is RH).
-/// compensate for negative signs in coordinates using as value but preserving sign
-/// xPos is asumed positive
-let moveXJoinPos xPos seg0 seg1 = // Idk wtf the point of this is
-    let changeXKeepingSign (coord:XYPos) = // This can be removed once we fix their weird sign bullshit
-        if coord.X < 0.0 then {coord with X = -xPos}
-        else {coord with X = xPos}
-    [ {seg0 with End = changeXKeepingSign seg0.End}; {seg1 with Start = changeXKeepingSign seg1.Start} ]
-
-let changeLengths isAtEnd seg0 seg1 =
-    let outerSeg, innerSeg =
-        if isAtEnd then seg1, seg0 else seg0, seg1
-    let innerX = segXDelta innerSeg
-    let outerX = segXDelta outerSeg
-
-    // should never happen, can't do anything
-    if seg0.Dir <> Horizontal || seg1.Dir <> Horizontal || outerX < 0.0 then [seg0 ; seg1]
-    elif innerX < 0.0 then  
-        // the case where we need to shorten the first or last segment (seg0 here)
-        moveXJoinPos (if isAtEnd then seg1.End.X - Wire.stickLength else seg0.Start.X + Wire.stickLength) seg0 seg1
-    else [ seg0; seg1]
-       
 
 /// Called for segments 1, 2, 3, 4, 5 - if they are vertical and move horizontally.
 /// The function returns distance reduced if need be to prevent wires moving into components
@@ -1063,18 +1016,6 @@ let reverseSegments (segs:Segment list) =
 //
 // ======================================================================================================================
 
-
-let inline addPosPos (pos1: XYPos) (pos:XYPos) = // weird name, addPos / sumPos
-    {X = pos1.X + pos.X; Y = pos1.Y + pos.Y}
-
-
-let inline moveEnd (mover: XYPos -> XYPos) (n:int) = // moves the end of segment with index n of an input list of segs
-    List.mapi (fun i (seg:Segment) -> if i = n then {seg with End = mover seg.End} else seg)
-
-
-let inline moveStart (mover: XYPos -> XYPos) (n:int) = // same as above but for start
-    List.mapi (fun i (seg:Segment) -> if i = n then {seg with Start = mover seg.Start} else seg)
-
 let inline moveAll (mover: XYPos -> XYPos) (n : int) = // moves both start and end
     List.mapi (fun i (seg:Segment) -> if i = n then {seg with Start = mover seg.Start; End = mover seg.End} else seg)
 
@@ -1119,7 +1060,7 @@ let partialAutoRoute (segs: Segment list) (newPortPos: XYPos) = // This is a pha
         | ((scaledSegs), otherSegs), 1 ->
             Some ((List.map (transformSeg scaleX scaleY) scaledSegs) @ otherSegs)
         | ((firstSeg :: scaledSegs), otherSegs), _ ->
-            Some ((moveAll (addPosPos diff) 0 [firstSeg] @ List.map (transformSeg scaleX scaleY) scaledSegs) @ otherSegs)
+            Some ((moveAll (Symbol.posAdd diff) 0 [firstSeg] @ List.map (transformSeg scaleX scaleY) scaledSegs) @ otherSegs)
         | _ -> None
 
     let checkTopology index =
