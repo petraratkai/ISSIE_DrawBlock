@@ -359,7 +359,7 @@ let getWireBBox (wire: BusWire.Wire) (model: Model) =
 let isAllVisible (model: Model)(conns: ConnectionId list) (comps: ComponentId list) =
     let wVisible =
         conns
-        |> List.map (fun cid -> Map.tryFind cid model.Wire.WX)
+        |> List.map (fun cid -> Map.tryFind cid model.Wire.Wires)
         |> List.map (Option.map (fun wire -> getWireBBox wire model))
         |> List.map (Option.map isBBoxAllVisible)
         |> List.map (Option.defaultValue true)
@@ -887,7 +887,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
         | [] -> model , Cmd.none
         | prevModel :: lst -> 
             let symModel = { prevModel.Wire.Symbol with CopiedSymbols = model.Wire.Symbol.CopiedSymbols }
-            let wireModel = { prevModel.Wire with CopiedWX = model.Wire.CopiedWX ; Symbol = symModel}
+            let wireModel = { prevModel.Wire with CopiedWires = model.Wire.CopiedWires ; Symbol = symModel}
             { prevModel with Wire = wireModel ; UndoList = lst ; RedoList = model :: model.RedoList ; CurrentKeyPresses = Set.empty } , Cmd.none
     | KeyPress CtrlY -> 
         match model.RedoList with 
@@ -895,7 +895,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
         | newModel :: lst -> { newModel with UndoList = model :: model.UndoList ; RedoList = lst} , Cmd.none
     | KeyPress CtrlA -> 
         let symbols = model.Wire.Symbol.Symbols |> Map.toList |> List.map fst
-        let wires = model.Wire.WX |> Map.toList |> List.map fst
+        let wires = model.Wire.Wires |> Map.toList |> List.map fst
         { model with 
             SelectedComponents = symbols
             SelectedWires = wires
