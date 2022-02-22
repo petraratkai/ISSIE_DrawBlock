@@ -517,7 +517,7 @@ let getSymbolBoundingBox (sym:Symbol): BoundingBox =
         | Degree0 | Degree180 -> sym.Component.H, sym.Component.W
         | _ -> sym.Component.W, sym.Component.H
 
-    {X = float(sym.Pos.X); Y = float(sym.Pos.Y); H = float(h) ; W = float(w)}
+    {TopLeft = sym.Pos; H = float(h) ; W = float(w)}
 
 /// Returns all the bounding boxes of all components in the model
 let getBoundingBoxes (symModel: Model): Map<ComponentId, BoundingBox> =
@@ -552,6 +552,7 @@ let getPortIdStr (portId: PortId) =
     | InputId (InputPortId id) -> id
     | OutputId (OutputPortId id) -> id
 
+let getPortIdList ()
 /// Returns the location of a given portId, with good efficiency
 let getPortLocation (model: Model) (portId : string) : XYPos=
     let port = model.Ports[portId]
@@ -682,40 +683,68 @@ let pasteSymbols (symModel: Model) (newBasePos: XYPos) : (Model * ComponentId li
         let baseSymbol = List.minBy (fun sym -> sym.Pos.X) oldSymbolsList
         let basePos = baseSymbol.Pos + { X = (float baseSymbol.Component.W) / 2.0; Y = (float baseSymbol.Component.H) / 2.0 }
         ((symModel, []), oldSymbolsList) ||> List.fold (addNewSymbol basePos)
-    
+ 
+/// Returns the hostId of the port in model
+let getPortHostId (model: Model) portId =
+   model.Ports[portId].HostId
+
+/// Tries to find the target in copiedIds, and tries to return the item at the same index in pastedIds
+let tryGetPastedEl copiedIds pastedIds target =
+    // try to look for a symbol in copiedIds, get the index and return pastedIds[index]
+    let indexedTarget = 
+        copiedIds
+        |> List.indexed
+        |> List.filter (fun (_, id) -> id = target)
+        |> List.tryExactlyOne
+    match indexedTarget with
+    | Some (index, _) -> List.tryItem index pastedIds
+    | _ -> None
+
+/// Returns a tuple of the list of input ports of a given input symbol, and list of output ports of a given output symbol
+let getPortIds (input: Symbol) (output: Symbol) : (string list * string list)=
+    let inPortIds = 
+        input.Component.InputPorts
+        |> List.map (fun port -> port.Id)
+    let outPortIds =
+        output.Component.OutputPorts
+        |> List.map (fun port -> port.Id)
+    inPortIds, outPortIds
+
+/// Given a tuple of options, returns an Some (v1, v2) if both tuple elements are some, else None
+let mergeOptions =
+    function
+    | Some v1, Some v2 -> Some (v1, v2)
+    | _ -> None
+
+/// Returns the symbol containing the given portId in the model's CopiedSymbols map
+let getCopiedSymbol model portId =
+    let symbolId = getPortHostId model portId
+    model.CopiedSymbols[ComponentId symbolId]
+
 /// Given two componentId list of same length and input / output ports that are in list 1, return the equivalent ports in list 2.
 /// ComponentIds at same index in both list 1 and list 2 need to be of the same ComponentType.
-/// CompIds1 need to be in model.CopiedSymbols
-let getEquivalentCopiedPorts (model: Model) (copiedIds) (pastedIds) (InputPortId copiedInputPort, OutputPortId copiedOutputPort) =
-    let findEquivalentPorts compId1 compId2 =
-        let copiedComponent = model.CopiedSymbols[compId1].Component
-        let pastedComponent = model.Symbols[compId2].Component // TODO: These can be different for an output gate for some reason.
-        
-        let tryFindEquivalentPort (copiedPorts: Port list) (pastedPorts: Port list) targetPort =
-            if List.isEmpty copiedPorts || List.isEmpty pastedPorts
-            then None
-            else
-                match List.tryFindIndex ( fun (port: Port) -> port.Id = targetPort ) copiedPorts with
-                | Some portIndex -> 
+/// CompIds1 need to be in model.CopiedSymbols.
+/// Assumes ports are in the same order in equivalent symbols
+let getEquivalentCopiedPorts (model: Model) copiedIds (pastedIds: string list) (InputPortId copiedInputPort, OutputPortId copiedOutputPort) =
+    let getPastedSymbol copiedPort =
+        getPortHostId model copiedPort
+        |> tryGetPastedEl copiedIds pastedIds
+        |> Option.map (fun id -> model.Symbols[ComponentId id])
 
-                    Some pastedPorts[portIndex].Id // Get the equivalent port in pastedPorts. Assumes ports at the same index are the same (should be the case unless copy pasting went wrong).
-                | _ -> None
-        
-        let pastedInputPortId = tryFindEquivalentPort copiedComponent.InputPorts pastedComponent.InputPorts copiedInputPort
-        let pastedOutputPortId = tryFindEquivalentPort copiedComponent.OutputPorts pastedComponent.OutputPorts copiedOutputPort
-    
-        pastedInputPortId, pastedOutputPortId
-        
-    let foundPastedPorts =
-        List.zip copiedIds pastedIds
-        |> List.map (fun (compId1, compId2) -> findEquivalentPorts compId1 compId2)
-    //could maybe do List.fold
-    let foundPastedInputPort = List.collect (function | Some a, _ -> [a] | _ -> []) foundPastedPorts
-    let foundPastedOutputPort = List.collect (function | _, Some b -> [b] | _ -> []) foundPastedPorts
-    
-    match foundPastedInputPort, foundPastedOutputPort with 
-    | [pastedInputPort], [pastedOutputPort] -> Some (pastedInputPort, pastedOutputPort) 
-    | _ -> None // If either of source or target component of the wire was not copied then we discard the wire
+    let copiedInSymbol = getCopiedSymbol model copiedInputPort
+    let copiedOutSymbol = getCopiedSymbol model copiedOutputPort
+    let copiedInPortIds, copiedOutPortIds = getPortIds copiedInSymbol copiedOutSymbol
+
+    let pastedInSymbol = getPastedSymbol copiedInputPort
+    let pastedOutSymbol = getPastedSymbol copiedOutputPort
+    match pastedInSymbol, pastedOutSymbol with
+    | Some inSymbol, Some outSymbol ->
+        let pastedInPortIds, pastedOutPortIds = getPortIds inSymbol outSymbol
+        let equivInPorts = tryGetPastedEl copiedInPortIds pastedInPortIds copiedInputPort
+        let equivOutPorts = tryGetPastedEl copiedOutPortIds pastedOutPortIds copiedOutputPort 
+        mergeOptions (equivInPorts, equivOutPorts)
+    | _ -> None
+
   
  
 /// Given a model return a model with a new Symbol and also the component id
