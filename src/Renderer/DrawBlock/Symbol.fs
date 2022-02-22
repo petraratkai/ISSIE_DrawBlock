@@ -510,13 +510,14 @@ let view (model : Model) (dispatch : Msg -> unit) =
     |> TimeHelpers.instrumentInterval "SymbolView" start
 
 //------------------------GET BOUNDING BOXES FUNCS--------------------------------used by sheet.
-/// Returns the bounding box of a symbol. It is defined by the height and the width as well as the x,y position of the symbol. TODO: handle rotation -> should be goof
+/// Returns the bounding box of a symbol. It is defined by the height and the width as well as the x,y position of the symbol. TODO: handle rotation -> should be good
 let getSymbolBoundingBox (sym:Symbol): BoundingBox =
-    let h,w = match sym.STransform.Rotation with
+    let h,w = //might need to redo, bounding box should be top left, and maybe we should just return h and w as they are
+        match sym.STransform.Rotation with
         | Degree0 | Degree180 -> sym.Component.H, sym.Component.W
         | _ -> sym.Component.W, sym.Component.H
 
-    {X = float(sym.Pos.X) ; Y = float(sym.Pos.Y) ; H = float(h) ; W = float(w)}
+    {X = float(sym.Pos.X); Y = float(sym.Pos.Y); H = float(h) ; W = float(w)}
 
 /// Returns all the bounding boxes of all components in the model
 let getBoundingBoxes (symModel: Model): Map<ComponentId, BoundingBox> =
@@ -534,6 +535,16 @@ let getBoundingBox (symModel: Model) (compid: ComponentId ): BoundingBox =
 let getSymbolPos (symbolModel: Model) compId = //makes sense or should we have getSymbol?
     let symbol = Map.find compId symbolModel.Symbols
     symbol.Pos
+
+///Returns the port object associated with a given portId
+let getPort (symModel: Model) (portId: string) =
+    symModel.Ports[portId]
+
+/// Interface function to get componentIds of the copied symbols
+let getCopiedSymbols (symModel: Model) : (ComponentId list) =
+    symModel.CopiedSymbols
+    |> Map.toList
+    |> List.map fst
 
 /// returns the string of a PortId
 let getPortIdStr (portId: PortId) = 
@@ -595,7 +606,9 @@ let getPortLocations (model: Model) (symbolIds: ComponentId list) =
     let getOutputPortMap = getOutputPortsLocationMap model symbols
        
     getInputPortMap , getOutputPortMap 
-   
+ 
+//--------------------- GENERATING LABEL FUNCTIONS-------------------------------
+
 ///Returns the number of the component label (i.e. the number 1 from IN1 or ADDER16.1)
 let getLabelNumber (str : string) = 
     let index = Regex.Match(str, @"\d+$")
@@ -631,41 +644,47 @@ let generateLabel (model: Model) (compType: ComponentType) : string =
     | IOLabel -> prefix
     | _ -> prefix + (generateLabelNumber listSymbols compType)
 
-/// Interface function to paste symbols. Is a function instead of a message because we want an output
-/// Currently drag-and-drop
-let pasteSymbols (symModel: Model) (mPos: XYPos) : (Model * ComponentId list) =
-    let createNewSymbol (basePos: XYPos) ((currSymbolModel, pastedIdsList) : Model * ComponentId List) (oldSymbol: Symbol): Model * ComponentId List =
+/// Interface function to paste symbols. Is a function instead of a message because we want an output.
+/// Currently drag-and-drop.
+/// Pastes a list of symbols into the model and returns the new model and the id of the pasted modules.
+let pasteSymbols (symModel: Model) (newBasePos: XYPos) : (Model * ComponentId list) =
+    let addNewSymbol (basePos: XYPos) ((currSymbolModel, pastedIdsList) : Model * ComponentId List) (oldSymbol: Symbol): Model * ComponentId List =
         let newId = JSHelpers.uuid()
-        let posDiff = oldSymbol.Pos - basePos
-        let newPos = posDiff + mPos
-        
-        let pastedSymbol =
+        let newPos = oldSymbol.Pos - basePos + newBasePos
+        let compType = oldSymbol.Component.Type
+        let newLabel = 
+            compType
+            |> generateLabel { symModel with Symbols = currSymbolModel.Symbols}
+
+        let newComp = makeComp newPos compType newId newLabel
+        let newSymbol =
             { oldSymbol with
                 Id = ComponentId newId
-                Component = makeComp newPos oldSymbol.Component.Type newId (generateLabel { symModel with Symbols = currSymbolModel.Symbols } oldSymbol.Component.Type) // TODO: Change label later
+                Component = newComp
                 Pos = newPos
                 ShowInputPorts = false
                 ShowOutputPorts = false }
              
-        let newSymbolMap = currSymbolModel.Symbols.Add ((ComponentId newId), pastedSymbol) // List needs to be in this order
-        let newPorts = addToPortModel currSymbolModel pastedSymbol
-        { currSymbolModel with Symbols = newSymbolMap; Ports = newPorts }, pastedIdsList @ [ pastedSymbol.Id ]
+        let newSymbolMap = currSymbolModel.Symbols.Add (ComponentId newId, newSymbol)
+        let newPorts = addToPortModel currSymbolModel newSymbol
+        let newModel = { currSymbolModel with Symbols = newSymbolMap; Ports = newPorts }
+        let newPastedIdsList = pastedIdsList @ [ newSymbol.Id ]
+        newModel, newPastedIdsList
         
     let oldSymbolsList =
         symModel.CopiedSymbols
         |> Map.toList
         |> List.map snd
-    //can just find min element no need to sort
-    match List.sortBy (fun sym -> sym.Pos.X) oldSymbolsList with
-    | baseSymbol :: _ ->
-        let basePos = baseSymbol.Pos + { X = (float baseSymbol.Component.W) / 2.0; Y = (float baseSymbol.Component.H) / 2.0 }
-        
-        ((symModel, []), oldSymbolsList) ||> List.fold (createNewSymbol basePos)
-    | [] -> symModel, []
 
+    match oldSymbolsList with
+    | [] -> symModel, []
+    | _ -> 
+        let baseSymbol = List.minBy (fun sym -> sym.Pos.X) oldSymbolsList
+        let basePos = baseSymbol.Pos + { X = (float baseSymbol.Component.W) / 2.0; Y = (float baseSymbol.Component.H) / 2.0 }
+        ((symModel, []), oldSymbolsList) ||> List.fold (addNewSymbol basePos)
     
 /// Given two componentId list of same length and input / output ports that are in list 1, return the equivalent ports in list 2.
-/// ComponentIds at same index in both list 1 and list 2 need to be of the same ComponentType
+/// ComponentIds at same index in both list 1 and list 2 need to be of the same ComponentType.
 /// CompIds1 need to be in model.CopiedSymbols
 let getEquivalentCopiedPorts (model: Model) (copiedIds) (pastedIds) (InputPortId copiedInputPort, OutputPortId copiedOutputPort) =
     let findEquivalentPorts compId1 compId2 =
@@ -673,7 +692,7 @@ let getEquivalentCopiedPorts (model: Model) (copiedIds) (pastedIds) (InputPortId
         let pastedComponent = model.Symbols[compId2].Component // TODO: These can be different for an output gate for some reason.
         
         let tryFindEquivalentPort (copiedPorts: Port list) (pastedPorts: Port list) targetPort =
-            if copiedPorts.Length = 0 || pastedPorts.Length = 0
+            if List.isEmpty copiedPorts || List.isEmpty pastedPorts
             then None
             else
                 match List.tryFindIndex ( fun (port: Port) -> port.Id = targetPort ) copiedPorts with
@@ -954,13 +973,3 @@ let extractComponents (symModel: Model) : Component list =
     symModel.Symbols
     |> Map.toList
     |> List.map (fun (key, _) -> extractComponent symModel key)
-
-///Returns the port object associated with a given portId
-let getPort (symModel: Model) (portId: string) =
-    symModel.Ports[portId]
-
-/// Interface function to get componentIds of the copied symbols
-let getCopiedSymbols (symModel: Model) : (ComponentId list) =
-    symModel.CopiedSymbols
-    |> Map.toList
-    |> List.map fst
