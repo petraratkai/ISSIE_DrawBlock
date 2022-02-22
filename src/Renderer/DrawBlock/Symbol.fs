@@ -280,9 +280,13 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
     let id = JSHelpers.uuid ()
     let comp = makeComp pos comptype id label
 
-    let inputports = List.map getId comp.InputPorts
-    let outputports = List.map getId comp.OutputPorts
-    let orientation = concatMap (portMap inputports Left) (portMap outputports Right)
+    let inputportsid = List.map getId comp.InputPorts
+    let outputportsid = List.map getId comp.OutputPorts
+    let orientation = concatMap (portMap inputportsid Left) (portMap outputportsid Right)
+
+    let inputportmap = Map[Left, inputportsid]
+    let outputportmap = Map[Right, outputportsid]
+    let portorder = concatMap inputportmap outputportmap
 
     { 
       Pos = { X = pos.X - float comp.W / 2.0; Y = pos.Y - float comp.H / 2.0 }
@@ -297,7 +301,7 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
       Moving = false
       STransform = {Rotation=Degree0; flipped=false}
       PortOrientation = orientation
-      PortOrder = None
+      PortOrder = portorder
     }
 
 // Function to add ports to port model     
