@@ -612,7 +612,8 @@ let getCount (str : string) =
     | null -> 0
     | _ -> int index.Value
 
-let samePrefix target symbol =
+/// Checks if symbol has same component type as target
+let samePrefix (target: ComponentType) (symbol: Symbol) : bool =
     let compType = symbol.Component.Type
     match target with
     | Not | And | Or | Xor | Nand | Nor | Xnor ->
@@ -675,34 +676,29 @@ let samePrefix target symbol =
         | _ -> false
     | _ -> target = compType
 
-let getCompList compType listSymbols =
-    listSymbols
-    |> List.filter (samePrefix compType)
-
 let getIndex listSymbols compType =
-    let symbolList = 
-        getCompList compType listSymbols
+    let samePrefixLst = 
+        listSymbols
+        |> List.filter (samePrefix compType)
 
     match compType with
     | MergeWires | SplitWire _ -> ""
     | _ ->
-        if List.isEmpty symbolList then 1 
-        else symbolList
+        if List.isEmpty samePrefixLst then 1 
+        else samePrefixLst
             |> List.map (fun sym -> getCount sym.Component.Label)
             |> List.max
             |> (+) 1
         |> string
 
-///Generates the number to be put in the title of symbols  
-let labelGenNumber (model: Model) (compType: ComponentType) (label : string) = 
-    let listSymbols = List.map snd (Map.toList model.Symbols) 
-    match compType with
-    | IOLabel -> label
-    | _ -> removeCount label + (getIndex listSymbols compType)
-
 ///Generates the label for a component type
 let generateLabel (model: Model) (compType: ComponentType) : string =
-    labelGenNumber model compType (prefix compType)
+    let listSymbols = List.map snd (Map.toList model.Symbols) 
+    let prefix = prefix compType
+    match compType with
+    | IOLabel -> prefix
+    | _ -> prefix + (getIndex listSymbols compType)
+
 
 /// Interface function to paste symbols. Is a function instead of a message because we want an output
 /// Currently drag-and-drop
@@ -715,7 +711,7 @@ let pasteSymbols (symModel: Model) (mPos: XYPos) : (Model * ComponentId list) =
         let pastedSymbol =
             { oldSymbol with
                 Id = ComponentId newId
-                Component = makeComp newPos oldSymbol.Component.Type newId (labelGenNumber { symModel with Symbols = currSymbolModel.Symbols } oldSymbol.Component.Type oldSymbol.Component.Label) // TODO: Change label later
+                Component = makeComp newPos oldSymbol.Component.Type newId (generateLabel { symModel with Symbols = currSymbolModel.Symbols } oldSymbol.Component.Type) // TODO: Change label later
                 Pos = newPos
                 ShowInputPorts = false
                 ShowOutputPorts = false }
