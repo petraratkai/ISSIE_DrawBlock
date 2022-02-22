@@ -100,82 +100,6 @@ type Msg =
     | ResetModel // For Issie Integration
     | LoadConnections of list<Connection> // For Issie Integration
 
-//-------------------------Debugging functions---------------------------------//
-
-/// Formats a SegmentId for logging purposes.
-let formatId (Id:SegmentId) =
-    Id
-    |> (fun (SegmentId str) -> str)
-    |> (fun str -> str[0..2])
-
-/// Logs the given SegmentId and returns it unchanged. Used for debugging.
-let logSegmentId (Id:SegmentId) =
-    printfn $"{formatId Id}"; Id
-
-/// Logs the given Segment and returns it unchanged. Used for debugging.
-let logSegment (seg:Segment) =
-    printfn $"|{seg.Index}:{formatId seg.Id}|"; seg
-
-/// Logs the given ConnectionId and returns it unchanged. Used for debugging.
-let logConnectionId (Id:ConnectionId) =
-        Id
-        |> (fun (ConnectionId str) -> str)
-        |> (fun str -> printfn $"{str[0..2]}"; Id)
-
-/// Formats an intersection map for logging purposes.
-let formatIntersectionMap (m:Map<SegmentId, (ConnectionId * SegmentId) list>) =
-    m
-    |> Map.toList
-    |> List.map (fun (segId, lst) ->
-        List.map (snd >> formatId) lst
-        |> (fun segs -> sprintf $"""<{formatId segId}->[{String.concat ";" segs}]"""))
-        |> String.concat ";\n"
-
-/// Logs the intersection maps of a given model and returns it unchanged. Used for debugging
-let logIntersectionMaps (model:Model) =
-    let intersections =
-        let formatSegmentIntersections segments =
-            segments
-            |> List.collect (fun segment -> 
-                segment.IntersectCoordinateList
-                |> List.map (fun (_, id) -> formatId id))
-
-        model.Wires
-        |> Map.toList
-        |> List.map (fun (_, wire) -> 
-            sprintf $"Wire: {formatSegmentIntersections wire.Segments}")
-
-    printfn "\n------------------\nFromHorizontalToVerticalSegmentIntersections:"
-    printfn $"{formatIntersectionMap model.FromHorizontalToVerticalSegmentIntersections}"
-    printfn "FromVerticalToHorizontalSegmentIntersections:"
-    printfn $"{formatIntersectionMap model.FromVerticalToHorizontalSegmentIntersections}"
-    printfn $"Intersections"
-    printfn $"{intersections}"
-    printfn "------------------"
-    model
-
-// Will need to be reworked, potentially with relseg fold
-(*
-let ppSeg seg (model: Model) = 
-        let cid,sid = seg
-        let wire = model.WX[cid]
-        let sg = List.find (fun (s:Segment) -> s.Id = sid ) wire.Segments
-        let pxy (xy: XYPos) = sprintf $"{(xy.X,xy.Y)}"
-        sprintf $"""[{formatId sg.Id}: {pxy sg.Start}->{pxy sg.End}]-{match sg.Dir with | Vertical -> "V" | _ -> "H"}-{sg.Index}"""
-
-let pp segs (model: Model)= 
-    segs
-    |> List.map  ( fun seg ->
-        let cid,sid = seg
-        let wire = model.WX[cid]
-        match List.tryFind (fun (s:Segment) -> s.Id = sid ) wire.Segments with
-        | Some  sg ->
-            let pxy (xy: XYPos) = sprintf $"{(xy.X,xy.Y)}"
-            sprintf $"""[{pxy sg.Start}->{pxy sg.End}]-{match sg.Dir with | Vertical -> "V" | _ -> "H"}-{sg.Index}"""
-        | None -> "XX")
-    |> String.concat ";"
-*)
-//-------------------------------Implementation code----------------------------//
 
 /// <summary> Applies a function which requires the segment start and end positions to the segments in a wire, 
 /// threading an accumulator argument through the computation. Essentially a List.fold applied to the list of segments of a wire. </summary>
@@ -197,6 +121,113 @@ let foldOverSegs folder state wire =
         let nextState = folder currPos nextPos currState seg
         (nextState, nextPos, nextOrientation))
     |> (fun (state, _, _) -> state)
+
+//-------------------------Debugging functions---------------------------------//
+
+/// Formats a SegmentId for logging purposes.
+let formatSegmentId (Id: SegmentId) =
+    Id
+    |> (fun (SegmentId str) -> str)
+    |> (fun str -> str[0..2])
+
+/// Formats a WireId for logging purposes
+let formatWireId (Id: ConnectionId) =
+    Id
+    |> (fun (ConnectionId str) -> str)
+    |> (fun str -> str[0..2])
+
+/// Logs the given SegmentId and returns it unchanged. Used for debugging.
+let logSegmentId (Id:SegmentId) =
+    printfn $"{formatSegmentId Id}"; Id
+
+/// Logs the given Segment and returns it unchanged. Used for debugging.
+let logSegment (seg:Segment) =
+    printfn $"|{seg.Index}:{formatSegmentId seg.Id}|"; seg
+
+/// Logs the given ConnectionId and returns it unchanged. Used for debugging.
+let logConnectionId (Id:ConnectionId) =
+        Id
+        |> (fun (ConnectionId str) -> str)
+        |> (fun str -> printfn $"{str[0..2]}"; Id)
+
+/// Formats an intersection map for logging purposes.
+let formatIntersectionMap (m:Map<SegmentId, (ConnectionId * SegmentId) list>) =
+    m
+    |> Map.toList
+    |> List.map (fun (segId, lst) ->
+        List.map (snd >> formatSegmentId) lst
+        |> (fun segs -> sprintf $"""<{formatSegmentId segId}->[{String.concat ";" segs}]"""))
+        |> String.concat ";\n"
+
+/// Logs the intersection maps of a given model and returns it unchanged. Used for debugging
+let logIntersectionMaps (model:Model) =
+    let intersections =
+        let formatSegmentIntersections segments =
+            segments
+            |> List.collect (fun segment -> 
+                segment.IntersectCoordinateList
+                |> List.map (fun (_, id) -> formatSegmentId id))
+
+        model.Wires
+        |> Map.toList
+        |> List.map (fun (_, wire) -> 
+            sprintf $"Wire: {formatSegmentIntersections wire.Segments}")
+
+    printfn "\n------------------\nFromHorizontalToVerticalSegmentIntersections:"
+    printfn $"{formatIntersectionMap model.FromHorizontalToVerticalSegmentIntersections}"
+    printfn "FromVerticalToHorizontalSegmentIntersections:"
+    printfn $"{formatIntersectionMap model.FromVerticalToHorizontalSegmentIntersections}"
+    printfn $"Intersections"
+    printfn $"{intersections}"
+    printfn "------------------"
+    model
+
+/// Formats an XYPos for logging purposes.
+let formatXY (xy: XYPos) = sprintf $"{(xy.X,xy.Y)}"
+
+/// Given a segment start and end position, finds the orientation of the segment. 
+/// Returns None if the segment is neither horizontal nor vertical
+let getSegmentOrientation (segStart: XYPos) (segEnd: XYPos) =
+    let fpError = 0.000001
+    if segStart.X - segEnd.X < fpError then
+        Some Vertical
+    else if segStart.Y - segStart.Y < fpError then
+        Some Horizontal
+    else
+        None
+
+/// Tries to find and log a segment identified by segId in a wire identified by wireId in the current model.
+/// Assumes wireId can be found in the current model. Returns unit, used for debugging.
+let logSegmentInModel model wireId segId  = 
+        let wire = model.Wires[wireId]
+        let findAndFormatSeg segStart segEnd (_state: string option) (seg: Segment) =
+            if seg.Id = segId then 
+                let orientation = 
+                    match getSegmentOrientation segStart segEnd with
+                    | Some Vertical -> "V"
+                    | Some Horizontal -> "H"
+                    | _ -> "INVALID ORIENTATION"
+                Some (sprintf $"""[{formatSegmentId seg.Id}: {formatXY segStart}->{formatXY segEnd}]-{orientation}-{seg.Index}""")
+            else None
+
+        match foldOverSegs findAndFormatSeg None wire with
+        | Some str -> printfn $"{str}"
+        | _ -> printfn $"ERROR: Could not find segment {formatSegmentId segId} in wire {formatWireId wireId}"
+        
+
+
+/// Tries to find and log each segment to its corresponding wire identified in wireSegmentIdPairs in the current model.
+/// Returns the model unchanged. Used for debugging.
+let logSegmentsInModel (model: Model) (wireSegmentIdPairs: (ConnectionId * SegmentId) list)= 
+    wireSegmentIdPairs
+    |> List.map  ( fun (wireId, segId) -> logSegmentInModel model wireId segId)
+    |> ignore
+    model
+
+
+//-------------------------------Implementation code----------------------------//
+
+
 
 /// Wire to Connection
 let segmentsToVertices (segList:Segment list) = 
@@ -807,14 +838,6 @@ let getClickedSegment (model : Model) (wireId : ConnectionId) (mouse : XYPos) : 
     | Some (segmentId, _) -> segmentId
     | None -> failwithf "getClosestSegment was given a wire with no segments" // Should never happen
 
-
-let checkSegmentAngle (seg:Segment) (name:string) = // pretty sure this was used for debugging, I can kill this
-    match seg.Dir with
-    | Vertical -> abs (abs seg.Start.X - abs seg.End.X) < 0.000001
-    | Horizontal -> abs (abs seg.Start.Y - abs seg.End.Y) < 0.000001
-    |> (fun ok ->
-        if not ok then  
-            printfn $"Weird segment '{name}':\n{seg}\n\n fails angle checking")
 
 let segPointsLeft seg = // This seems oddly specific, pretty sure it's never used ? (I can kill?)
     abs seg.Start.X > abs seg.End.X && seg.Dir = Horizontal
