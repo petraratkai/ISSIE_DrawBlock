@@ -97,6 +97,12 @@ let portMap list (edge: Edge)=
                       loop tl acc
     loop list emptymap
 
+let concatMap map1 map2 = 
+    let list1 = Map.toList map1
+    let list2 = Map.toList map2
+
+    Map.ofList (List.append list1 list2)
+
 // ----- helper functions for titles ----- //
 
 ///Insert titles compatible with greater than 1 buswidth
@@ -271,8 +277,9 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
     let id = JSHelpers.uuid ()
     let comp = makeComp pos comptype id label
 
-    let list = List.map (fun x -> x.HostId) comp.InputPorts
-    let orientation = List.map (fun x -> ) list
+    let inputports = List.map (fun x -> x.HostId) comp.InputPorts
+    let outputports = List.map (fun x -> x.HostId) comp.OutputPorts
+    let inputorientation = portMap inputports Left
 
     { 
       Pos = { X = pos.X - float comp.W / 2.0; Y = pos.Y - float comp.H / 2.0 }
