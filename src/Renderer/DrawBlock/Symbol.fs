@@ -595,88 +595,20 @@ let getPortLocations (model: Model) (symbolIds: ComponentId list) =
     let getOutputPortMap = getOutputPortsLocationMap model symbols
        
     getInputPortMap , getOutputPortMap 
-
-/// Function to remove terminal digits from string. maybe refactor it later
-let removeCount (string: string) = 
-    string
-    |> Seq.rev
-    |> Seq.skipWhile System.Char.IsDigit
-    |> Seq.rev
-    |> Seq.map System.Char.ToString
-    |> String.concat ""
    
 ///Returns the number of the component label (i.e. the number 1 from IN1 or ADDER16.1)
-let getCount (str : string) = 
+let getLabelNumber (str : string) = 
     let index = Regex.Match(str, @"\d+$")
     match index with
     | null -> 0
     | _ -> int index.Value
 
-/// Checks if symbol has same component type as target
-let samePrefix (target: ComponentType) (symbol: Symbol) : bool =
-    let compType = symbol.Component.Type
-    match target with
-    | Not | And | Or | Xor | Nand | Nor | Xnor ->
-        compType = Not || compType = And 
-        || compType = Or || compType = Xor
-        || compType = Nand || compType = Nor
-        || compType = Xnor
-    | DFF | DFFE -> compType = DFF || compType = DFFE
-    | Register _ | RegisterE _ -> 
-        match compType with 
-        | Register _ | RegisterE _ -> true
-        | _ -> false
-    | Constant1 _ ->
-        match compType with 
-        | Constant1 _ -> true
-        | _ -> false
-    | Input _ -> 
-        match compType with 
-        | Input _ -> true
-        | _ -> false
-    | Output _ -> 
-        match compType with
-        | Output _ -> true
-        | _ -> false
-    | Viewer _ ->
-        match compType with
-        | Viewer _ -> true
-        | _ -> false
-    | BusSelection _ ->
-        match compType with
-        | BusSelection _ -> true
-        | _ -> false
-    | BusCompare _ ->
-        match compType with
-        | BusCompare _ -> true
-        | _ -> false
-    | NbitsAdder _  ->
-        match compType with
-        | NbitsAdder _ -> true
-        | _ -> false
-    | NbitsXor _ ->
-        match compType with
-        | NbitsXor _ -> true
-        | _ -> false
-    | AsyncROM1 _ ->
-        match compType with 
-        | AsyncROM1 _ -> true
-        | _ -> false
-    | ROM1 _ ->
-        match compType with 
-        | ROM1 _ -> true
-        | _ -> false
-    | RAM1 _ ->
-        match compType with 
-        | RAM1 _ -> true
-        | _ -> false
-    | AsyncRAM1 _ ->
-        match compType with 
-        | AsyncRAM1 _ -> true
-        | _ -> false
-    | _ -> target = compType
+/// generates the label number for compType (i.e. the number 1 in IN1 or ADDER16.1)
+let generateLabelNumber listSymbols compType =
+    let samePrefix (target: ComponentType) (symbol: Symbol) : bool =
+        let compType = symbol.Component.Type
+        (prefix target) = (prefix compType)
 
-let getIndex listSymbols compType =
     let samePrefixLst = 
         listSymbols
         |> List.filter (samePrefix compType)
@@ -686,7 +618,7 @@ let getIndex listSymbols compType =
     | _ ->
         if List.isEmpty samePrefixLst then 1 
         else samePrefixLst
-            |> List.map (fun sym -> getCount sym.Component.Label)
+            |> List.map (fun sym -> getLabelNumber sym.Component.Label)
             |> List.max
             |> (+) 1
         |> string
@@ -697,8 +629,7 @@ let generateLabel (model: Model) (compType: ComponentType) : string =
     let prefix = prefix compType
     match compType with
     | IOLabel -> prefix
-    | _ -> prefix + (getIndex listSymbols compType)
-
+    | _ -> prefix + (generateLabelNumber listSymbols compType)
 
 /// Interface function to paste symbols. Is a function instead of a message because we want an output
 /// Currently drag-and-drop
