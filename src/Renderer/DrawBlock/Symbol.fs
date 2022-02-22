@@ -87,6 +87,16 @@ let posAdd (a:XYPos) (b:XYPos) =
 
 let posOf x y = {X=x;Y=y}
 
+//Makes a map of strings for port
+let portMap list (edge: Edge)= 
+    let emptymap: Map<string,Edge> = Map.empty
+    let rec loop inL map = 
+        match inL with
+        | [] -> map
+        | hd :: tl -> let acc = Map.add hd edge map
+                      loop tl acc
+    loop list emptymap
+
 // ----- helper functions for titles ----- //
 
 ///Insert titles compatible with greater than 1 buswidth
@@ -190,6 +200,7 @@ let portLists numOfPorts hostID portType =
 let roundToN (n : int) (x : int) =
     x + abs((x % n) - n)
 
+//Outputs length of biggest string
 let customToLength (lst : (string * int) list) =
     let labelList = List.map (fst >> String.length) lst
     if List.isEmpty labelList then 0 //if a component has no inputs or outputs list max will fail
@@ -259,6 +270,10 @@ let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) :
 let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
     let id = JSHelpers.uuid ()
     let comp = makeComp pos comptype id label
+
+    let list = List.map (fun x -> x.HostId) comp.InputPorts
+    let orientation = List.map (fun x -> ) list
+
     { 
       Pos = { X = pos.X - float comp.W / 2.0; Y = pos.Y - float comp.H / 2.0 }
       ShowInputPorts = false
@@ -270,6 +285,9 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
       Component = comp
       Opacity = 1.0
       Moving = false
+      STransform = {Rotation=Degree0; flipped=false}
+      PortOrientation = None
+      PortOrder = None
     }
 
 // Function to add ports to port model     
