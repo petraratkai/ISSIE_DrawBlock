@@ -106,6 +106,13 @@ let concatMap map1 map2 =
 let getId (port:Port) = 
     port.Id
 
+let getEdge (rotation: Rotation) = 
+    match rotation with
+    | Degree0 -> Left,Right
+    | Degree90 -> Top, Bottom
+    | Degree180 -> Right,Left
+    | Degree270 -> Bottom, Top
+
 // ----- helper functions for titles ----- //
 
 ///Insert titles compatible with greater than 1 buswidth
@@ -276,16 +283,17 @@ let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) :
     makeComponent args label
    
 // Function to generate a new symbol
-let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
+let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) (rotation: Rotation) =
     let id = JSHelpers.uuid ()
     let comp = makeComp pos comptype id label
+    let edges = getEdge rotation    // get the input,output edges
 
-    let inputportsid = List.map getId comp.InputPorts
-    let outputportsid = List.map getId comp.OutputPorts
-    let orientation = concatMap (portMap inputportsid Left) (portMap outputportsid Right)
+    let inputportsid = List.map getId comp.InputPorts   // Create a list of all the input port ids
+    let outputportsid = List.map getId comp.OutputPorts // Create a list of all output port ids
+    let orientation = concatMap (portMap inputportsid (fst edges)) (portMap outputportsid (snd edges)) //concatentates the input and output port map
 
-    let inputportmap = Map[Left, inputportsid]
-    let outputportmap = Map[Right, outputportsid]
+    let inputportmap = Map[fst edges, inputportsid]
+    let outputportmap = Map[snd edges, outputportsid]
     let portorder = concatMap inputportmap outputportmap
 
     { 

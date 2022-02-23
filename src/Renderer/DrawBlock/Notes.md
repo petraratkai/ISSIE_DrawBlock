@@ -10,3 +10,6 @@ Created new variables orientation and port order which shows the orientation of 
 Created new functions getId to get the id number of ports
 Created portMap function which maps the port list 
 Created concatMap to concatenate two maps together
+
+-Created helper function getEdge which obtains the edge of input and ouput ports depending on rotation
+updated createNewSymbol with new parameter which takes rotation 
