@@ -283,17 +283,16 @@ let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) :
     makeComponent args label
    
 // Function to generate a new symbol
-let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) (rotation: Rotation) =
+let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
     let id = JSHelpers.uuid ()
     let comp = makeComp pos comptype id label
-    let edges = getEdge rotation    // get the input,output edges
 
     let inputportsid = List.map getId comp.InputPorts   // Create a list of all the input port ids
     let outputportsid = List.map getId comp.OutputPorts // Create a list of all output port ids
-    let orientation = concatMap (portMap inputportsid (fst edges)) (portMap outputportsid (snd edges)) //concatentates the input and output port map
+    let orientation = concatMap (portMap inputportsid Left) (portMap outputportsid Right) //concatentates the input and output port map
 
-    let inputportmap = Map[fst edges, inputportsid]
-    let outputportmap = Map[snd edges, outputportsid]
+    let inputportmap = Map[Left, inputportsid]
+    let outputportmap = Map[Right, outputportsid]
     let portorder = concatMap inputportmap outputportmap
 
     { 
@@ -322,6 +321,14 @@ let addToPortModel (model: Model) (sym: Symbol) =
 
 //-----------------------------------------GET PORT POSITION---------------------------------------------------
 // Function that calculates the positions of the ports 
+
+let APortOffsetMap (symbol:Symbol) = 
+
+    match symbol.STransform.Rotation with
+    | Degree0 -> let centre = symbol.Pos.X + (symbol.Component.W/2) , symbol.Pos.Y - (symbol.Component.H/2)
+    | Degree90 -> let centre = symbol.Pos.X - (symbol.Component.H/2) , symbol.Pos.Y - (symbol.Component.W/2)
+    | Degree180 -> let centre = symbol.Pos.X - (symbol.Component.W/2) , symbol.Pos.Y + (symbol.Component.H/2)
+    | Degree270 -> let centre = symbol.Pos.X + (symbol.Component.H/2) , symbol.Pos.Y + (symbol.Component.W/2)
 
 /// hack so that bounding box of splitwire, mergewires can be smaller height relative to ports
 let inline getPortPosEdgeGap (ct: ComponentType) =
