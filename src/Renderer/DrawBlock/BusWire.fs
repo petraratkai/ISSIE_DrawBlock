@@ -1424,13 +1424,13 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
 
 //---------------Other interface functions--------------------//
 /// Checks if a wire intersects a bounding box by checking if any of its segments intersect
-let wireIntersectsBoundingBox (w : Wire) (bb : BoundingBox) =
-    let segmentIntersectsBox segStart segEnd state seg =
+let wireIntersectsBoundingBox (wire : Wire) (bb : BoundingBox) =
+    let segmentIntersectsBox segStart segEnd state _seg =
         match state with
         | true -> true
         | false -> segmentIntersectsBoundingBox bb segStart segEnd
     
-    foldOverSegs segmentIntersectsBox false w
+    foldOverSegs segmentIntersectsBox false wire
 
 ///
 let getIntersectingWires (wModel : Model) (selectBox : BoundingBox) : list<ConnectionId> = 
