@@ -744,73 +744,31 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
 //--------------------STS219 CODE SECTION STARTS-------------------------------------//
 //---------------------------------------------------------------------------------//
 
-/// This function is given two couples of
-/// points that define two line segments and it returns:
-/// - Some (x, y) if the two segments intersect;
-/// - None if the do not.
-let segmentIntersectsSegmentCoordinates ((p1, q1) : (XYPos * XYPos)) ((p2, q2) : (XYPos * XYPos)) : Option<XYPos> =
-    
-    if (segmentIntersectsSegment (p1, q1) (p2, q2)) then
-        let x1, y1, x2, y2 = abs p1.X, abs p1.Y, abs q1.X, abs q1.Y
-        let x3, y3, x4, y4 = abs p2.X, abs p2.Y, abs q2.X, abs q2.Y
-        let uA = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
+/// Type used to simplify BoundingBox intersection calculations
+type Rectangle = {
+    TopLeft: XYPos
+    BottomRight: XYPos
+}
 
-        let intersectionX = x1 + (uA * (x2-x1)) // if coordinates are wanted, maybe useful later
-        let intersectionY = y1 + (uA * (y2-y1))
-        Some {X = intersectionX; Y = intersectionY}
-    
-    else None
+/// Checks if 2 rectangles intersect
+let rectanglesIntersect (rect1: Rectangle) (rect2: Rectangle) =
+    /// Checks if there is an intersection in the X or Y dimension
+    let intersect1D (xOrY: XYPos -> float): bool =
+        let qHi = min (xOrY rect1.BottomRight) (xOrY rect2.BottomRight)
+        let qLo = max (xOrY rect1.TopLeft) (xOrY rect2.TopLeft)
+        qLo < qHi
 
-/// This funtion is given a bounding box and it returns the coordinates
-/// of the top-left and the bottom-right corners of this bounding box.
-let getTopLeftAndBottomRightCorner (box : BoundingBox) : XYPos * XYPos = 
-    let {BoundingBox.X = x; BoundingBox.Y = y} = box
-    let {BoundingBox.H = h; BoundingBox.W = w} = box
-    let coords = [(x, y); (x, y+h); (x+w, y); (x+w, y+h)]
-    let topLeft = List.min coords
-    let bottomRight = List.max coords
+    let toX (pos: XYPos) = pos.X
+    let toY (pos: XYPos) = pos.X
 
-    {X = fst(topLeft) ; Y = snd(topLeft)} , {X = fst(bottomRight) ; Y = snd(bottomRight)}
+    intersect1D toX && intersect1D toY 
 
-/// This function is given a Segment and a BoundingBox
-/// and it returns:
-/// - (false, None) if the segment does not intersect the bounding box
-/// - (true, None) if the segment is fully included inside the bounding box
-/// - (true, Some coordinate)  if the segment intersects the bounding box
-let segmentIntersectsBoundingBoxCoordinates (segIn : Segment) (bb : BoundingBox) : bool * Option<XYPos> =
-    let seg = makeSegPos segIn // We don't need this
-    let ({X = x; Y = y} : XYPos), ({X = a; Y = b} : XYPos) = getTopLeftAndBottomRightCorner bb
-    let w , h = (a-x), (b-y) // a = x+w;  b = y+h
-    let x1, y1, x2, y2 = seg.Start.X, seg.Start.Y, seg.End.X, seg.End.Y 
-
-    let segPointInBox =
-        (
-            ( (x1 > x) && (x1 < (x+w)) ) && ( (y1 > y) && (y1 < (y+h)) )
-        )
-        ||
-        (
-            ( (x2 > x) && (x2 < (x+w)) ) && ( (y2 > y) && (y2 < (y+h)) )
-        )
-
-    let left = segmentIntersectsSegmentCoordinates (seg.Start, seg.End) ({X=x; Y=y}, {X=x; Y=y+h})
-    let right = segmentIntersectsSegmentCoordinates (seg.Start, seg.End) ({X=x+w; Y=y}, {X=x+w; Y=y+h})
-    let top = segmentIntersectsSegmentCoordinates (seg.Start, seg.End) ({X=x; Y=y}, {X=x+w; Y=y})
-    let bottom = segmentIntersectsSegmentCoordinates (seg.Start, seg.End) ({X=x; Y=y+h}, {X=x+w; Y=y+h})
-    
-    let (intersectionList : list<XYPos>) = 
-        [top; bottom; left; right]
-        |> List.choose id
-
-    if intersectionList.Length = 0 then
-        if segPointInBox then
-            true, None
-        else
-            false, None
-    else
-        let intersection = 
-            intersectionList
-            |> List.head
-        true, Some intersection
+/// Checks if a segment intersects a bounding box using the segment's start and end XYPos
+let segmentIntersectsBoundingBox (bb: BoundingBox) segStart segEnd = 
+    let toRect topLeft bottomRight = {TopLeft = topLeft; BottomRight = bottomRight}
+    let bbRect = toRect bb.TopLeft { X = bb.TopLeft.X + bb.W; Y = bb.TopLeft.Y + bb.H }
+    let segRect = toRect segStart segEnd
+    rectanglesIntersect bbRect segRect
 
 /// This distance is given a point and a segment
 /// and it returns the distance between them.
@@ -1486,11 +1444,14 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
         { model with Wires = newWX }, Cmd.ofMsg (MakeJumps connIds)
 
 //---------------Other interface functions--------------------//
-
-///
+/// Checks if a wire intersects a bounding box by checking if any of its segments intersect
 let wireIntersectsBoundingBox (w : Wire) (bb : BoundingBox) =
-    let boolList = List.map (fun seg -> fst(segmentIntersectsBoundingBoxCoordinates seg bb)) w.Segments
-    List.contains true boolList
+    let segmentIntersectsBox segStart segEnd state seg =
+        match state with
+        | true -> true
+        | false -> segmentIntersectsBoundingBox bb segStart segEnd
+    
+    foldOverSegs segmentIntersectsBox false w
 
 ///
 let getIntersectingWires (wModel : Model) (selectBox : BoundingBox) : list<ConnectionId> = 
