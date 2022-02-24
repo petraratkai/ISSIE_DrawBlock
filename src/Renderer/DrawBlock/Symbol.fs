@@ -552,6 +552,13 @@ let getPortIdStr (portId: PortId) =
     | InputId (InputPortId id) -> id
     | OutputId (OutputPortId id) -> id
 
+/// returns what side of the symbol the port is on
+let getPortOrientation (model: Model)  (portId: PortId) : Edge =
+    let portIdStr = getPortIdStr portId
+    let port = model.Ports[portIdStr]
+    let sId = ComponentId port.HostId
+    model.Symbols[sId].PortOrientation[portIdStr]
+
 /// Returns the location of a given portId, with good efficiency
 let getPortLocation (model: Model) (portId : string) : XYPos=
     let port = model.Ports[portId]
