@@ -552,7 +552,6 @@ let getPortIdStr (portId: PortId) =
     | InputId (InputPortId id) -> id
     | OutputId (OutputPortId id) -> id
 
-let getPortIdList ()
 /// Returns the location of a given portId, with good efficiency
 let getPortLocation (model: Model) (portId : string) : XYPos=
     let port = model.Ports[portId]
@@ -754,8 +753,8 @@ let addSymbol (model: Model) pos compType lbl =
 
 /// Helper function to change the number of bits expected in a port of each component type, could return the model instead no?
 let changeNumberOfBitsf (symModel:Model) (compId:ComponentId) (newBits : int) =
-    
     let symbol = Map.find compId symModel.Symbols
+
     let newcompotype = 
         match symbol.Component.Type with
         | Input _ -> Input newBits
@@ -777,12 +776,14 @@ let changeNumberOfBitsf (symModel:Model) (compId:ComponentId) (newBits : int) =
 /// Helper function to change the number of bits expected in the LSB port of BusSelection and BusCompare
 let changeLsbf (symModel:Model) (compId:ComponentId) (newLsb:int64) =
     let symbol = Map.find compId symModel.Symbols
+
     let newcompotype = 
         match symbol.Component.Type with
         | BusSelection (w, _) -> BusSelection (w, int32(newLsb))
         | BusCompare (w, _) -> BusCompare (w, uint32(newLsb)) 
         | Constant1(w, _,txt) -> Constant1 (w, newLsb,txt)
         | _ -> failwithf "this shouldnt happen, incorrect call of message changeLsb"
+
     let newcompo = {symbol.Component with Type = newcompotype}
     {symbol with Component = newcompo}
 
@@ -1104,7 +1105,8 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
 
     | PasteSymbols compList ->
         let newSymbols =
-            (List.fold (fun prevSymbols sId -> Map.add sId { model.Symbols[sId] with Opacity = 0.4 } prevSymbols) model.Symbols compList)
+            (model.Symbols, compList)
+            ||> List.fold (fun prevSymbols sId -> Map.add sId { model.Symbols[sId] with Opacity = 0.4 } prevSymbols) 
         { model with Symbols = newSymbols }, Cmd.none  
     
     | ColorSymbols (compList, colour) -> 
