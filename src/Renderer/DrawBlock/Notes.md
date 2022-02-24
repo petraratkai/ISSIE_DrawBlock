@@ -12,4 +12,4 @@ Created portMap function which maps the port list
 Created concatMap to concatenate two maps together
 
 Created APortOffsetsMap which takes a symbol and outputs a map of the port and the offset from the centre
-
+Depending on the rotation of the symbol, 
