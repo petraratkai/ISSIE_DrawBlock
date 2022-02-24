@@ -1141,6 +1141,10 @@ let updateWire (model : Model) (wire : Wire) (inOut : bool) =
 //--------------------STS219 CODE SECTION ENDS-------------------------------------//
 //---------------------------------------------------------------------------------//
 
+//---------------------------------------------------------------------------------//
+//--------------------NH1019 CODE SECTION BEGINS-------------------------------------//
+//---------------------------------------------------------------------------------//
+
 let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
     let mutable neWX = model.Wires
     // Arrays are faster to check than lists
@@ -1546,8 +1550,7 @@ let pasteWires (wModel : Model) (newCompIds : list<ComponentId>) : (Model * list
         
     { wModel with Wires = newWireMap }, pastedConnIds
 
-///
-let getPortIdsOfWires (model: Model) (connIds: ConnectionId list) : (InputPortId list * OutputPortId list) =
-    (([], []), connIds)
-    ||> List.fold (fun (inputPorts, outputPorts) connId ->
-            (model.Wires[connId].InputPort :: inputPorts, model.Wires[connId].OutputPort :: outputPorts))
+
+//---------------------------------------------------------------------------------//
+//--------------------NH1019 CODE SECTION ENDS-------------------------------------//
+//---------------------------------------------------------------------------------//
