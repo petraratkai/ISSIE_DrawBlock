@@ -328,22 +328,32 @@ let inline getPortPosEdgeGap (ct: ComponentType) =
     | MergeWires | SplitWire _  -> 0.25
     | _ -> 1.0
 
+(*
+let genAPortOffsets (edge:Edge) (symbol:Symbol) centre = 
+    match edge with
+    | Left -> posX =  - 
+*)
+
+let getPortGaps noofports height gap = 
+    [0.0..noofports]
+    |> List.map(fun y -> (float(height))* (( y + gap )/( float( noofports ) + 2.0*gap - 1.0)))
+
 let APortOffsetMap (symbol:Symbol) = 
 
-    match symbol.STransform.Rotation with
-    | Degree0 -> let centre = symbol.Pos.X + (symbol.Component.W/2) , symbol.Pos.Y - (symbol.Component.H/2)
-    | Degree90 -> let centre = symbol.Pos.X - (symbol.Component.H/2) , symbol.Pos.Y - (symbol.Component.W/2)
-    | Degree180 -> let centre = symbol.Pos.X - (symbol.Component.W/2) , symbol.Pos.Y + (symbol.Component.H/2)
-    | Degree270 -> let centre = symbol.Pos.X + (symbol.Component.H/2) , symbol.Pos.Y + (symbol.Component.W/2)
-
+    let rotation = symbol.STransform.Rotation
     let keys = Seq.toList symbol.PortOrder.Keys
-    let firstedge = keys[0]
+    let gap = getPortPosEdgeGap symbol.Component.Type 
 
-    match firstedge with
-    | Left -> let portlist = symbol.PortOrder[Left]
-              
-
-    let gap = getPortPosEdgeGap comp.Type 
+    match rotation with
+    | Degree0 -> let centre = {X=symbol.Pos.X + float(symbol.Component.W/2) ; Y=symbol.Pos.Y - float(symbol.Component.H/2)}
+                 List.map(fun x -> match x with
+                                   | Left -> let posX = centre.X - float(symbol.Component.W/2)
+                                             let portnumber = symbol.PortOrder[x].Length
+                                             let posY = getPortGaps portnumber symbol.Component.H gap
+                                
+                                             //Take posY list and find offset of each element from centre
+                                             List.map (fun z -> {X=centre.X-posX ; Y=centre.Y-z}) posY) keys
+               
 
 
 let getPortPos (comp: Component) (port:Port) = 
