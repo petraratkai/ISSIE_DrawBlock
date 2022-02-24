@@ -797,8 +797,9 @@ let segmentIntersectsBoundingBox (bb: BoundingBox) segStart segEnd =
     let toRect topLeft bottomRight =
         { TopLeft = topLeft
           BottomRight = bottomRight }
-
-    let bbRect = toRect bb.TopLeft { X = bb.TopLeft.X + bb.W; Y = bb.TopLeft.Y + bb.H }
+    
+    let bbBottomRight = { X = bb.TopLeft.X + bb.W; Y = bb.TopLeft.Y + bb.H }
+    let bbRect = toRect bb.TopLeft bbBottomRight
     let segRect = toRect segStart segEnd
     rectanglesIntersect bbRect segRect
 
@@ -829,101 +830,50 @@ let getClickedSegment (model : Model) (wireId : ConnectionId) (mouse : XYPos) : 
     | Some (segmentId, _) -> segmentId
     | None -> failwithf "getClosestSegment was given a wire with no segments" // Should never happen
 
+/// Returns a distance for a wire move that has been reduced if needed to enforce minimum segment lengths.
+let getSafeDistanceForMove (segments: Segment list) (index: int) (distance: float) =
+    let reduceDistance maxDistance =
+        if sign maxDistance = -1 then
+            max maxDistance
+        else 
+            min maxDistance
 
-/// Called for segments 1, 2, 3, 4, 5 - if they are vertical and move horizontally.
-/// The function returns distance reduced if need be to prevent wires moving into components
-/// approx equality test is safer tehn exact equality - but probably not needed.
-let getSafeDistanceForMove (seg: Segment) (seg0:Segment) (seg6:Segment) (distance:float) =
-    let shrink = match seg.Index with | 1 | 2 | 4 | 5 -> 0.5 | _ -> 1.0
-    match seg.Index with
-    | _ when seg.Dir = Horizontal ->
-        distance
-    | 3 when distance < 0.0 && abs (abs seg0.Start.Y - abs seg.Start.Y) > 0.0001 ->
-        distance
-    | 3 when distance > 0.0 && abs (abs seg6.Start.Y - abs seg.End.Y) > 0.0001 ->
-        distance
-    | 1 | 2 -> 
-        let minDistance = seg0.Start.X + Wire.stickLength * shrink - abs seg.End.X
-        max minDistance distance
-    | 4 | 5 ->
-        let maxDistance = seg6.End.X -  Wire.stickLength * shrink - abs seg.Start.X
-        min maxDistance distance
-    | 3 ->
-        let minDistance = abs seg0.Start.X + Wire.stickLength * shrink - abs seg.Start.X
-        let maxDistance = abs seg6.End.X -  Wire.stickLength * shrink - abs seg.Start.X
-        distance
-        |> max minDistance
-        |> min maxDistance        
-        
-    | _ -> 
-        distance
-
-        
-/// Adjust wire so that two adjacent horizontal segments that are in opposite directions
-/// get eliminated
-let removeRedundantSegments  (segs: Segment list) = // Again will need to be changed once we remove the abs bs
-    let setAbsX x (pos: XYPos) =
-        let x = if pos.X < 0.0 then - abs x else abs x
-        {pos with X = x}
-    let xDelta seg = abs seg.End.X - abs seg.Start.X
-    let setStartX x (seg:Segment) = {seg with Start = setAbsX x seg.Start}
-    let setEndX x (seg:Segment) = {seg with End = setAbsX x seg.End}
-    let adjust seg1 seg2 =
-        let xd1, xd2 = xDelta seg1, xDelta seg2
-        if seg1.Dir = Horizontal && 
-           seg2.Dir = Horizontal && 
-           sign xd1 <> sign xd2 
-        then
-            if abs xd1 > abs xd2 then
-                [setEndX seg2.End.X seg1; setStartX seg2.End.X seg2]
-            else
-                [setEndX seg1.Start.X seg1; setStartX seg1.End.X seg2]
-        else
-            [seg1;seg2]
-    adjust segs[0] segs[1] @  segs[2..4] @ adjust segs[5] segs[6]
-       
-/// This function allows a wire segment to be moved a given amount in a direction perpedicular to
-/// its orientation (Horizontal or Vertical). Used to manually adjust routing by mouse drag.
-/// The moved segment is tagged by negating one of its coordinates so that it cannot be auto-routed
-/// after the move, thus keeping the moved position.
-let moveSegment (model:Model) (seg:Segment) (distance:float) = // negation is a terrible idea, add bool to segment
-    let wire = model.Wires[seg.HostId]
-    let index = seg.Index
-    if index <= 0 || index >= wire.Segments.Length - 1 then
-        failwithf $"Buswire segment index {index} out of range in moveSegment in wire length {wire.Segments.Length}"
-    let prevSeg = wire.Segments[index-1]
-    let nextSeg = wire.Segments[index+1]
-    if seg.Dir = prevSeg.Dir || seg.Dir = nextSeg.Dir then
-        wire
+    if index <= 0 || index >= segments.Length - 1 then
+        0. // We cannot move the first or last segment in a wire
     else
-        //runTestFable()
-        distance      
-        |> getSafeDistanceForMove seg wire.Segments[0] wire.Segments[6]   
-        |> (fun distance' -> // This function could use a name
-            let newPrevEnd, newSegStart, newSegEnd, newNextStart = 
-                match seg.Dir with
-                // Potential function abstraction here?
-                | Vertical -> 
-                    {prevSeg.End with X = - (abs seg.Start.X + distance')}, 
-                    {seg.Start with X = - (abs seg.Start.X + distance')}, 
-                    {seg.End with X = - (abs seg.End.X + distance')}, 
-                    {nextSeg.Start with X = - (abs seg.End.X + distance')}
+        let prev = segments[index - 1]
+        let next = segments[index + 1]
+        let prevMaxDistance = (-prev.Length + (float (sign prev.Length) * Wire.stickLength))
+        let nextMaxDistance = (next.Length - (float (sign next.Length) * Wire.stickLength))
 
-                | Horizontal -> 
-                    {prevSeg.End with Y = - (abs seg.Start.Y + distance')}, 
-                    {seg.Start with Y = - (abs seg.Start.Y + distance')}, 
-                    {seg.End with Y = - (abs seg.End.Y + distance')}, 
-                    {nextSeg.Start with Y = - (abs seg.End.Y + distance')}
+        distance
+        |> reduceDistance prevMaxDistance
+        |> reduceDistance nextMaxDistance
 
-            let newPrevSeg = {prevSeg with End = newPrevEnd}
-            let newSeg = {seg with Start = newSegStart;End = newSegEnd}
-            let newNextSeg = {nextSeg with Start = newNextStart}
-        
-            let newSegments =
-                wire.Segments[.. index-2] @ [newPrevSeg; newSeg; newNextSeg] @ wire.Segments[index+2 ..] // This is kinda cool list slice stuff
-                |> removeRedundantSegments
+/// Returns a wire containing the updated list of segments after a segment is moved by 
+/// a specified distance. The moved segment is tagged as manual so that it is no longer auto-routed.
+/// Throws an error if the segment being moved is out of range.
+let moveSegment (model:Model) (seg:Segment) (distance:float) = 
+    let wire = model.Wires[seg.HostId]
+    let segments = wire.Segments
+    let idx = seg.Index
 
-            {wire with Segments = newSegments})
+    if idx <= 0 || idx >= segments.Length - 1 then
+        failwithf $"Trying to move wire segment {idx}, out of range in wire length {segments.Length}"
+
+    let safeDistance = getSafeDistanceForMove segments idx distance
+    
+    let prevSeg = segments[idx - 1]
+    let nextSeg = segments[idx + 1]
+    let movedSeg = segments[idx]
+
+    let newPrevSeg = { prevSeg with Length = prevSeg.Length + safeDistance }
+    let newNextSeg = { nextSeg with Length = nextSeg.Length + safeDistance }
+    let newMovedSeg = { movedSeg with Mode = Manual }
+    
+    let newSegments = segments[.. idx - 2] @ [newPrevSeg; newMovedSeg; newNextSeg] @ segments[idx + 2 ..]
+
+    {wire with Segments = newSegments}
 
 /// Initialises an empty Wire Model
 let init () = // Doesn't seem that harmful, revisit if we change the model type
@@ -1079,7 +1029,7 @@ let partialAutoRoute (segs: Segment list) (newPortPos: XYPos) = // This is a pha
         | ((scaledSegs), otherSegs), 1 ->
             Some ((List.map (transformSeg scaleX scaleY) scaledSegs) @ otherSegs)
         | ((firstSeg :: scaledSegs), otherSegs), _ ->
-            Some ((moveAll (Symbol.posAdd diff) 0 [firstSeg] @ List.map (transformSeg scaleX scaleY) scaledSegs) @ otherSegs)
+            Some ((moveAll (posAdd diff) 0 [firstSeg] @ List.map (transformSeg scaleX scaleY) scaledSegs) @ otherSegs)
         | _ -> None
 
     let checkTopology index =
@@ -1104,8 +1054,8 @@ let partialAutoRoute (segs: Segment list) (newPortPos: XYPos) = // This is a pha
 /// Moves a wire by the XY amounts specified by displacement
 let moveWire (wire: Wire) (displacement: XYPos) =
     { wire with
-          StartPos = Symbol.posAdd wire.StartPos displacement
-          EndPos = Symbol.posAdd wire.EndPos displacement }
+          StartPos = posAdd wire.StartPos displacement
+          EndPos = posAdd wire.EndPos displacement }
 
 /// Re-routes a single wire in the model when its ports move.
 /// Tries to preserve manual routing when this makes sense, otherwise re-routes with autoroute.
