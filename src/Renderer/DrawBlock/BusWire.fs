@@ -944,6 +944,7 @@ let filterWiresByCompMoved (model: Model) (compIds: list<ComponentId>) =
 
     (inputWires, outputWires, fullyConnected)
 
+let rotate90 = failwithf "Not yet implemented"
 
 ///Returns a newly autorouted version of a wire for the given model
 let autorouteWire (model: Model) (wire: Wire) : Wire =
