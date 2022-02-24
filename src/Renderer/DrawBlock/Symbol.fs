@@ -322,6 +322,12 @@ let addToPortModel (model: Model) (sym: Symbol) =
 //-----------------------------------------GET PORT POSITION---------------------------------------------------
 // Function that calculates the positions of the ports 
 
+/// hack so that bounding box of splitwire, mergewires can be smaller height relative to ports
+let inline getPortPosEdgeGap (ct: ComponentType) =
+    match ct with
+    | MergeWires | SplitWire _  -> 0.25
+    | _ -> 1.0
+
 let APortOffsetMap (symbol:Symbol) = 
 
     match symbol.STransform.Rotation with
@@ -330,11 +336,15 @@ let APortOffsetMap (symbol:Symbol) =
     | Degree180 -> let centre = symbol.Pos.X - (symbol.Component.W/2) , symbol.Pos.Y + (symbol.Component.H/2)
     | Degree270 -> let centre = symbol.Pos.X + (symbol.Component.H/2) , symbol.Pos.Y + (symbol.Component.W/2)
 
-/// hack so that bounding box of splitwire, mergewires can be smaller height relative to ports
-let inline getPortPosEdgeGap (ct: ComponentType) =
-    match ct with
-    | MergeWires | SplitWire _  -> 0.25
-    | _ -> 1.0
+    let keys = Seq.toList symbol.PortOrder.Keys
+    let firstedge = keys[0]
+
+    match firstedge with
+    | Left -> let portlist = symbol.PortOrder[Left]
+              
+
+    let gap = getPortPosEdgeGap comp.Type 
+
 
 let getPortPos (comp: Component) (port:Port) = 
     let (ports, posX) =

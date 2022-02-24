@@ -11,5 +11,5 @@ Created new functions getId to get the id number of ports
 Created portMap function which maps the port list 
 Created concatMap to concatenate two maps together
 
--Created helper function getEdge which obtains the edge of input and ouput ports depending on rotation
-updated createNewSymbol with new parameter which takes rotation 
+Created APortOffsetsMap which takes a symbol and outputs a map of the port and the offset from the centre
+
