@@ -745,16 +745,14 @@ let getEquivalentCopiedPorts (model: Model) copiedIds (pastedIds: string list) (
         mergeOptions (equivInPorts, equivOutPorts)
     | _ -> None
 
-  
- 
-/// Given a model return a model with a new Symbol and also the component id
+/// Creates and adds a symbol into model, returns the updated model and the component id
 let addSymbol (model: Model) pos compType lbl =
     let newSym = createNewSymbol pos compType lbl
     let newPorts = addToPortModel model newSym
     let newSymModel = Map.add newSym.Id newSym model.Symbols
     { model with Symbols = newSymModel; Ports = newPorts }, newSym.Id
 
-// Helper function to change the number of bits expected in a port of each component type
+/// Helper function to change the number of bits expected in a port of each component type, could return the model instead no?
 let changeNumberOfBitsf (symModel:Model) (compId:ComponentId) (newBits : int) =
     
     let symbol = Map.find compId symModel.Symbols
@@ -776,7 +774,7 @@ let changeNumberOfBitsf (symModel:Model) (compId:ComponentId) (newBits : int) =
     let newcompo = {symbol.Component with Type = newcompotype}
     {symbol with Component = newcompo}
 
-// Helper function to change the number of bits expected in the LSB port of BusSelection and BusCompare
+/// Helper function to change the number of bits expected in the LSB port of BusSelection and BusCompare
 let changeLsbf (symModel:Model) (compId:ComponentId) (newLsb:int64) =
     let symbol = Map.find compId symModel.Symbols
     let newcompotype = 
@@ -788,6 +786,7 @@ let changeLsbf (symModel:Model) (compId:ComponentId) (newLsb:int64) =
     let newcompo = {symbol.Component with Type = newcompotype}
     {symbol with Component = newcompo}
 
+/// Updates the value of a constant1 component and returns the updated symbol
 let changeConstantf (symModel:Model) (compId:ComponentId) (constantVal:int64) (constantText: string) =
     let symbol = Map.find compId symModel.Symbols
     let newcompotype = 
@@ -811,80 +810,207 @@ let initPortOrientation (comp: Component) =
 
     (inputMaps, comp.OutputPorts)
     ||> List.fold (addPortToMaps Right) 
+
+/// Given a model and a list of component ids deletes the specified components from the model and returns the updated model
+let inline deleteSymbols (model: Model) compIds =
+    let newSymbols = 
+        (model.Symbols, compIds)
+        ||> List.fold (fun prevModel sId -> Map.remove sId prevModel) 
+    { model with Symbols = newSymbols }
+
+/// Given a model and a list of component ids copies the specified components and returns the updated model
+let inline copySymbols (model: Model) compIds =
+    let copiedSymbols = 
+        model.Symbols
+        |> Map.filter (fun compId _ -> List.contains compId compIds) 
+
+    { model with CopiedSymbols = copiedSymbols }
+
+/// Given a model it shows all input ports and hides all output ports, then returns the updated model
+let inline showAllInputPorts (model: Model) =
+    let showSymbolInPorts _ sym = 
+        {sym with ShowInputPorts = true; ShowOutputPorts = false}
+
+    let newSymbols = 
+        model.Symbols
+        |> Map.map showSymbolInPorts
+
+    { model with Symbols = newSymbols }
+
+/// Given a model it shows all output ports and hides all input ports, then returns the updated model |  MAKE INLINE
+let inline showAllOutputPorts (model: Model) =
+    let showSymbolOutPorts _ sym = 
+        {sym with ShowInputPorts = false; ShowOutputPorts = true}
+
+    let newSymbols = 
+        model.Symbols
+        |> Map.map showSymbolOutPorts
+
+    { model with Symbols = newSymbols }
+
+/// Given a model it hides all ports and returns the updated model
+let inline deleteAllPorts (model: Model) =
+    let hideSymbolPorts _ sym = 
+        {sym with ShowInputPorts = false; ShowOutputPorts = false}
+
+    let updatedSymbols = 
+        model.Symbols
+        |> Map.map hideSymbolPorts
+
+    { model with Symbols = updatedSymbols}
+
+let inline showPorts (model: Model) compList =
+    let hideSymbolPorts _ sym =
+        {sym with ShowInputPorts = false; ShowOutputPorts = false}
+
+    let showSymbolPorts sym =
+        {sym with ShowInputPorts = true; ShowOutputPorts = true}
+
+    let resetSymbols = 
+        model.Symbols
+        |> Map.map hideSymbolPorts
+
+    let addUpdatedSymbol prevSymbols sId =
+        prevSymbols |>
+        Map.add sId (showSymbolPorts resetSymbols[sId])
+
+    let newSymbols =
+        (resetSymbols, compList)
+        ||> List.fold addUpdatedSymbol
+
+    { model with Symbols = newSymbols }
+
+/// Given a model, a component id list and an offset, moves the components by offset and returns the updated model
+let inline moveSymbols (model:Model) (compList: ComponentId list) (offset: XYPos)=
+    let resetSymbols = 
+        model.Symbols
+        |> Map.map (fun _ sym -> { sym with Moving = false}) 
+
+    let moveSymbol prevSymbols sId =
+        let newX = model.Symbols[sId].Pos.X + offset.X;
+        let newY = model.Symbols[sId].Pos.Y + offset.Y;
+        let newComp = 
+            { model.Symbols[sId].Component with 
+                X = int newX;
+                Y = int newY }
+
+        prevSymbols
+        |> Map.add sId 
+            { model.Symbols[sId] with 
+                Moving = true; 
+                Pos = { X = newX; Y = newY };
+                Component = newComp } 
+
+    let newSymbols =
+        (resetSymbols, compList)
+        ||> List.fold moveSymbol
+
+    { model with Symbols = newSymbols }
+
+///given a model and a component id list, sets the color of the sepcified symbols to red and every other symbol's color to light gray
+let inline symbolsHaveError model compList =
+    let resetSymbols = 
+        model.Symbols
+        |> Map.map (fun _ sym -> {sym with Colour = "Lightgray"}) 
+
+    let setSymColorToRed prevSymbols sId =
+        Map.add sId {resetSymbols[sId] with Colour = "Red"} prevSymbols
+
+    let newSymbols =
+        (resetSymbols, compList)
+        ||> List.fold setSymColorToRed 
+    { model with Symbols = newSymbols }
+
+/// Given a model and a component id list, it updates the specified symbols' colour to light green, and every other symbols' colour to lightgray with max opacity.
+let inline selectSymbols model compList =
+    let resetSymbols = 
+        model.Symbols
+        |> Map.map (fun _ sym -> 
+            { sym with Colour = "Lightgray"; Opacity = 1.0 }) 
+
+    let updateSymbolColour prevSymbols sId =
+        Map.add sId {resetSymbols[sId] with Colour = "lightgreen"} prevSymbols
     
+    let newSymbols =
+        (resetSymbols, compList)
+        ||> List.fold updateSymbolColour 
+
+    { model with Symbols = newSymbols }
+
+/// Given a model, an error component list, a selected component id list, it updates the selected symbols' color to green if they are not selected, and changes the symbols with errors to red. It returns the updated model.
+let inline errorSymbols model (errorCompList,selectCompList,isDragAndDrop) =
+    let resetSymbols = 
+        model.Symbols
+        |> Map.map 
+            (fun _ sym ->  { sym with Colour = "Lightgray"; Opacity = 1.0 })
+            
+    let updateSymbolStyle prevSymbols sId =
+        if not isDragAndDrop then 
+            Map.add sId {resetSymbols[sId] with Colour = "lightgreen"} prevSymbols
+        else 
+            Map.add sId { resetSymbols[sId] with Opacity = 0.2 } prevSymbols
+
+    let selectSymbols =
+        (resetSymbols, selectCompList)
+        ||> List.fold updateSymbolStyle 
+
+    let setSymColourToRed prevSymbols sId =
+        Map.add sId {resetSymbols[sId] with Colour = "Red"} prevSymbols
+
+    let newSymbols = 
+        (selectSymbols, errorCompList)
+        ||> List.fold setSymColourToRed
+        
+    { model with Symbols = newSymbols }
+
+/// Given a model, a symbol id and a new label changes the label of the symbol to the new label and returns the updated model.
+let inline changeLabel (model: Model) sId newLabel=
+    let oldSym = model.Symbols[sId]
+    let newComp = {oldSym.Component with Label = newLabel}
+    let newSym = {oldSym with Component = newComp}
+    { model with Symbols = Map.add sId newSym model.Symbols }
+
 /// update function which displays symbols
 let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
     match msg with
-    | DeleteSymbols compList ->
-        let newSymbols = List.fold (fun prevModel sId -> Map.remove sId prevModel) model.Symbols compList
-        { model with Symbols = newSymbols }, Cmd.none //filters out symbol with a specified id
+    | DeleteSymbols compIds ->
+        (deleteSymbols model compIds), Cmd.none
 
     | AddSymbol (pos,compType, lbl) ->
         let (newModel, _) = addSymbol model pos compType lbl
         newModel, Cmd.none
 
     | CopySymbols compIds ->
-        let copiedSymbols = Map.filter (fun compId _ -> List.contains compId compIds) model.Symbols
-        { model with CopiedSymbols = copiedSymbols }, Cmd.none
+        (copySymbols model compIds), Cmd.none
 
     | ShowAllInputPorts ->
-        { model with Symbols = Map.map (fun _ sym -> {sym with ShowInputPorts = true; ShowOutputPorts = false}) model.Symbols },
-        Cmd.none
+        (showAllInputPorts model), Cmd.none
 
     | ShowAllOutputPorts ->
-        {model with Symbols = Map.map (fun _ sym -> {sym with ShowInputPorts = false; ShowOutputPorts = true}) model.Symbols },
-        Cmd.none
+        (showAllOutputPorts model), Cmd.none
 
     | DeleteAllPorts ->
-        { model with Symbols = Map.map (fun _ sym -> {sym with ShowInputPorts = false; ShowOutputPorts = false}) model.Symbols },
-        Cmd.none //demo
+        (deleteAllPorts model), Cmd.none 
 
-    | ShowPorts compList -> //show ports of one component (shown in demo for a random component, sheet gives list in group phace)  find showPorts in other interfaces (above)
-        let resetSymbols = Map.map (fun _ sym -> {sym with ShowInputPorts = false; ShowOutputPorts = false}) model.Symbols
-        let newSymbols =
-            (List.fold (fun prevSymbols sId -> Map.add sId {resetSymbols[sId] with ShowInputPorts = true; ShowOutputPorts = true} prevSymbols) resetSymbols compList)
-        { model with Symbols = newSymbols }, Cmd.none
+    | ShowPorts compList ->
+        (showPorts model compList), Cmd.none
 
     | MoveSymbols (compList, move) -> 
-        let resetSymbols = Map.map (fun _ sym -> { sym with Moving = false}) model.Symbols
-        let newSymbols =
-            (List.fold (fun prevSymbols sId ->
-                let (newCompo: Component) = {model.Symbols[sId].Component with X = int (model.Symbols[sId].Pos.X + move.X);Y = int (model.Symbols[sId].Pos.Y + move.Y )}
-                Map.add sId {model.Symbols[sId] with Moving = true; Pos = {X = (model.Symbols[sId].Pos.X + move.X);Y = (model.Symbols[sId].Pos.Y + move.Y)} ; Component = newCompo} prevSymbols) resetSymbols compList)
-        { model with Symbols = newSymbols }, Cmd.none
+        (moveSymbols model compList move), Cmd.none
 
     | SymbolsHaveError compList ->
-        let resetSymbols = Map.map (fun _ sym -> {sym with Colour = "Lightgray"}) model.Symbols
-        let newSymbols =
-            (List.fold (fun prevSymbols sId -> Map.add sId {resetSymbols[sId] with Colour = "Red"} prevSymbols) resetSymbols compList)
-        { model with Symbols = newSymbols }, Cmd.none
+        (symbolsHaveError model compList), Cmd.none
 
-    | SelectSymbols compList -> //select a symbol (shown in demo for a random component, sheet gives list in group phase)
-        let resetSymbols = Map.map (fun _ sym ->  { sym with Colour = "Lightgray"; Opacity = 1.0 }) model.Symbols
-        let newSymbols =
-            (List.fold (fun prevSymbols sId -> Map.add sId {resetSymbols[sId] with Colour = "lightgreen"} prevSymbols) resetSymbols compList)
-        { model with Symbols = newSymbols }, Cmd.none  
+    | SelectSymbols compList ->
+        (selectSymbols model compList), Cmd.none  
 
     | ErrorSymbols (errorCompList,selectCompList,isDragAndDrop) -> 
-        let resetSymbols = Map.map (fun _ sym ->  { sym with Colour = "Lightgray"; Opacity = 1.0 }) model.Symbols
-        let selectSymbols =
-            List.fold (fun prevSymbols sId -> 
-                            if not isDragAndDrop then 
-                                Map.add sId {resetSymbols[sId] with Colour = "lightgreen"} prevSymbols
-                            else 
-                                Map.add sId { resetSymbols[sId] with Opacity = 0.2 } prevSymbols
-                        ) resetSymbols selectCompList
-        let newSymbols = 
-            (List.fold (fun prevSymbols sId -> Map.add sId {resetSymbols[sId] with Colour = "Red"} prevSymbols) selectSymbols errorCompList)
-        { model with Symbols = newSymbols }, Cmd.none 
+        (errorSymbols model (errorCompList,selectCompList,isDragAndDrop)), Cmd.none 
         
     | MouseMsg _ -> model, Cmd.none // allow unused mouse messags
 
     | ChangeLabel (sId, newLabel) ->
-        let tempsym = Map.find sId model.Symbols
-        let newcompo = {tempsym.Component with Label = newLabel}
-        let addsym = {tempsym with Component = newcompo}
-        { model with Symbols = Map.add sId addsym model.Symbols }, Cmd.none
+        (changeLabel model sId newLabel), Cmd.none
 
     | PasteSymbols compList ->
         let newSymbols =
