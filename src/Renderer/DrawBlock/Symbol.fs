@@ -562,7 +562,7 @@ let getPortOrientation (model: Model)  (portId: PortId) : Edge =
 let getInputPortOrientation (model: Model) (portId: InputPortId): Edge =
     getPortOrientation model (InputId portId)
 
-let getInputPortOrientation (model: Model) (portId: OutputPortId): Edge =
+let getOutputPortOrientation (model: Model) (portId: OutputPortId): Edge =
     getPortOrientation model (OutputId portId)
 
 /// Returns the location of a given portId, with good efficiency
