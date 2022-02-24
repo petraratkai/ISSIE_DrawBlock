@@ -797,6 +797,8 @@ let changeConstantf (symModel:Model) (compId:ComponentId) (constantVal:int64) (c
     printfn "Changing symbol to: %A" newcompotype
     {symbol with Component = newcompo}
 
+//Helper functions for the upadte function
+
 /// initialises the port positions of a component that are needed in Symbol
 let initPortOrientation (comp: Component) =
     //for now move inputs to right outputs to left
@@ -970,6 +972,94 @@ let inline changeLabel (model: Model) sId newLabel=
     let newSym = {oldSym with Component = newComp}
     { model with Symbols = Map.add sId newSym model.Symbols }
 
+/// Given a model, a component id list and a color, updates the color of the specified symbols and returns the updates model.
+let inline colorSymbols (model: Model) compList colour =
+    let changeSymColour (prevSymbols: Map<ComponentId, Symbol>) (sId: ComponentId) =
+        let newSymbol = {prevSymbols[sId] with Colour = string colour}
+        prevSymbols |> Map.add sId newSymbol
+
+    let newSymbols =
+        (model.Symbols, compList)
+        ||> List.fold changeSymColour
+
+    { model with Symbols = newSymbols }
+
+/// Given a map of current symbols and a component, initialises a symbol containing the component and returns the updated symbol map containing the new symbol
+let inline createSymbol prevSymbols comp =
+        let (portOrder, portOrientation) = initPortOrientation comp
+        let xyPos = {X = float comp.X; Y = float comp.Y}
+        let (h,w) =
+            if comp.H = -1 && comp.W = -1 then
+                let comp' = makeComp xyPos comp.Type comp.Id comp.Label
+                comp'.H,comp'.W
+            else
+                comp.H, comp.W
+        prevSymbols
+        |> Map.add (ComponentId comp.Id)
+            { Pos = xyPos
+              ShowInputPorts = false //do not show input ports initially
+              ShowOutputPorts = false //do not show output ports initially
+              Colour = "lightgrey"     // initial color 
+              Id = ComponentId comp.Id
+              Component = {comp with H=h ; W = w}
+              Opacity = 1.0
+              Moving = false
+              InWidth0 = None
+              InWidth1 = None
+              STransform = {Rotation= Degree0; flipped= false}
+              PortOrientation = portOrientation
+              PortOrder = portOrder
+            }
+
+/// Given a model and a list of components, it creates and adds the symbols containing the specified components and returns the updated model.
+let inline loadComponents model comps=
+    let symbolMap =
+        (model.Symbols, comps) ||> List.fold createSymbol
+    
+    let addPortsToModel currModel _ sym =
+        { currModel with Ports = addToPortModel currModel sym }
+        
+    let newModel = ( model, symbolMap ) ||> Map.fold addPortsToModel
+
+    { newModel with Symbols = symbolMap }
+
+/// Given a model, a component id, an address and a value it updates the data in the component and returns the new model.
+let inline writeMemoryLine model (compId, addr, value) =
+    let symbol = model.Symbols[compId]
+    let comp = symbol.Component
+
+    let newCompType =
+        match comp.Type with
+        | RAM1 mem -> RAM1 { mem with Data = Map.add addr value mem.Data }
+        | AsyncRAM1 mem -> AsyncRAM1 { mem with Data = Map.add addr value mem.Data }
+        | ROM1 mem -> ROM1 { mem with Data = Map.add addr value mem.Data }
+        | AsyncROM1 mem -> AsyncROM1 { mem with Data = Map.add addr value mem.Data }
+        | _ -> comp.Type
+
+    let newComp = { comp with Type = newCompType }
+    
+    let newSymbols = Map.add compId { symbol with Component = newComp } model.Symbols
+    
+    { model with Symbols = newSymbols }
+
+/// Given a model, a component Id and a memory component type, updates the type of the component to the specified memory type and returns the updated model.
+let inline writeMemoryType model compId memory =
+    let symbol = model.Symbols[compId]
+    let comp = symbol.Component 
+    
+    let newCompType =
+        match comp.Type with
+        | RAM1 _ | AsyncRAM1 _ | ROM1 _ | AsyncROM1 _ -> memory
+        | _ -> 
+            printfn $"Warning: improper use of WriteMemoryType on {comp} ignored"
+            comp.Type
+    
+    let newComp = { comp with Type = newCompType }
+    
+    let newSymbols = Map.add compId { symbol with Component = newComp } model.Symbols
+    
+    { model with Symbols = newSymbols }
+
 /// update function which displays symbols
 let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
     match msg with
@@ -1007,7 +1097,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
     | ErrorSymbols (errorCompList,selectCompList,isDragAndDrop) -> 
         (errorSymbols model (errorCompList,selectCompList,isDragAndDrop)), Cmd.none 
         
-    | MouseMsg _ -> model, Cmd.none // allow unused mouse messags
+    | MouseMsg _ -> model, Cmd.none // allow unused mouse messages
 
     | ChangeLabel (sId, newLabel) ->
         (changeLabel model sId newLabel), Cmd.none
@@ -1018,9 +1108,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
         { model with Symbols = newSymbols }, Cmd.none  
     
     | ColorSymbols (compList, colour) -> 
-        let newSymbols = 
-            Map.map (fun sId sym -> if List.contains sId compList then {sym with Colour = string colour} else sym) model.Symbols
-        { model with Symbols = newSymbols }, Cmd.none 
+        (colorSymbols model compList colour), Cmd.none 
     
     | ChangeNumberOfBits (compId, newBits) ->
         let newsymbol = changeNumberOfBitsf model compId newBits
@@ -1040,85 +1128,16 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
         let newSymbolsWithChangedSymbol = symbolswithoutone.Add (compId, newsymbol)
         { model with Symbols = newSymbolsWithChangedSymbol }, Cmd.none
     
-    | ResetModel -> { model with Symbols = Map.empty; Ports = Map.empty }, Cmd.none
+    | ResetModel -> 
+        { model with Symbols = Map.empty; Ports = Map.empty }, Cmd.none
     
     | LoadComponents comps ->
-        let compIdsWithSymbols =
-            comps
-            |> List.map ( fun comp -> (
-                                        let (portOrder, portOrientation) = initPortOrientation comp
-                                        let xyPos = {X = float comp.X; Y = float comp.Y}
-                                        let (h,w) =
-                                            if comp.H = -1 && comp.W = -1 then
-                                                let comp' = makeComp xyPos comp.Type comp.Id comp.Label
-                                                comp'.H,comp'.W
-                                            else
-                                                comp.H, comp.W
-                                        ComponentId comp.Id,
-                                        { Pos = xyPos
-                                          ShowInputPorts = false //do not show input ports initially
-                                          ShowOutputPorts = false //do not show output ports initially
-                                          Colour = "lightgrey"     // initial color 
-                                          Id = ComponentId comp.Id
-                                          Component = {comp with H=h ; W = w}
-                                          Opacity = 1.0
-                                          Moving = false
-                                          InWidth0 = None
-                                          InWidth1 = None
-                                          STransform = {Rotation= Degree0; flipped= false}
-
-                                          PortOrientation = portOrientation
-                                          PortOrder = portOrder
-                                        }
-                                        ))
-        let symbolList =
-            compIdsWithSymbols
-            |> List.map snd
-
-        let symbolMap =
-            compIdsWithSymbols   
-            |> Map.ofList
-        
-        let folder currModel sym =
-            { currModel with Ports = addToPortModel currModel sym }
-            
-        let newModel = ( model, symbolList ) ||> List.fold folder
-        { newModel with Symbols = symbolMap }, Cmd.none
+        (loadComponents model comps), Cmd.none
  
     | WriteMemoryLine (compId, addr, value) ->
-        let symbol = model.Symbols[compId]
-        let comp = symbol.Component
-        
-        let newCompType =
-            match comp.Type with
-            | RAM1 mem -> RAM1 { mem with Data = Map.add addr value mem.Data }
-            | AsyncRAM1 mem -> AsyncRAM1 { mem with Data = Map.add addr value mem.Data }
-            | ROM1 mem -> ROM1 { mem with Data = Map.add addr value mem.Data }
-            | AsyncROM1 mem -> AsyncROM1 { mem with Data = Map.add addr value mem.Data }
-            | _ -> comp.Type
-        
-        let newComp = { comp with Type = newCompType }
-        
-        let newSymbols = Map.add compId { symbol with Component = newComp } model.Symbols
-        
-        { model with Symbols = newSymbols }, Cmd.none
+        writeMemoryLine model (compId, addr, value), Cmd.none
     | WriteMemoryType (compId, memory) ->
-        let symbol = model.Symbols[compId]
-        let comp = symbol.Component       
-        let newCompType =
-            match comp.Type with
-            | RAM1 mem | AsyncRAM1 mem -> memory
-            | ROM1 mem -> memory
-            | AsyncROM1 mem -> memory
-            | _ -> 
-                printfn $"Warning: improper use of WriteMemoryType on {comp} ignored"
-                comp.Type
-        
-        let newComp = { comp with Type = newCompType }
-        
-        let newSymbols = Map.add compId { symbol with Component = newComp } model.Symbols
-        
-        { model with Symbols = newSymbols }, Cmd.none
+        (writeMemoryType model compId memory), Cmd.none
         
 // ----------------------interface to Issie----------------------------- //
 let extractComponent (symModel: Model) (sId:ComponentId) : Component = 
