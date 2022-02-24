@@ -951,6 +951,9 @@ let autorouteWire (model: Model) (wire: Wire) : Wire =
     let portPositions =
         Symbol.getTwoPortLocations (model.Symbol) (wire.InputPort) (wire.OutputPort)
 
+    let initialOrientation = Symbol.getInputPortOrientation model.Symbol wire.InputPort
+    let outputOrientation = Symbol.getOutputPortOrientation model.Symbol wire.OutputPort
+
     { wire with Segments = makeInitialSegmentsList wire.Id portPositions }
 
 /// Reverses a segment list so that it may be processed in the opposite direction. This function is self-inverse.
