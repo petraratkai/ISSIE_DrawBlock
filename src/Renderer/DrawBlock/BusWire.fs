@@ -1018,21 +1018,32 @@ let autorouteWire (model: Model) (wire: Wire) : Wire =
     let destPos, startPos =
         Symbol.getTwoPortLocations (model.Symbol) (wire.InputPort) (wire.OutputPort)
 
-    let destEdge = Symbol.getInputPortOrientation model.Symbol wire.InputPort
-    let startEdge = Symbol.getOutputPortOrientation model.Symbol wire.OutputPort
+    let destEdge =
+        Symbol.getInputPortOrientation model.Symbol wire.InputPort
+
+    let startEdge =
+        Symbol.getOutputPortOrientation model.Symbol wire.OutputPort
 
     let startPort = genPortInfo startEdge startPos
     let destPort = genPortInfo destEdge destPos
 
-    let normalisedStart, normalisedEnd = rotateStartDest Symbol.Right (startPort, destPort)
-    let initialSegments = makeInitialSegmentsList normalisedStart.Position normalisedEnd.Position normalisedEnd.Edge
+    let normalisedStart, normalisedEnd =
+        rotateStartDest Symbol.Right (startPort, destPort)
 
-    let segments = 
-        {| edge = Symbol.Right; segments = initialSegments |}
+    let initialSegments =
+        makeInitialSegmentsList normalisedStart.Position normalisedEnd.Position normalisedEnd.Edge
+
+    let segments =
+        {| edge = Symbol.Right
+           segments = initialSegments |}
         |> rotateSegments startEdge
         |> (fun wire -> wire.segments)
 
-    { wire with Segments = segments; InitialOrientation = getOrientation startEdge; StartPos = startPos }
+    { wire with
+          Segments = segments
+          InitialOrientation = getOrientation startEdge
+          StartPos = startPos
+          EndPos = destPos }
 
 /// Reverses a segment list so that it may be processed in the opposite direction. This function is self-inverse.
 let reverseSegments (segs:Segment list) =
