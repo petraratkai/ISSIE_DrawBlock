@@ -18,3 +18,6 @@ Created getPortEdge function which outputs x and y coordinates of ports dependin
 
 Created genAPortOffsets which generates a list of offsets depending on the edge
 helper function centreOffset to calculate a vector offset from the centre depending on the edge ports are located
+Inserted helper functions into APortOffsetsMap to reduce the number of parameters
+
+Added helper function getCentre to get the centre of a symbol with the symbol width and height

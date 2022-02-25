@@ -113,6 +113,9 @@ let getEdge (rotation: Rotation) =
     | Degree180 -> Right,Left
     | Degree270 -> Bottom, Top
 
+let getCentre (symbol:Symbol) = 
+    {X=symbol.Pos.X + float(symbol.Component.W/2) ; Y=symbol.Pos.Y - float(symbol.Component.H/2)}
+
 //Calculates the offset of a port from the centre depending on the edge
 let centreOffset (centre:XYPos) (edge:Edge) (commonpos:float) pos = 
 
@@ -377,8 +380,7 @@ let APortOffsetMap (symbol:Symbol) =
         getportOffsetList centre edge 
 
     match rotation with
-    | Degree0 -> let centre = {X=symbol.Pos.X + float(symbol.Component.W/2) ; Y=symbol.Pos.Y - float(symbol.Component.H/2)}
-             
+    | Degree0 -> let centre = getCentre symbol
                  List.map (genAPortOffsets centre) keys
 
 
