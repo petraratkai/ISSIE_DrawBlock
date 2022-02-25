@@ -13,3 +13,6 @@ Created concatMap to concatenate two maps together
 
 Created APortOffsetsMap which takes a symbol and outputs a map of the port and the offset from the centre
 Depending on the rotation of the symbol, 
+
+Created getPortEdge function which outputs x and y coordinates of ports depending on the orientation
+helper function centreOffset to calculate a vector offset from the centre depending on the edge ports are located
