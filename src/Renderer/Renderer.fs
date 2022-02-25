@@ -160,6 +160,7 @@ let viewMenu dispatch =
 let editMenu dispatch =
     let sheetDispatch sMsg = dispatch (Sheet sMsg)
     let dispatch = Sheet.KeyPress >> sheetDispatch
+    let rotateDispatch = Sheet.Rotate >> sheetDispatch
 
     jsOptions<MenuItemConstructorOptions> <| fun invisibleMenu ->
         invisibleMenu.``type`` <- Some MenuItemType.Submenu
@@ -169,6 +170,8 @@ let editMenu dispatch =
             [| // makeElmItem "Save Sheet" "CmdOrCtrl+S" (fun () -> ())
                makeElmItem "Copy" "CmdOrCtrl+C" (fun () -> dispatch Sheet.KeyboardMsg.CtrlC)
                makeElmItem "Paste" "CmdOrCtrl+V" (fun () -> dispatch Sheet.KeyboardMsg.CtrlV)
+               makeElmItem "Rotate Left" "Cmd" (fun () -> rotateDispatch Sheet.RotateMsg.Left)
+               makeElmItem "Rotate right" "Cmd" (fun () -> rotateDispatch Sheet.RotateMsg.Right)
                makeElmItem "Select All" "CmdOrCtrl+A" (fun () -> dispatch Sheet.KeyboardMsg.CtrlA)
                makeElmItem "Delete"  (if isMac then "Backspace" else "delete") (fun () -> dispatch Sheet.KeyboardMsg.DEL)
                makeElmItem "Undo" "CmdOrCtrl+Z" (fun () -> dispatch Sheet.KeyboardMsg.CtrlZ)

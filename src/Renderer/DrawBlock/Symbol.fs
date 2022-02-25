@@ -39,6 +39,7 @@ type Symbol =
         STransform: STransform
         PortOrientation: Map<string, Edge>
         PortOrder: Map<Edge, string list> //stores the order of ports on each edge
+        //APortOffsetsMap: Map<string, XYPos>
     }
 
 type Model = {
@@ -76,6 +77,8 @@ type Msg =
     | LoadComponents of  Component list // For Issie Integration
     | WriteMemoryLine of ComponentId * int64 * int64 // For Issie Integration 
     | WriteMemoryType of ComponentId * ComponentType
+    | RotateLeft of compList : ComponentId list
+    | RotateRight of compList: ComponentId list
 
 //---------------------------------helper types and functions----------------//
 
@@ -562,15 +565,71 @@ let getPortOrientation (model: Model)  (portId: PortId) : Edge =
 let getInputPortOrientation (model: Model) (portId: InputPortId): Edge =
     getPortOrientation model (InputId portId)
 
-let getInputPortOrientation (model: Model) (portId: OutputPortId): Edge =
+let getOutputPortOrientation (model: Model) (portId: OutputPortId): Edge =
     getPortOrientation model (OutputId portId)
+
+/// Returns the height and width of a symbol
+let getHAndW sym =
+    match sym.STransform.Rotation with
+    | Degree0 | Degree180 -> sym.Component.H, sym.Component.W
+    | _ -> sym.Component.W, sym.Component.H
+
+//Given a symbol and a Port, it returns the orientation of the port
+let getSymbolPortOrientation (sym: Symbol) (port: Port): Edge =
+    let portId = port.Id
+    sym.PortOrientation[portId]
+
+//Returns the x offset of a side relative to the symbol orientation
+let getPortBaseOffset (sym: Symbol) (side: Edge): XYPos=
+    let h,w = getHAndW sym
+    match side with 
+    | Right -> {X = 0.0; Y = w}
+    | Left -> {X = 0.0; Y = 0.0}
+    | Top -> {X = 0.0; Y = 0.0}
+    | Bottom -> {X = h; Y = 0.0}
+
+/// Returns true if an edge has the select port of a mux
+let isMuxSel (sym:Symbol) (side:Edge): bool =
+    match (sym.STransform.Rotation, side) with
+    | (Degree0, Bottom )-> true
+    | (Degree90, Right) -> true
+    | (Degree180, Top) -> true
+    | (Degree270, Left)-> true
+    | _ -> false
+///based on a symbol and an edge, if the port is a mux select, return an extra offset required for the port (because of the weird shape of the mux)
+let getMuxSelOffset (sym: Symbol) (side: Edge): XYPos =
+    if isMuxSel sym side then
+        match side with 
+            | Top -> {X = 0.0; Y = 0.25}
+            | Bottom -> {X = 0.0; Y = -0.25}
+            | Left -> {X = -0.25; Y = 0.0}
+            | Right -> {X = 0.25; Y = 0.0}
+    else
+        {X=0.0; Y=0.0}
+
+//Given a symbol and a port, it returns the offset of the port from the top left corner of the symbol
+let getPortPos2 (sym: Symbol) (port: Port) : XYPos =
+    //get ports on the same edge first
+    let side = getSymbolPortOrientation sym port
+    let ports = sym.PortOrder[side] //list of ports on the same side as port
+    let index = float( List.findIndex (fun (p:string)  -> p = port.Id) ports )
+    let gap = getPortPosEdgeGap sym.Component.Type 
+    let baseOffset = getPortBaseOffset sym side  //offset of the side component is on
+    let baseOffset' = baseOffset + getMuxSelOffset sym side
+    match side with
+    | Left | Right ->
+        let xOffset = (float(sym.Component.H))* (( index + gap )/( float( ports.Length ) + 2.0*gap - 1.0))
+        baseOffset' + {X = xOffset; Y = 0.0 }
+    | _ -> 
+        let yOffset = (float(sym.Component.W))* ((index + gap)/(float (ports.Length) + 2.0*gap - 1.0))
+        baseOffset' + {X = 0.0; Y = yOffset }
 
 /// Returns the location of a given portId, with good efficiency
 let getPortLocation (model: Model) (portId : string) : XYPos=
     let port = model.Ports[portId]
     let symbolId = ComponentId port.HostId
     let sym = model.Symbols[symbolId]
-    getPortPos sym.Component port + sym.Pos
+    getPortPos2 sym port + sym.Pos
 
 /// Returns the location of an input port based on their portId
 let getInputPortLocation (model:Model) (portId: InputPortId)  = 
@@ -590,7 +649,7 @@ let getTwoPortLocations (model: Model) (inputPortId: InputPortId ) (outputPortId
 ///only called in getPortLocations, might need more refactoring
 let getInputPortsLocationMap (model: Model) (symbols: Symbol list)  = 
     let getSymbolInputPortsLoc sym =
-        sym.Component.InputPorts |> List.map (fun port -> (InputPortId port.Id, (getPortPos sym.Component port) + (sym.Pos)))
+        sym.Component.InputPorts |> List.map (fun port -> (InputPortId port.Id, (getPortPos2 sym port) + (sym.Pos)))
         
     symbols
     |> List.collect getSymbolInputPortsLoc
@@ -600,7 +659,7 @@ let getInputPortsLocationMap (model: Model) (symbols: Symbol list)  =
 /// only called in getPortLocations might need more refactoring
 let getOutputPortsLocationMap (model: Model) (symbols: Symbol list)  =
     let getSymbolOutputPortsLoc sym =
-        sym.Component.OutputPorts |> List.map (fun port -> (OutputPortId port.Id, (getPortPos sym.Component port) + (sym.Pos)))
+        sym.Component.OutputPorts |> List.map (fun port -> (OutputPortId port.Id, (getPortPos2 sym port) + (sym.Pos)))
         
     symbols
     |> List.collect getSymbolOutputPortsLoc
@@ -824,8 +883,16 @@ let initPortOrientation (comp: Component) =
         ((Map.empty, Map.empty), comp.InputPorts)
         ||> List.fold (addPortToMaps Left)
 
-    (inputMaps, comp.OutputPorts)
-    ||> List.fold (addPortToMaps Right) 
+    let res = 
+        (inputMaps, comp.OutputPorts)
+        ||> List.fold (addPortToMaps Right)
+    match comp.Type with //need to put some ports to different edges
+    | Mux2 -> //need to remove select port from left and move to right
+        let leftPorts = (fst res)[Left]
+        let portId = leftPorts |> List.item 2 //get id of sel
+        //let portOrientation = (snd res) |> Map.add Bottom portId
+        //let portOrder = (snd res) |> Map.add portId
+    | _ -> res
 
 /// Given a model and a list of component ids deletes the specified components from the model and returns the updated model
 let inline deleteSymbols (model: Model) compIds =
@@ -1153,6 +1220,10 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
         writeMemoryLine model (compId, addr, value), Cmd.none
     | WriteMemoryType (compId, memory) ->
         (writeMemoryType model compId memory), Cmd.none
+    | RotateLeft compList ->
+        failwithf "not implemented yet"
+    | RotateRight compList ->
+        failwithf "not implemented yet"
         
 // ----------------------interface to Issie----------------------------- //
 let extractComponent (symModel: Model) (sId:ComponentId) : Component = 

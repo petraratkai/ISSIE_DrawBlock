@@ -85,6 +85,9 @@ type SnapIndicator =
 type KeyboardMsg =
     | CtrlS | CtrlC | CtrlV | CtrlZ | CtrlY | CtrlA | CtrlW | AltC | AltV | AltZ | AltShiftZ | ZoomIn | ZoomOut | DEL | ESC
 
+type RotateMsg =
+    | Right | Left
+
 type Msg =
     | Wire of BusWire.Msg
     | KeyPress of KeyboardMsg
@@ -111,6 +114,7 @@ type Msg =
     | ToggleNet of CanvasState //This message does nothing in sheet, but will be picked up by the update function
     | SelectWires of ConnectionId list
     | SetSpinner of bool
+    | Rotate of RotateMsg
 
 
 // ------------------ Helper Functions that need to be before the Model type --------------------------- //
@@ -1034,6 +1038,19 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             outputModel, filteredOutputCmd
         else
             { model with AutomaticScrolling = false}, Cmd.none
+
+    | Rotate Left ->
+        model,
+        Cmd.batch [
+            symbolCmd (Symbol.RotateLeft model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
+            wireCmd (BusWire.Rotate model.SelectedComponents)
+        ]
+    | Rotate Right ->
+        model,
+        Cmd.batch [
+            symbolCmd (Symbol.RotateRight model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
+            wireCmd (BusWire.Rotate model.SelectedComponents)
+        ]
                 
     // ---------------------------- Issie Messages ---------------------------- //
 
