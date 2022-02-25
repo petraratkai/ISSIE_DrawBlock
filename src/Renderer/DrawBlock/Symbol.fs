@@ -114,7 +114,7 @@ let getEdge (rotation: Rotation) =
     | Degree270 -> Bottom, Top
 
 //Calculates the offset of a port from the centre depending on the edge
-let centreOffset (centre:XYPos) (edge:Edge) commonpos pos = 
+let centreOffset (centre:XYPos) (edge:Edge) (commonpos:float) pos = 
 
     match edge with
     | Left | Right -> {X=float(commonpos - centre.X) ; Y=float(pos-centre.Y)}
@@ -336,12 +336,6 @@ let inline getPortPosEdgeGap (ct: ComponentType) =
     | MergeWires | SplitWire _  -> 0.25
     | _ -> 1.0
 
-(*
-let genAPortOffsets (edge:Edge) (symbol:Symbol) centre = 
-    match edge with
-    | Left -> posX =  - 
-*)
-
 /// Function that calculates the coordinates of ports depending on Edge
 let getPortGaps (centre:XYPos) edge noofports heightwidth gap = 
 
@@ -354,6 +348,24 @@ let getPortGaps (centre:XYPos) edge noofports heightwidth gap =
 
     | Top | Bottom -> let first = centre.X - float(heightwidth/2)
                       List.map(fun x -> x+first) gaps   //Output x coordinate of ports
+
+/// Function that generates the list of offsets for each edge from the centre                      
+let genAPortOffsets (symbol:Symbol) (centre:XYPos) (edge:Edge) gap  = 
+    let commonpos = 
+        match edge with
+        | Left -> centre.X - float(symbol.Component.W/2)
+        | Right -> centre.X + float(symbol.Component.W/2)
+        | Top -> centre.Y + float(symbol.Component.H/2)
+        | Bottom -> centre.Y - float(symbol.Component.H/2)
+
+    let portnumber = symbol.PortOrder[edge].Length
+        
+    match edge with
+    | Left | Right -> let posY = getPortGaps centre edge portnumber symbol.Component.H gap
+                      List.map (centreOffset centre edge commonpos) posY //Take posY list and find offset of each element from centre
+
+    | Top | Bottom -> let posX = getPortGaps centre edge portnumber symbol.Component.H gap
+                      List.map (centreOffset centre edge commonpos) posX //Take posX list and find offset of each element from centre
 
 let APortOffsetMap (symbol:Symbol) = 
 
@@ -378,13 +390,19 @@ let APortOffsetMap (symbol:Symbol) =
                                              let portnumber = symbol.PortOrder[x].Length
                                              let posY = getPortGaps centre x portnumber symbol.Component.H gap
 
-                                             List.map (fun z -> {X=centre.X-posX ; Y=centre.Y-z}) posY
+                                             List.map (centreOffset centre x posX) posY
 
                                    | Top ->  let posY = centre.Y + float(symbol.Component.H/2)
                                              let portnumber = symbol.PortOrder[x].Length
-                                             let posY = getPortGaps centre x portnumber symbol.Component.H gap
+                                             let posX = getPortGaps centre x portnumber symbol.Component.H gap
 
-                                             List.map (fun z -> {X=centre.X-posX ; Y=centre.Y-z}) posY
+                                             List.map (centreOffset centre x posY) posX
+
+                                   | Bottom -> let posY = centre.Y - float(symbol.Component.H/2)
+                                               let portnumber = symbol.PortOrder[x].Length
+                                               let posX = getPortGaps centre x portnumber symbol.Component.H gap
+
+                                               List.map (centreOffset centre x posY) posX
 
                         ) keys
     (*

@@ -15,4 +15,6 @@ Created APortOffsetsMap which takes a symbol and outputs a map of the port and t
 Depending on the rotation of the symbol, 
 
 Created getPortEdge function which outputs x and y coordinates of ports depending on the orientation
+
+Created genAPortOffsets which generates a list of offsets depending on the edge
 helper function centreOffset to calculate a vector offset from the centre depending on the edge ports are located
