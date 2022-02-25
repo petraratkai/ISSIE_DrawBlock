@@ -102,7 +102,7 @@ type Msg =
 
 
 /// <summary> Applies a function which requires the segment start and end positions to the segments in a wire, 
-/// threading an accumulator argument through the computation. Essentially a List.fold applied to the list of segments of a wire. </summary>
+/// threading an accumulator argument through the computation. Essentially a List.fold applied to the list of segments of a wire, but with access to each segment's absolute positions. </summary>
 /// <remarks> This is used in cases where absolute segment positions are required. 
 /// These positions are computed on the fly and passed to the folder function. </remarks>
 /// <param name="folder"> The function to update the state given the segment start and end positions, current state and segment itself.</param>
@@ -868,7 +868,7 @@ let moveSegment (model:Model) (seg:Segment) (distance:float) =
     let movedSeg = segments[idx]
 
     let newPrevSeg = { prevSeg with Length = prevSeg.Length + safeDistance }
-    let newNextSeg = { nextSeg with Length = nextSeg.Length + safeDistance }
+    let newNextSeg = { nextSeg with Length = nextSeg.Length - safeDistance }
     let newMovedSeg = { movedSeg with Mode = Manual }
     
     let newSegments = segments[.. idx - 2] @ [newPrevSeg; newMovedSeg; newNextSeg] @ segments[idx + 2 ..]
@@ -980,13 +980,14 @@ let rotateSegments90 initialOrientation =
         | Horizontal -> i % 2 = 0
         | Vertical -> i % 2 = 1
 
+    let rotateSegment (i, seg) =
+        if (horizontal i) then
+            { seg with Length = -seg.Length }
+        else
+            seg
+
     List.indexed
-    >> List.map
-        (fun (i, seg) ->
-            if (horizontal i) then 
-                { seg with Length = -seg.Length }
-            else
-                seg)
+    >> List.map rotateSegment
 
 /// Returns a version of the start and destination ports rotated until the start edge matches the target edge.
 let rec rotateStartDest (target: Symbol.Edge) ((start, dest): PortInfo * PortInfo) = 
@@ -1150,16 +1151,17 @@ let moveWire (wire: Wire) (displacement: XYPos) =
           StartPos = posAdd wire.StartPos displacement
           EndPos = posAdd wire.EndPos displacement }
 
-/// Re-routes a single wire in the model when its ports move.
-/// Tries to preserve manual routing when this makes sense, otherwise re-routes with autoroute.
+/// Returns a re-routed wire in the model, used when its ports move.
+/// Tries to preserve manual routing, otherwise re-routes with autoroute.
 /// Partial routing from input end is done by reversing segments and and swapping Start/End
-/// inout = true => reroute input (target) side of wire.
-let updateWire (model : Model) (wire : Wire) (inOut : bool) =
+/// reverse indicates if the wire should be updated in the opposite direction (i.e. from input port to output port),
+/// instead of from output port to input port.
+let updateWire (model : Model) (wire : Wire) (reverse : bool) =
     let newPort = 
-        match inOut with
+        match reverse with
         | true -> Symbol.getInputPortLocation model.Symbol wire.InputPort
         | false -> Symbol.getOutputPortLocation model.Symbol wire.OutputPort
-    if inOut then
+    if reverse then
         partialAutoRoute (reverseSegments wire.Segments) newPort
         |> Option.map reverseSegments
     else 
