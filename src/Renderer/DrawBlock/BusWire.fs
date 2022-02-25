@@ -944,17 +944,95 @@ let filterWiresByCompMoved (model: Model) (compIds: list<ComponentId>) =
 
     (inputWires, outputWires, fullyConnected)
 
-let rotate90 = failwithf "Not yet implemented"
+/// Contains geometric information of a port
+type PortInfo = {
+    Edge: Symbol.Edge
+    Position: XYPos
+}
 
-///Returns a newly autorouted version of a wire for the given model
+/// Returns a PortInfo object given a port edge and position
+let genPortInfo edge position =
+    { Edge = edge; Position = position }
+
+/// Returns an edge rotated 90 degrees anticlockwise
+let rotate90Edge (edge: Symbol.Edge) = 
+    match edge with
+    | Symbol.Top -> Symbol.Left
+    | Symbol.Left -> Symbol.Bottom
+    | Symbol.Bottom -> Symbol.Right
+    | Symbol.Right -> Symbol.Top
+
+/// Returns a port rotated 90 degrees anticlockwise
+let rotate90Port (port: PortInfo) =
+    let newEdge = rotate90Edge port.Edge
+
+    let newPos =
+        { X = -port.Position.Y
+          Y = port.Position.X }
+
+    genPortInfo newEdge newPos
+
+/// Returns a function to rotate a segment list 90 degrees anticlockwise,
+/// depending on its initial orientation
+let rotateSegments90 initialOrientation =
+    let horizontal i =
+        match initialOrientation with
+        | Horizontal -> i % 2 = 0
+        | Vertical -> i % 2 = 1
+
+    List.indexed
+    >> List.map
+        (fun (i, seg) ->
+            if (horizontal i) then 
+                { seg with Length = -seg.Length }
+            else
+                seg)
+
+/// Returns a version of the start and destination ports rotated until the start edge matches the target edge.
+let rec rotateStartDest (target: Symbol.Edge) ((start, dest): PortInfo * PortInfo) = 
+    if start.Edge = target then
+        (start, dest)
+    else
+        rotateStartDest target (rotate90Port start, rotate90Port dest)
+
+/// Gets a wire orientation given a port edge
+let getOrientation (edge: Symbol.Edge) = 
+    match edge with
+    | Symbol.Top | Symbol.Bottom -> Vertical
+    | Symbol.Left | Symbol.Right -> Horizontal
+
+/// Returns an anonymous record containing the starting symbol edge of a wire and its segment list that has been 
+/// rotated to a target symbol edge.
+let rec rotateSegments (target: Symbol.Edge) (wire: {| edge: Symbol.Edge; segments: Segment list |}) =
+    if wire.edge = target then
+        {| edge = wire.edge; segments = wire.segments |}
+    else
+        let rotatedSegs =
+            rotateSegments90 (getOrientation wire.edge) wire.segments
+        
+        {| edge = rotate90Edge wire.edge; segments = rotatedSegs |}
+        |> rotateSegments target 
+
+/// Returns a newly autorouted version of a wire for the given model
 let autorouteWire (model: Model) (wire: Wire) : Wire =
-    let portPositions =
+    let destPos, startPos =
         Symbol.getTwoPortLocations (model.Symbol) (wire.InputPort) (wire.OutputPort)
 
-    let initialOrientation = Symbol.getInputPortOrientation model.Symbol wire.InputPort
-    let outputOrientation = Symbol.getOutputPortOrientation model.Symbol wire.OutputPort
+    let destEdge = Symbol.getInputPortOrientation model.Symbol wire.InputPort
+    let startEdge = Symbol.getOutputPortOrientation model.Symbol wire.OutputPort
 
-    { wire with Segments = makeInitialSegmentsList wire.Id portPositions }
+    let startPort = genPortInfo startEdge startPos
+    let destPort = genPortInfo destEdge destPos
+
+    let normalisedStart, normalisedEnd = rotateStartDest Symbol.Right (startPort, destPort)
+    let initialSegments = makeInitialSegmentsList normalisedStart.Position normalisedEnd.Position normalisedEnd.Edge
+
+    let segments = 
+        {| edge = Symbol.Right; segments = initialSegments |}
+        |> rotateSegments startEdge
+        |> (fun wire -> wire.segments)
+
+    { wire with Segments = segments; InitialOrientation = getOrientation startEdge; StartPos = startPos }
 
 /// Reverses a segment list so that it may be processed in the opposite direction. This function is self-inverse.
 let reverseSegments (segs:Segment list) =
