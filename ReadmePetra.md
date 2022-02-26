@@ -42,6 +42,7 @@ Changes
 - bounding boxes should just work with current repr of symbol pos
 - port position hmmmmmmmmmm
 - getPortPos2 rewritten, now it works with rotations as well. Haven't done mux top and pottom coordinates yet though
+- 
 
                                                                                                                                                                                                                                                                                                                                 
 

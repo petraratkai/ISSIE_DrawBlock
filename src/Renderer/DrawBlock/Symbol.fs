@@ -278,8 +278,8 @@ let addToPortModel (model: Model) (sym: Symbol) =
     let addOnePort (currentPorts: Map<string, Port>) (port: Port) =
         Map.add port.Id port currentPorts
     
-    let addedInputPorts = (model.Ports, sym.Compo.InputPorts) ||> List.fold addOnePort
-    (addedInputPorts, sym.Compo.OutputPorts) ||> List.fold addOnePort
+    let addedInputPorts = (model.Ports, sym.Component.InputPorts) ||> List.fold addOnePort
+    (addedInputPorts, sym.Component.OutputPorts) ||> List.fold addOnePort
 
 //-----------------------------------------GET PORT POSITION---------------------------------------------------
 // Function that calculates the positions of the ports 
@@ -301,7 +301,7 @@ let getPortPos (comp: Component) (port:Port) =
     let posY = (float(comp.H))* (( index + gap )/( float( ports.Length ) + 2.0*gap - 1.0))  // the ports are created so that they are equidistant
     {X = posX; Y = posY}
 let getPortPosModel (model: Model) (port:Port) =
-    getPortPos (Map.find (ComponentId port.HostId) model.Symbols).Compo port
+    getPortPos (Map.find (ComponentId port.HostId) model.Symbols).Component port
 
 
 //-----------------------------------------DRAWING HELPERS ---------------------------------------------------
@@ -478,7 +478,7 @@ let private renderSymbol =
         fun (props : RenderSymbolProps) ->
             let symbol = props.Symbol
             let ({X=fX; Y=fY}:XYPos) = symbol.Pos
-            g ([ Style [ Transform(sprintf "translate(%fpx, %fpx)" fX fY) ] ]) (compSymbol props.Symbol props.Symbol.Compo symbol.Colour symbol.ShowInputPorts symbol.ShowOutputPorts symbol.Opacity)
+            g ([ Style [ Transform(sprintf "translate(%fpx, %fpx)" fX fY) ] ]) (compSymbol props.Symbol props.Symbol.Component symbol.Colour symbol.ShowInputPorts symbol.ShowOutputPorts symbol.Opacity)
             
         , "Symbol"
         , equalsButFunctions
@@ -1165,18 +1165,76 @@ let rotateSideLeft (side:Edge) :Edge =
     | Bottom -> Right
     | Right -> Top
 
+let rotateSideRight (side:Edge) :Edge =
+    match side with
+    | Top -> Right
+    | Left -> Top
+    | Bottom -> Left
+    | Right -> Bottom
+
+let rotateAngleLeft (rotation: Rotation) : Rotation =
+    match rotation with
+    | Degree0 -> Degree90
+    | Degree90 -> Degree180
+    | Degree180 -> Degree270
+    | Degree270 -> Degree0
+
+let rotateAngleRight (rotation: Rotation) : Rotation =
+    match rotation with
+    | Degree0 -> Degree270
+    | Degree90 -> Degree0
+    | Degree180 -> Degree90
+    | Degree270 -> Degree180
 
 let rotateSymbolLeft (sym: Symbol) : Symbol =
     // update comp w h
     let h,w = getHAndW sym
-    let newXY = sym.Pos + { X = w/2.0 - h/2.0 ;Y = h/2.0 - w/2.0 }
+    let newXY = sym.Pos + { X = (float)w/2.0 - (float) h/2.0 ;Y = (float) h/2.0 - (float)w/2.0 }
 
     //need to update portOrientation and portOrder
-    let newPortOrientation = sym.PortOrientation |> Map.map rotateSideLeft
+    let newPortOrientation = 
+        sym.PortOrientation |> Map.map (fun id side -> rotateSideLeft side)
 
+    let rotatePortListLeft currPortOrder side =
+        sym.PortOrder |> Map.add (rotateSideLeft side ) sym.PortOrder[side]
 
+    let newPortOrder = 
+        (Map.empty, [Top; Left; Bottom; Right]) ||> List.fold rotatePortListLeft
 
+    let newSTransform = 
+        {sym.STransform with Rotation = rotateAngleLeft sym.STransform.Rotation}
 
+    { sym with 
+        Pos = newXY;
+        PortOrientation = newPortOrientation;
+        PortOrder = newPortOrder;
+        STransform =newSTransform;  
+    }
+
+let rotateSymbolRight (sym: Symbol) : Symbol =
+    // update comp w h
+    let h,w = getHAndW sym
+    let newXY = sym.Pos + { X = (float)w/2.0 - (float) h/2.0 ;Y = (float) h/2.0 - (float)w/2.0 }
+
+    //need to update portOrientation and portOrder
+    let newPortOrientation = 
+        sym.PortOrientation |> Map.map (fun id side -> rotateSideRight side)
+
+    let rotatePortListRight currPortOrder side =
+        sym.PortOrder |> Map.add (rotateSideRight side ) sym.PortOrder[side]
+
+    let newPortOrder = 
+        (Map.empty, [Top; Left; Bottom; Right]) ||> List.fold rotatePortListRight
+
+    let newSTransform = 
+        {sym.STransform with Rotation = rotateAngleRight sym.STransform.Rotation}
+
+    { sym with 
+        Pos = newXY;
+        PortOrientation = newPortOrientation;
+        PortOrder = newPortOrder;
+        STransform =newSTransform;  
+    }
 
 /// update function which displays symbols
 let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
@@ -1258,9 +1316,19 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
     | WriteMemoryType (compId, memory) ->
         (writeMemoryType model compId memory), Cmd.none
     | RotateLeft compList ->
-        failwithf "not implemented yet"
+        let rotatedSymbols = 
+            compList |> List.map (fun id-> rotateSymbolLeft model.Symbols[id])
+        let newSymbolMap = 
+            (model.Symbols, rotatedSymbols) 
+            ||> List.fold (fun currSymMap sym -> currSymMap |> Map.add sym.Id sym)
+        { model with Symbols = newSymbolMap }, Cmd.none
     | RotateRight compList ->
-        failwithf "not implemented yet"
+        let rotatedSymbols = 
+            compList |> List.map (fun id-> rotateSymbolRight model.Symbols[id])
+        let newSymbolMap = 
+            (model.Symbols, rotatedSymbols) 
+            ||> List.fold (fun currSymMap sym -> currSymMap |> Map.add sym.Id sym)
+        { model with Symbols = newSymbolMap }, Cmd.none
         
 // ----------------------interface to Issie----------------------------- //
 let extractComponent (symModel: Model) (sId:ComponentId) : Component = 
