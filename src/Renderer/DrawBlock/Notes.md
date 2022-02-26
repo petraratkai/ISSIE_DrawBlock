@@ -36,3 +36,7 @@ rotateLeft
 
 Same as rotateRight but rotating left instead and updating new STransforms
 
+createNewSymbol
+
+Created map helper functions to obtain the orientation and order map for MUX REGE Adder and DFFE blocks
+

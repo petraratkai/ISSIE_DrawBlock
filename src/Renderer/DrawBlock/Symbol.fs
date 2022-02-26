@@ -321,14 +321,34 @@ let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) :
 let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
     let id = JSHelpers.uuid ()
     let comp = makeComp pos comptype id label
+    let inputportlength = comp.InputPorts.Length
 
-    let inputportsid = List.map getId comp.InputPorts   // Create a list of all the input port ids
-    let outputportsid = List.map getId comp.OutputPorts // Create a list of all output port ids
-    let orientation = concatMap (portMap inputportsid Left) (portMap outputportsid Right) //concatentates the input and output port map
+    let getOrientationOrderMap (controlinput:Port) = 
+        let updatedinputport = List.removeAt inputportlength comp.InputPorts
+        let inputportsid = List.map getId updatedinputport   // Create a list of all the input port ids
+        let outputportsid = List.map getId comp.OutputPorts // Create a list of all output port ids
 
-    let inputportmap = Map[Left, inputportsid]
-    let outputportmap = Map[Right, outputportsid]
-    let portorder = concatMap inputportmap outputportmap
+        let orientation = 
+            let noselmap = concatMap (portMap inputportsid Left) (portMap outputportsid Right)
+            Map.add controlinput.Id Bottom noselmap
+        let portorder = Map[Left, inputportsid; Bottom, [controlinput.Id] ; Right, outputportsid]
+
+        orientation, portorder
+
+    let maps = match comptype with 
+                      | Mux2 | DFFE | RegisterE _ -> let control = comp.InputPorts[inputportlength]
+                                                     getOrientationOrderMap control
+
+                      | NbitsAdder _ -> let control = comp.InputPorts[0]
+                                        getOrientationOrderMap control
+                                        
+                      | _ -> let inputportsid = List.map getId comp.InputPorts   // Create a list of all the input port ids
+                             let outputportsid = List.map getId comp.OutputPorts // Create a list of all output port ids
+                             let orientation = concatMap (portMap inputportsid Left) (portMap outputportsid Right) //concatentates the input and output port map
+                             let portorder = Map[Left,inputportsid; Right,outputportsid]
+
+                             orientation, portorder
+
 
     { 
       Pos = { X = pos.X - float comp.W / 2.0; Y = pos.Y - float comp.H / 2.0 }
@@ -342,8 +362,8 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
       Opacity = 1.0
       Moving = false
       STransform = {Rotation=Degree0; flipped=false}
-      PortOrientation = orientation
-      PortOrder = portorder
+      PortOrientation = fst maps
+      PortOrder = snd maps
     }
 
 // Function to add ports to port model     
