@@ -30,6 +30,7 @@ In this function i take a symbol and rotate it left by the rotate parameter
 -If the rotation is 90 or 270 degrees, I swap width and height of the component and update position to alwyas show topleft
 Update STransform to the required orientation
 Added updateOrientation helper function which updates the edges of the ports depending on the orientation
+Added updatePortOrder helper functionw which updates the portorder field
 
 rotateLeft
 

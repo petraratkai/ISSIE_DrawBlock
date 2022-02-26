@@ -138,6 +138,16 @@ let mapOrientation stringlist (edgelist:Edge list) =
                     loop tl acc mapacc
     loop stringlist -1 emptymap
 
+let mapPortOrder (stringlist: string list list) (edgelist:Edge list) =  
+    let emptymap: Map<Edge,string list> = Map.empty
+    let rec loop inL acc map = 
+        match inL with
+        | [] -> map
+        | hd::tl -> let acc = acc + 1
+                    let mapacc = Map.add hd stringlist[acc] map
+                    loop tl acc mapacc
+    loop edgelist -1 emptymap
+
 // ----- helper functions for titles ----- //
 
 ///Insert titles compatible with greater than 1 buswidth
@@ -562,13 +572,21 @@ let rotateRight (symbol:Symbol) (rotate:Rotation) =
                | Right -> Right
 
 
-    //Update port orientation
+    ///Update port orientation
     let updatePortOrientation = 
         let portedges = Seq.toList symbol.PortOrientation.Values
         let newedges = portedges
                        |> List.map rotateSide
         let idlist = Seq.toList symbol.PortOrientation.Keys 
         mapOrientation idlist newedges
+
+    ///Update port order
+    let updatePortOrder = 
+        let portedges = Seq.toList symbol.PortOrder.Keys
+        let newedges = portedges
+                       |> List.map rotateSide
+        let portlist = Seq.toList symbol.PortOrder.Values
+        mapPortOrder portlist portedges
                        
     match rotate with
     | Degree90  -> let newXYpos = getTopLeft symbol centre
