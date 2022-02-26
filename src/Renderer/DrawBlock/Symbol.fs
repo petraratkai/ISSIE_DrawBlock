@@ -526,7 +526,45 @@ let rotateRight (symbol:Symbol) (rotate:Rotation) =
     match rotate with
     | Degree90  -> let newXYpos = getTopLeft symbol centre
                    let newcomp = {symbol.Component with H=width; W=height}
-                   let neworientation = {symbol.STransform with Rotation=Degree90}
+                   {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation}
+
+    | Degree180 -> {symbol with STransform=updateOrientation}    
+
+    | Degree270 -> let newXYpos = getTopLeft symbol centre
+                   let newcomp = {symbol.Component with H=width; W=height}
+                   {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation}
+
+///Symbol Rotation Left
+let rotateLeft (symbol:Symbol) (rotate:Rotation) = 
+    let currentorientation = symbol.STransform.Rotation
+    let centre = getCentre symbol
+    let height = symbol.Component.H
+    let width = symbol.Component.W
+
+    let updateOrientation =
+        match currentorientation with 
+        | Degree0 -> match rotate with
+                     | Degree90 -> {symbol.STransform with Rotation=Degree270}
+                     | Degree180 -> {symbol.STransform with Rotation=Degree180}
+                     | Degree270 -> {symbol.STransform with Rotation=Degree90}
+        | Degree90 -> match rotate with
+                      | Degree90 -> {symbol.STransform with Rotation=Degree0}
+                      | Degree180 -> {symbol.STransform with Rotation=Degree270}
+                      | Degree270 -> {symbol.STransform with Rotation=Degree180}
+
+        | Degree180 -> match rotate with
+                       | Degree90 -> {symbol.STransform with Rotation=Degree90}
+                       | Degree180 -> {symbol.STransform with Rotation=Degree0}
+                       | Degree270 -> {symbol.STransform with Rotation=Degree270}
+
+        | Degree270 -> match rotate with
+                       | Degree90 -> {symbol.STransform with Rotation=Degree180}
+                       | Degree180 -> {symbol.STransform with Rotation=Degree90}
+                       | Degree270 -> {symbol.STransform with Rotation=Degree0}
+                       
+    match rotate with
+    | Degree90  -> let newXYpos = getTopLeft symbol centre
+                   let newcomp = {symbol.Component with H=width; W=height}
                    {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation}
 
     | Degree180 -> {symbol with STransform=updateOrientation}    
