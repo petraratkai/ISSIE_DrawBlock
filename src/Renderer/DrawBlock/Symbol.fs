@@ -449,7 +449,7 @@ let APortOffsetMap (symbol:Symbol) =
     *)           
 
 
-let getPortPos (comp: Component) (port:Port) = 
+let getPortPos (symbol: Symbol) (port:Port) = 
     let (ports, posX) =
         if port.PortType = (PortType.Input) then
             (comp.InputPorts, 0.0)
@@ -483,21 +483,21 @@ let private portText x y name portType=
     (addText xPos (y - 7.0) name test "normal" "12px")
 
 // Print the name of each port 
-let private drawPortsText (portList: Port List) (listOfNames: string List) (comp: Component)= 
+let private drawPortsText (portList: Port List) (listOfNames: string List) (symbol: Symbol)= 
     if listOfNames.Length < 1
         then  []
         else 
             [0..(portList.Length-1)]
-            |> List.map2 (fun name x -> (portText (getPortPos comp portList[x]).X (getPortPos comp portList[x]).Y name (portList.Head.PortType))) listOfNames 
+            |> List.map2 (fun name x -> (portText (getPortPos symbol portList[x]).X (getPortPos symbol portList[x]).Y name (portList.Head.PortType))) listOfNames 
             |> List.collect id
 
 // Function to draw ports using getPortPos. The ports are equidistant     
-let private drawPorts (portList: Port List) (printPorts:bool) (comp: Component)= 
+let private drawPorts (portList: Port List) (printPorts:bool) (symbol: Symbol)= 
     if (portList.Length)  < 1 
     then []
     else
         if printPorts
-        then [0..(portList.Length-1)] |> List.collect (fun x -> (portCircles (getPortPos comp portList[x]).X (getPortPos comp portList[x]).Y))
+        then [0..(portList.Length-1)] |> List.collect (fun x -> (portCircles (getPortPos symbol portList[x]).X (getPortPos symbol portList[x]).Y))
         else []
 
 //------------------------------HELPER FUNCTIONS FOR DRAWING SYMBOLS-------------------------------------
@@ -796,10 +796,10 @@ let compSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:
    
     // Put everything together 
     
-    (drawPorts comp.OutputPorts showOutputPorts comp)
-    |> List.append (drawPorts comp.InputPorts showInputPorts comp)
-    |> List.append (drawPortsText comp.InputPorts (fst(portDecName comp)) comp)
-    |> List.append (drawPortsText comp.OutputPorts (snd(portDecName comp)) comp)  
+    (drawPorts comp.OutputPorts showOutputPorts symbol)
+    |> List.append (drawPorts comp.InputPorts showInputPorts symbol)
+    |> List.append (drawPortsText comp.InputPorts (fst(portDecName comp)) symbol)
+    |> List.append (drawPortsText comp.OutputPorts (snd(portDecName comp)) symbol)  
     |> List.append (addText (float halfW) (+5.0) (gateDecoderType comp) "middle" "bold" "14px") 
     |> List.append (addText (float halfW) (-20.0) comp.Label "middle" "normal" "16px")
     |> List.append (additions)
