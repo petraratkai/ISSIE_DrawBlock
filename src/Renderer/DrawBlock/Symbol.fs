@@ -591,13 +591,13 @@ let rotateRight (symbol:Symbol) (rotate:Rotation) =
     match rotate with
     | Degree90  -> let newXYpos = getTopLeft symbol centre
                    let newcomp = {symbol.Component with H=width; W=height}
-                   {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation}
+                   {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation; PortOrientation=updatePortOrientation; PortOrder=updatePortOrder}
 
     | Degree180 -> {symbol with STransform=updateOrientation}    
 
     | Degree270 -> let newXYpos = getTopLeft symbol centre
                    let newcomp = {symbol.Component with H=width; W=height}
-                   {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation}
+                   {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation; PortOrientation=updatePortOrientation; PortOrder=updatePortOrder}
 
 ///Symbol Rotation Left
 let rotateLeft (symbol:Symbol) (rotate:Rotation) = 
@@ -605,6 +605,71 @@ let rotateLeft (symbol:Symbol) (rotate:Rotation) =
     let centre = getCentre symbol
     let height = symbol.Component.H
     let width = symbol.Component.W
+
+    ///Update orientation of symbol to give final orientation
+    let updateOrientation =
+        match currentorientation with 
+        | Degree0 -> match rotate with
+                     | Degree90 -> {symbol.STransform with Rotation=Degree90}
+                     | Degree180 -> {symbol.STransform with Rotation=Degree180}
+                     | Degree270 -> {symbol.STransform with Rotation=Degree270}
+        | Degree90 -> match rotate with
+                      | Degree90 -> {symbol.STransform with Rotation=Degree180}
+                      | Degree180 -> {symbol.STransform with Rotation=Degree270}
+                      | Degree270 -> {symbol.STransform with Rotation=Degree0}
+
+        | Degree180 -> match rotate with
+                       | Degree90 -> {symbol.STransform with Rotation=Degree270}
+                       | Degree180 -> {symbol.STransform with Rotation=Degree0}
+                       | Degree270 -> {symbol.STransform with Rotation=Degree90}
+
+        | Degree270 -> match rotate with
+                       | Degree90 -> {symbol.STransform with Rotation=Degree0}
+                       | Degree180 -> {symbol.STransform with Rotation=Degree90}
+                       | Degree270 -> {symbol.STransform with Rotation=Degree180}
+
+    ///Updates the edges based on the final orientation
+    let rotateSide (edge:Edge) = 
+        match updateOrientation.Rotation with
+        | Degree90 -> match edge with 
+                      | Top -> Left
+                      | Left -> Bottom
+                      | Bottom -> Right
+                      | Right -> Top
+
+        | Degree180 -> match edge with
+                       | Top -> Bottom
+                       | Left -> Right
+                       | Bottom -> Top
+                       | Right -> Left
+
+        | Degree270 -> match edge with
+                       | Top -> Right
+                       | Left -> Top
+                       | Bottom -> Left
+                       | Right -> Bottom
+        | _ -> match edge with
+               | Top -> Top
+               | Left -> Left
+               | Bottom -> Bottom
+               | Right -> Right
+
+
+    ///Update port orientation
+    let updatePortOrientation = 
+        let portedges = Seq.toList symbol.PortOrientation.Values
+        let newedges = portedges
+                       |> List.map rotateSide
+        let idlist = Seq.toList symbol.PortOrientation.Keys 
+        mapOrientation idlist newedges
+
+    ///Update port order
+    let updatePortOrder = 
+        let portedges = Seq.toList symbol.PortOrder.Keys
+        let newedges = portedges
+                       |> List.map rotateSide
+        let portlist = Seq.toList symbol.PortOrder.Values
+        mapPortOrder portlist portedges
 
     let updateOrientation =
         match currentorientation with 
@@ -630,13 +695,13 @@ let rotateLeft (symbol:Symbol) (rotate:Rotation) =
     match rotate with
     | Degree90  -> let newXYpos = getTopLeft symbol centre
                    let newcomp = {symbol.Component with H=width; W=height}
-                   {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation}
+                   {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation ;PortOrientation=updatePortOrientation; PortOrder=updatePortOrder}
 
     | Degree180 -> {symbol with STransform=updateOrientation}    
 
     | Degree270 -> let newXYpos = getTopLeft symbol centre
                    let newcomp = {symbol.Component with H=width; W=height}
-                   {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation}
+                   {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation ; PortOrientation=updatePortOrientation; PortOrder=updatePortOrder}
 
 /// --------------------------------------- SYMBOL DRAWING ------------------------------------------------------ ///   
 
