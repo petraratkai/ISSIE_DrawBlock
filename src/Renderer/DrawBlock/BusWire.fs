@@ -1069,7 +1069,7 @@ let reverseSegments (segs:Segment list) =
 //  S0.FH  S1.0V  S2.H  S3.V  S4.H  S5.0V S6.FH
 //
 // "Complex" case where output.X > input.X and wire ends back for 5 segment autoroute
-//  S0.FH  S1.V  S2.H  S3.V  S4.H  S5.0V S6.FH (not sure if H and V are correct here) // pretty sure this is wrong???
+//  S0.FH  S1.V  S2.H  S3.V  S4.H  S5.0V S6.FH (not sure if H and V are correct here) 
 //
 // To determine adjustment on End change we just reverse the segment and apply the Start change algorithm
 // Adjustment => reverse list of segments, swap Start and End, and alter the sign of all coordinates
@@ -1110,19 +1110,19 @@ let partialAutoRoute (segs: Segment list) (newPortPos: XYPos) = // This is a pha
         |> List.takeWhile (fun seg -> seg.Mode = Auto)
         |> List.length
         |> (fun n -> if n > 5 then None else Some (n + 1))
-    let scaleBeforeSegmentEnd segIndex = // Gonna need to figure out wtf this bs does
+    let scaleBeforeSegmentEnd segIndex = // Re-routes to the manual segment
         let seg = segs[segIndex]
-        let fixedPt = getAbsXY seg.End
+        let fixedPt = getAbsXY seg.End // The fixed point (doesn't move, end of manual wire)
         let scale x fx nx wx =
-            if nx = fx then x else ((abs x - fx)*(nx-fx)/(abs wx - fx) + fx) * float (sign x)
-        let startPos = if segIndex = 1 then portPos else wirePos
-        let newStartPos = if segIndex = 1 then newPortPos else newWirePos
+            if nx = fx then x else ((abs x - fx)*(nx-fx)/(abs wx - fx) + fx) * float (sign x) // Magic transform thing to adjust the absolute segment positions (the sign multiply keeps it manual / auto)
+        let startPos = if segIndex = 1 then portPos else wirePos // Part of the magic transform thing
+        let newStartPos = if segIndex = 1 then newPortPos else newWirePos // Part of the magic transform thing
         let scaleX x = scale x fixedPt.X newStartPos.X startPos.X
         let scaleY y = scale y fixedPt.Y newStartPos.Y startPos.Y
         match List.splitAt (segIndex+1) segs, segIndex with
-        | ((scaledSegs), otherSegs), 1 ->
+        | ((scaledSegs), otherSegs), 1 -> // Must also apply magic transform the nub
             Some ((List.map (transformSeg scaleX scaleY) scaledSegs) @ otherSegs)
-        | ((firstSeg :: scaledSegs), otherSegs), _ ->
+        | ((firstSeg :: scaledSegs), otherSegs), _ -> // Moves the nub, magic transforms the rest
             Some ((moveAll (posAdd diff) 0 [firstSeg] @ List.map (transformSeg scaleX scaleY) scaledSegs) @ otherSegs)
         | _ -> None
 
@@ -1130,20 +1130,20 @@ let partialAutoRoute (segs: Segment list) (newPortPos: XYPos) = // This is a pha
         let finalPt = segs[6].Start
         let oldTop x = topology (if index = 1 then portPos else wirePos) x
         let newTop x = topology (if index = 1 then newPortPos else newWirePos) x
-        if oldTop finalPt <> newTop finalPt then
+        if oldTop finalPt <> newTop finalPt then // Ensures that the moved port remains in the same quadrant, taking the origin as the fixed point
             // always aandon manual routing
             None 
         else
             let manSegEndPt = segs[index].End
             let oldT = oldTop manSegEndPt
             let newT = newTop manSegEndPt
-            if oldT = newT then
+            if oldT = newT then 
                 Some index
-            else
+            else // Basically if the change now requires a different segment of wire ("3" seg to "5" seg or "5" seg to "3" seg) (i think this would almost always be handled by above case?)
                 None
     lastAutoIndex
-    |> Option.bind checkTopology
-    |> Option.bind scaleBeforeSegmentEnd
+    |> Option.bind checkTopology // If we change quadrant / require different wiring we autoroute instaed
+    |> Option.bind scaleBeforeSegmentEnd // Magic transformation bullshit that does partial autorouting
 
 /// Moves a wire by the XY amounts specified by displacement
 let moveWire (wire: Wire) (displacement: XYPos) =

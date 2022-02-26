@@ -76,6 +76,11 @@ These issues have been addressed in my refactored code by completely removing `g
 **segmentIntersectsBoundingBoxCoordinates**
 This function was one of the sub-functions called by `getClickedSegment` (see call graph above), and returns *how* a segment intersects a bounding box using a tuple of (bool, XYPos option). This return type is unintuitive, is not well reflected by the function name, and is never even properly used. In both functions that call it, it is simply being used to check *if* segments intersect a bounding box, and not *how*. This means that the entire function is not needed, as `segmentIntersectsBoundingBox` can be used instead.
 
+**partialAutoRoute / topology**
+This function is part of the top level `updateWire` function, which has the following call graph:
+![]( sts219/updateWire.png)
+This function is too long, and uses many sub-function / other functions, some of which have particularly bad names. `topology` is one of the worst offenders, with no documentation as to what the function is meant to do. The `scaleBeforeSegmentEnd` sub-function is also very confusing, with unhelpful variable names and long lines of code.
+
 #### Other problems
 
 State **concisely** Issues with existing code, or in refactoring for new types, that do not fit into per function list. 
