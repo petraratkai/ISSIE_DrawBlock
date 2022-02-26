@@ -21,3 +21,11 @@ helper function centreOffset to calculate a vector offset from the centre depend
 Inserted helper functions into APortOffsetsMap to reduce the number of parameters
 
 Added helper function getCentre to get the centre of a symbol with the symbol width and height
+
+Task 1
+
+rotateLeft
+
+In this function i take a symbol and rotate it left by the rotate parameter
+-If the rotation is 90 or 270 degrees, I swap width and height of the component and update position to alwyas show topleft
+Update STransform to the required orientation
