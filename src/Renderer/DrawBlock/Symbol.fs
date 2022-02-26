@@ -874,7 +874,21 @@ let changeConstantf (symModel:Model) (compId:ComponentId) (constantVal:int64) (c
 
 /// initialises the port positions of a component that are needed in Symbol
 let initPortOrientation (comp: Component) =
-    //for now move inputs to right outputs to left
+    
+    let movePortToBottom (res: Map<Edge, string list>*Map<string, Edge>) index =
+        let leftPorts = (fst res)[Left]
+        let portId = leftPorts |> List.item index //get id of sel
+
+        let newBottomPorts = [portId]
+        let newLeftPorts = (fst res)[Left] |> List.removeAt index
+        let newPortOrder =
+            fst res
+            |> Map.add Bottom newBottomPorts
+            |> Map.add Left newLeftPorts
+        let newPortOrientation =
+            snd res |> Map.add portId Bottom
+        newPortOrder, newPortOrientation
+
     let addPortToMaps (edge: Edge) (portOrder, portOrientation) (port: Port) =
         let portOrder' = portOrder |> Map.add edge (portOrder[edge] @ [port.Id])
         portOrder', (portOrientation |> Map.add port.Id edge)
@@ -888,10 +902,13 @@ let initPortOrientation (comp: Component) =
         ||> List.fold (addPortToMaps Right)
     match comp.Type with //need to put some ports to different edges
     | Mux2 -> //need to remove select port from left and move to right
-        let leftPorts = (fst res)[Left]
-        let portId = leftPorts |> List.item 2 //get id of sel
-        //let portOrientation = (snd res) |> Map.add Bottom portId
-        //let portOrder = (snd res) |> Map.add portId
+        movePortToBottom res 2
+    | NbitsAdder _ -> 
+        movePortToBottom res 0
+    | DFFE ->
+        movePortToBottom res 1
+    | RegisterE _ ->
+        movePortToBottom res 1
     | _ -> res
 
 /// Given a model and a list of component ids deletes the specified components from the model and returns the updated model
@@ -1140,6 +1157,26 @@ let inline writeMemoryType model compId memory =
     let newSymbols = Map.add compId { symbol with Component = newComp } model.Symbols
     
     { model with Symbols = newSymbols }
+
+let rotateSideLeft (side:Edge) :Edge =
+    match side with
+    | Top -> Left
+    | Left -> Bottom
+    | Bottom -> Right
+    | Right -> Top
+
+
+let rotateSymbolLeft (sym: Symbol) : Symbol =
+    // update comp w h
+    let h,w = getHAndW sym
+    let newXY = sym.Pos + { X = w/2.0 - h/2.0 ;Y = h/2.0 - w/2.0 }
+
+    //need to update portOrientation and portOrder
+    let newPortOrientation = sym.PortOrientation |> Map.map rotateSideLeft
+
+
+
+
 
 /// update function which displays symbols
 let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
