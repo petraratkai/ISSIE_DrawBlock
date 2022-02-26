@@ -127,6 +127,17 @@ let centreOffset (centre:XYPos) (edge:Edge) (commonpos:float) pos =
 
     | Top | Bottom -> {X=float(pos-centre.X) ; Y=float(commonpos - centre.Y)}
 
+
+let mapOrientation stringlist (edgelist:Edge list) =  
+    let emptymap: Map<string,Edge> = Map.empty
+    let rec loop inL acc map = 
+        match inL with
+        | [] -> map
+        | hd::tl -> let acc = acc + 1
+                    let mapacc = Map.add hd edgelist[acc] map
+                    loop tl acc mapacc
+    loop stringlist -1 emptymap
+
 // ----- helper functions for titles ----- //
 
 ///Insert titles compatible with greater than 1 buswidth
@@ -197,7 +208,7 @@ let portDecName (comp:Component) = //(input port names, output port names)
     | AsyncRAM1 _ -> (["Addr"; "Din";"Wen" ],["Dout"])
     | DFF -> (["D"],["Q"])
     | DFFE -> (["D";"EN"],["Q"])
-    | Mux2 -> (["0"; "1";"SEL"],["OUT"])
+    | Mux2 -> (["0"; "1";"SEL"],["OUT"])   
     | Demux2 -> (["IN" ; "SEL"],["0"; "1"])
     | NbitsXor _ -> (["P"; "Q"], ["Out"])
     | Custom x -> (List.map fst x.InputLabels), (List.map fst x.OutputLabels)
@@ -502,6 +513,7 @@ let rotateRight (symbol:Symbol) (rotate:Rotation) =
     let height = symbol.Component.H
     let width = symbol.Component.W
 
+    ///Update orientation of symbol to give final orientation
     let updateOrientation =
         match currentorientation with 
         | Degree0 -> match rotate with
@@ -522,6 +534,41 @@ let rotateRight (symbol:Symbol) (rotate:Rotation) =
                        | Degree90 -> {symbol.STransform with Rotation=Degree0}
                        | Degree180 -> {symbol.STransform with Rotation=Degree90}
                        | Degree270 -> {symbol.STransform with Rotation=Degree180}
+
+    ///Updates the edges based on the final orientation
+    let rotateSide (edge:Edge) = 
+        match updateOrientation.Rotation with
+        | Degree90 -> match edge with 
+                      | Top -> Right
+                      | Left -> Top
+                      | Bottom -> Left
+                      | Right -> Bottom
+
+        | Degree180 -> match edge with
+                       | Top -> Bottom
+                       | Left -> Right
+                       | Bottom -> Top
+                       | Right -> Left
+
+        | Degree270 -> match edge with
+                       | Top -> Left
+                       | Left -> Bottom
+                       | Bottom -> Right
+                       | Right -> Top
+        | _ -> match edge with
+               | Top -> Top
+               | Left -> Left
+               | Bottom -> Bottom
+               | Right -> Right
+
+
+    //Update port orientation
+    let updatePortOrientation = 
+        let portedges = Seq.toList symbol.PortOrientation.Values
+        let newedges = portedges
+                       |> List.map rotateSide
+        let idlist = Seq.toList symbol.PortOrientation.Keys 
+        mapOrientation idlist newedges
                        
     match rotate with
     | Degree90  -> let newXYpos = getTopLeft symbol centre
