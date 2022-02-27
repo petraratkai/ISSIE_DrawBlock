@@ -114,7 +114,22 @@ let getEdge (rotation: Rotation) =
     | Degree270 -> Bottom, Top
 
 let getCentre (symbol:Symbol) = 
-    {X=symbol.Pos.X + float(symbol.Component.W/2) ; Y=symbol.Pos.Y - float(symbol.Component.H/2)}
+    match symbol.Component.Type with 
+    | Mux2 -> match symbol.STransform.Rotation with
+              | Degree0 | Degree270 -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; 
+                                        Y=symbol.Pos.Y - float(symbol.Component.H/2)}  
+              | Degree90 -> {X=symbol.Pos.X+0.3*float(symbol.Component.W); 
+                             Y=symbol.Pos.Y - float(symbol.Component.H/2)}
+              | Degree180 -> {X=symbol.Pos.X + float(symbol.Component.W/2);
+                              Y=symbol.Pos.Y-0.3*float(symbol.Component.H)}
+    | Demux2 -> match symbol.STransform.Rotation with
+                | Degree90 | Degree180 -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; 
+                                           Y=symbol.Pos.Y - float(symbol.Component.H/2)}  
+                | Degree0 -> {X=symbol.Pos.X + float(symbol.Component.W/2);
+                              Y=symbol.Pos.Y-0.3*float(symbol.Component.H)}
+                | Degree270 -> {X=symbol.Pos.X+0.3*float(symbol.Component.W); 
+                                Y=symbol.Pos.Y - float(symbol.Component.H/2)}
+    | _ -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; Y=symbol.Pos.Y - float(symbol.Component.H/2)}
 
 let getTopLeft (symbol:Symbol) (centre:XYPos) = 
     {X=centre.X-float(symbol.Component.H/2); Y=centre.Y+float(symbol.Component.W/2)}
@@ -464,16 +479,28 @@ let inverseMap map =
     |> List.map (fun (k,v) -> (v,k))
     |> Map.ofList
 
-let getTopLeftMux (symbol:Symbol) = 
-    let orientation = symbol.STransform.Rotation
-    let centre = getCentre symbol
+let getTopLeft (symbol:Symbol) (centre:XYPos) (orientation:Rotation) = 
+    let symboltype = symbol.Component.Type
     let width = symbol.Component.W
     let height = symbol.Component.H
-    match orientation with
-    | Degree90 -> {symbol.Pos with X=centre.X-0.3*float(height); Y=centre.Y+float(width/2)}
-    | Degree180 -> {symbol.Pos with Y=symbol.Pos.Y-0.2*float(height)}
-    | Degree270 -> {symbol.Pos with X=centre.X-0.5*float(height) ; Y=centre.Y+0.5*float(width)}
-    | _ -> {symbol.Pos with X=symbol.Pos.X ; Y=symbol.Pos.Y}
+    match symboltype with
+    | Demux2 -> match orientation with
+              | Degree90 -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
+                                             Y=centre.Y+0.5*float(width)}
+
+              | Degree180 -> {symbol.Pos with X=centre.X-0.5*float(width);
+                                              Y=centre.Y+0.5*float(height)}
+
+              | Degree270 -> {symbol.Pos with X=centre.X-0.3*float(height); 
+                                              Y=centre.Y+float(width/2)}
+              | Degree0 -> {symbol.Pos with Y=symbol.Pos.Y-0.2*float(height)}
+    | Mux2 -> match orientation with
+               | Degree90 -> {symbol.Pos with X=centre.X-0.3*float(height); Y=centre.Y+float(width/2)}
+               | Degree180 -> {symbol.Pos with Y=symbol.Pos.Y-0.2*float(height)}
+               | Degree270 -> {symbol.Pos with X=centre.X-0.5*float(height) ; Y=centre.Y+0.5*float(width)}
+               | _ -> {symbol.Pos with X=symbol.Pos.X ; Y=symbol.Pos.Y}
+    | _ -> {X=centre.X-float(symbol.Component.H/2); 
+            Y=centre.Y+float(symbol.Component.W/2)}
 
 ///Symbol Rotation Right
 let rotateRight (symbol:Symbol) (rotateby:Rotation) = 
@@ -544,20 +571,14 @@ let rotateRight (symbol:Symbol) (rotateby:Rotation) =
         |> Map.map (fun portlist edge -> rotateSide edge) 
         |> inverseMap
         
-    match rotateby with
-    | Degree90 | Degree270  -> let newXYpos = match comptype with   
-                                              | Mux2 -> getTopLeftMux symbol
-                                              | _ -> getTopLeft symbol centre
-                               let newcomp = {symbol.Component with H=width; W=height}
-                               {symbol with Pos=newXYpos; 
-                                            Component=newcomp; 
-                                            STransform=updateOrientation; 
-                                            PortOrientation=updatePortOrientation; 
-                                            PortOrder=updatePortOrder}
+    let newXYpos =  getTopLeft symbol centre updateOrientation.Rotation
+    let newcomp = {symbol.Component with H=width; W=height}
 
-    | Degree180 -> {symbol with STransform=updateOrientation ; 
-                                PortOrientation=updatePortOrientation ; 
-                                PortOrder=updatePortOrder}    
+    {symbol with Pos=newXYpos
+                 Component=newcomp
+                 STransform=updateOrientation; 
+                 PortOrientation=updatePortOrientation; 
+                 PortOrder=updatePortOrder}                 
 
 ///Symbol Rotation Left
 let rotateLeft (symbol:Symbol) (rotate:Rotation) = 
@@ -628,35 +649,14 @@ let rotateLeft (symbol:Symbol) (rotate:Rotation) =
         |> Map.map (fun portlist edge -> rotateSide edge) 
         |> inverseMap
 
-    let updateOrientation =
-        match currentorientation with 
-        | Degree0 -> match rotate with
-                     | Degree90 -> {symbol.STransform with Rotation=Degree270}
-                     | Degree180 -> {symbol.STransform with Rotation=Degree180}
-                     | Degree270 -> {symbol.STransform with Rotation=Degree90}
-        | Degree90 -> match rotate with
-                      | Degree90 -> {symbol.STransform with Rotation=Degree0}
-                      | Degree180 -> {symbol.STransform with Rotation=Degree270}
-                      | Degree270 -> {symbol.STransform with Rotation=Degree180}
+    let newXYpos =  getTopLeft symbol centre updateOrientation.Rotation
+    let newcomp = {symbol.Component with H=width; W=height}
 
-        | Degree180 -> match rotate with
-                       | Degree90 -> {symbol.STransform with Rotation=Degree90}
-                       | Degree180 -> {symbol.STransform with Rotation=Degree0}
-                       | Degree270 -> {symbol.STransform with Rotation=Degree270}
-
-        | Degree270 -> match rotate with
-                       | Degree90 -> {symbol.STransform with Rotation=Degree180}
-                       | Degree180 -> {symbol.STransform with Rotation=Degree90}
-                       | Degree270 -> {symbol.STransform with Rotation=Degree0}
-                       
-    match rotate with
-    | Degree90 | Degree270 -> let newXYpos = match comptype with   
-                                             | Mux2 -> getTopLeftMux symbol
-                                             | _ -> getTopLeft symbol centre
-                              let newcomp = {symbol.Component with H=width; W=height}
-                              {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation ;PortOrientation=updatePortOrientation; PortOrder=updatePortOrder}
-
-    | Degree180 -> {symbol with STransform=updateOrientation}    
+    {symbol with Pos=newXYpos
+                 Component=newcomp
+                 STransform=updateOrientation; 
+                 PortOrientation=updatePortOrientation; 
+                 PortOrder=updatePortOrder}                         
 
 /// --------------------------------------- SYMBOL DRAWING ------------------------------------------------------ ///   
 
