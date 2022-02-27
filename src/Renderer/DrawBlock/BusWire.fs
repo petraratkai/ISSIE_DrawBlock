@@ -60,6 +60,7 @@ type Wire =
         StartPos : XYPos
         EndPos : XYPos
         InitialOrientation : Orientation
+        EndOrientation : Orientation
     }
 
     with static member stickLength = 16.0
@@ -100,6 +101,17 @@ type Msg =
     | ResetModel // For Issie Integration
     | LoadConnections of list<Connection> // For Issie Integration
 
+/// Returns an XYPos shifted by length in an X or Y direction defined by orientation.
+let addLengthToPos (position: XYPos) orientation length =
+    match orientation with
+    | Horizontal -> { position with X = position.X + length }
+    | Vertical -> { position with Y = position.Y + length }
+
+/// Returns the opposite orientation of the input orientation. (i.e. Horizontal becomes Vertical and vice-versa)
+let switchOrientation =
+    function
+    | Horizontal -> Vertical
+    | Vertical -> Horizontal
 
 /// <summary> Applies a function which requires the segment start and end positions to the segments in a wire, 
 /// threading an accumulator argument through the computation. Essentially a List.fold applied to the list of segments of a wire, but with access to each segment's absolute positions. </summary>
@@ -114,10 +126,8 @@ let foldOverSegs folder state wire =
     let initOrientation = wire.InitialOrientation
     ((state, initPos, initOrientation), wire.Segments)
     ||> List.fold (fun (currState, currPos, currOrientation) seg -> 
-        let (nextPos, nextOrientation) = 
-            match currOrientation with
-            | Horizontal -> { currPos with X = currPos.X + seg.Length }, Vertical
-            | Vertical -> { currPos with Y = currPos.Y + seg.Length }, Horizontal
+        let nextPos = addLengthToPos currPos currOrientation seg.Length
+        let nextOrientation = switchOrientation currOrientation
         let nextState = folder currPos nextPos currState seg
         (nextState, nextPos, nextOrientation))
     |> (fun (state, _, _) -> state)
@@ -830,14 +840,54 @@ let getClickedSegment (model : Model) (wireId : ConnectionId) (mouse : XYPos) : 
     | Some (segmentId, _) -> segmentId
     | None -> failwithf "getClosestSegment was given a wire with no segments" // Should never happen
 
-/// Returns a distance for a wire move that has been reduced if needed to enforce minimum segment lengths.
+/// Returns a distance for a wire move that has been reduced if needed to enforce minimum first/last segment lengths.
+let getSafeDistanceForMove (segments: Segment list) (index: int) (distance: float) =
+    /// Returns a list of segments up to the first non-zero segment perpendicular to the segment leaving the port
+    let findBindingSegments portIndex segList = 
+        segList
+        |> List.takeWhile (fun seg -> seg.Index % 2 = portIndex % 2 || seg.Length = 0)
+
+    let findBindingIndex boundSegList =
+        boundSegList
+        |> List.length
+
+    let findDistanceFromPort boundSegList =
+        (0., boundSegList)
+        ||> List.fold (fun dist seg -> dist + seg.Length) // Since the segments in perpendicular direction are 0 we can just sum up all the segments as if they are in the same direction
+   
+    let reduceDistance bindingSegs distance = 
+        if findBindingIndex bindingSegs <> index then 
+            distance
+        else
+            findDistanceFromPort bindingSegs
+            |> (fun dist -> 
+                    if sign dist = -1 then 
+                        max distance (dist + Wire.stickLength/2.)
+                    else 
+                        min distance (dist - Wire.stickLength/2.))
+
+    let bindingInputSegs = 
+        segments
+        |> findBindingSegments 0
+
+    let bindingOutputSegs =
+        List.rev segments
+        |> findBindingSegments (segments.Length - 1)
+
+    distance
+    |> reduceDistance bindingInputSegs
+    |> reduceDistance bindingOutputSegs
+            
+/// TODO: REIMPLEMENT THIS, Bound distances so that you cant get too close to segment edges (sticklength / 2)
+/// This version ensures all wires are of a minimum length
+(*
 let getSafeDistanceForMove (segments: Segment list) (index: int) (distance: float) =
     let reduceDistance maxDistance =
         if sign maxDistance = -1 then
             max maxDistance
         else 
             min maxDistance
-
+    
     if index <= 0 || index >= segments.Length - 1 then
         0. // We cannot move the first or last segment in a wire
     else
@@ -849,6 +899,7 @@ let getSafeDistanceForMove (segments: Segment list) (index: int) (distance: floa
         distance
         |> reduceDistance prevMaxDistance
         |> reduceDistance nextMaxDistance
+*)
 
 /// Returns a wire containing the updated list of segments after a segment is moved by 
 /// a specified distance. The moved segment is tagged as manual so that it is no longer auto-routed.
@@ -1043,13 +1094,10 @@ let autorouteWire (model: Model) (wire: Wire) : Wire =
     { wire with
           Segments = segments
           InitialOrientation = getOrientation startEdge
+          EndOrientation = getOrientation destEdge
           StartPos = startPos
           EndPos = destPos }
 
-/// Reverses a segment list so that it may be processed in the opposite direction. This function is self-inverse.
-let reverseSegments (segs:Segment list) =
-    List.rev segs
-    |> List.map (fun seg -> {seg with Length = -seg.Length})
 
 //
 //  ====================================================================================================================
@@ -1079,71 +1127,114 @@ let reverseSegments (segs:Segment list) =
 //
 // ======================================================================================================================
 
-let inline moveAll (mover: XYPos -> XYPos) (n : int) = // moves both start and end
-    List.mapi (fun i (seg:Segment) -> if i = n then {seg with Start = mover seg.Start; End = mover seg.End} else seg)
+/// Transforms the segments in segList. Applies tX to the horizontal segments and tY to the vertical segments.
+let transformSegments tX tY (initialOrientation: Orientation) segList =
+    // If a segment is horizontal, applies X transformation, if it is vertical applies Y transformation
+    let transformSeg orientation (seg: Segment) =
+        match orientation with
+        | Horizontal -> { seg with Length = tX seg.Length }
+        | Vertical -> { seg with Length = tY seg.Length }
 
-let  transformXY tX tY (pos: XYPos) = // transforms the x and y values of a pos
-    {pos with X = tX pos.X; Y = tY pos.Y}
+    ((initialOrientation, []), segList)
+    ||> List.fold (fun (orientation, segs) seg ->
+        (switchOrientation orientation, segs @ [ transformSeg orientation seg ]))
+    |> snd
 
-let transformSeg tX tY (seg: Segment) = // Applies the tX and tY tranformations to the XY positions in the segment
-    let trans = transformXY tX tY
-    {seg with Start = trans seg.Start; End = trans seg.End }
+/// Returns an anonymous record indicating the position of pos relative to origin.
+/// The isAbove field indicates whether pos is above (true) or below (false) origin.
+/// The isLeft field indicates whether pos is to the left (true) or to the right (false) of origin.
+let relativePosition (origin: XYPos) (pos:XYPos) = 
+    {| isLeft = origin.X > pos.X; isAbove = origin.Y > pos.Y |}
 
-/// Returns a tuple (X, Y), where X and Y are +/- 1. This encodes the following:
-/// If pos1 has a bigger X or Y value than pos 2, the corresponding term in the tuple will be +1,
-/// else the value will be -1. 
-let topology (pos1: XYPos) (pos2:XYPos) = // This name is so bad
-    sign (abs pos1.X - abs pos2.X), sign (abs pos1.Y - abs pos2.Y)
+/// Reverses a wire so that it may be processed in the opposite direction. This function is self-inverse.
+let reverseWire (wire: Wire) =
+    let newSegs =
+        List.rev wire.Segments
+        |> List.indexed // I don't think we need to reverse the indices, test
+        |> List.map (fun (i, seg) -> { seg with Length = -seg.Length; Index = i })
 
-/// Returns None if full autoroute is required or Some segments with initial part of the segment list autorouted
-/// up till the first dragged (manually routed) segment.
-/// ReverseFun must equal not or id. not => the segments go from input to output (reverse of normal).
-/// This allows the same code to work on both ends of the wire, with segment reversal done outside this
-/// function to implement input -> output direction.
-let partialAutoRoute (segs: Segment list) (newPortPos: XYPos) = // This is a phat functions
-    let wirePos = segs[0].End
-    let portPos = segs[0].Start
-    let newWirePos = {newPortPos with X = newPortPos.X + (abs wirePos.X - portPos.X) }
-    let (diff:XYPos) = {X=newPortPos.X-portPos.X; Y= newPortPos.Y - portPos.Y}
-    let lastAutoIndex =
-        segs
-        |> List.takeWhile (fun seg -> seg.Mode = Auto)
-        |> List.length
-        |> (fun n -> if n > 5 then None else Some (n + 1))
-    let scaleBeforeSegmentEnd segIndex = // Re-routes to the manual segment
-        let seg = segs[segIndex]
-        let fixedPt = getAbsXY seg.End // The fixed point (doesn't move, end of manual wire)
-        let scale x fx nx wx =
-            if nx = fx then x else ((abs x - fx)*(nx-fx)/(abs wx - fx) + fx) * float (sign x) // Magic transform thing to adjust the absolute segment positions (the sign multiply keeps it manual / auto)
-        let startPos = if segIndex = 1 then portPos else wirePos // Part of the magic transform thing
-        let newStartPos = if segIndex = 1 then newPortPos else newWirePos // Part of the magic transform thing
-        let scaleX x = scale x fixedPt.X newStartPos.X startPos.X
-        let scaleY y = scale y fixedPt.Y newStartPos.Y startPos.Y
-        match List.splitAt (segIndex+1) segs, segIndex with
-        | ((scaledSegs), otherSegs), 1 -> // Must also apply magic transform the nub
-            Some ((List.map (transformSeg scaleX scaleY) scaledSegs) @ otherSegs)
-        | ((firstSeg :: scaledSegs), otherSegs), _ -> // Moves the nub, magic transforms the rest
-            Some ((moveAll (posAdd diff) 0 [firstSeg] @ List.map (transformSeg scaleX scaleY) scaledSegs) @ otherSegs)
+    { wire with
+        Segments = newSegs
+        StartPos = wire.EndPos
+        EndPos = wire.StartPos
+        InitialOrientation = wire.EndOrientation
+        EndOrientation = wire.InitialOrientation }
+
+/// Returns the end of the segment at the target index in the given wire. Throws an error if the target index isn't found
+let getSegmentEnd (wire: Wire) (target: int) =
+    (None, wire)
+    ||> foldOverSegs
+        (fun _ endPos state seg ->
+            if seg.Index = target then Some endPos else state)
+    |> (function
+        | None -> failwithf $"Couldn't find index {target} in wire"
+        | Some pos -> pos)        
+
+/// Scales a segment length for partial autorouting
+let scale fixedPoint newStart oldStart length =
+    if newStart = fixedPoint then 
+        length 
+    else 
+        fixedPoint + (length * (newStart - fixedPoint) / (oldStart - fixedPoint))
+
+/// Given a segment list, returns the first manual segment index
+let getManualIndex segList =
+    segList
+    |> List.tryFind (fun seg -> seg.Mode = Manual)
+    |> Option.map (fun seg -> seg.Index)
+
+/// Returns None if full autoroute is required or applies partial autorouting
+/// from the start of the wire at newPortPos to the first manually routed segment 
+/// and returns Some wire with the new segments.
+let partialAutoRoute (wire: Wire) (newPortPos: XYPos) = 
+    let segs = wire.Segments
+    let portPos = wire.StartPos
+    let manualIndex = getManualIndex segs
+    
+    let getStartPos portPos =
+        manualIndex
+        |> Option.map (fun idx -> 
+            if idx = 1 then 
+                portPos 
+            else 
+                (addLengthToPos portPos wire.InitialOrientation segs[0].Length))
+        |> Option.defaultValue portPos
+
+    let startPos = getStartPos portPos
+    let newStartPos = getStartPos newPortPos
+
+    let eligibleForPartialRouting index =
+        let fixedPoint = getSegmentEnd wire index
+        let relativeToFixed = relativePosition fixedPoint
+        if relativeToFixed newStartPos = relativeToFixed startPos then
+            Some index
+        else
+            None
+    /// Scales the lengths of the segment list to the segment at index
+    let scaleSegmentsToIndex index =
+        let fixedPoint = getSegmentEnd wire index
+        let scaleXOrY xOrY = scale (xOrY fixedPoint) (xOrY newStartPos) (xOrY startPos) 
+        let scaleX = scaleXOrY toX
+        let scaleY = scaleXOrY toY
+
+        match List.splitAt (index + 1) segs, index with
+        | ((scaledSegs), remainingSegs), 1 -> // We only scale the nub if it's the only Auto segment
+            Some(
+                transformSegments scaleX scaleY wire.InitialOrientation scaledSegs
+                @ remainingSegs
+            )
+        | ((nub :: scaledSegs), remainingSegs), _ ->
+            Some(
+                [ nub ]
+                @ transformSegments scaleX scaleY wire.InitialOrientation scaledSegs
+                @ remainingSegs
+            )
         | _ -> None
 
-    let checkTopology index =
-        let finalPt = segs[6].Start
-        let oldTop x = topology (if index = 1 then portPos else wirePos) x
-        let newTop x = topology (if index = 1 then newPortPos else newWirePos) x
-        if oldTop finalPt <> newTop finalPt then // Ensures that the moved port remains in the same quadrant, taking the origin as the fixed point
-            // always aandon manual routing
-            None 
-        else
-            let manSegEndPt = segs[index].End
-            let oldT = oldTop manSegEndPt
-            let newT = newTop manSegEndPt
-            if oldT = newT then 
-                Some index
-            else // Basically if the change now requires a different segment of wire ("3" seg to "5" seg or "5" seg to "3" seg) (i think this would almost always be handled by above case?)
-                None
-    lastAutoIndex
-    |> Option.bind checkTopology // If we change quadrant / require different wiring we autoroute instaed
-    |> Option.bind scaleBeforeSegmentEnd // Magic transformation bullshit that does partial autorouting
+    manualIndex
+    |> Option.bind eligibleForPartialRouting
+    |> Option.bind scaleSegmentsToIndex
+    |> Option.map (fun segs -> { wire with Segments = segs })
 
 /// Moves a wire by the XY amounts specified by displacement
 let moveWire (wire: Wire) (displacement: XYPos) =
@@ -1151,22 +1242,19 @@ let moveWire (wire: Wire) (displacement: XYPos) =
           StartPos = posAdd wire.StartPos displacement
           EndPos = posAdd wire.EndPos displacement }
 
-/// Returns a re-routed wire in the model, used when its ports move.
-/// Tries to preserve manual routing, otherwise re-routes with autoroute.
-/// Partial routing from input end is done by reversing segments and and swapping Start/End
-/// reverse indicates if the wire should be updated in the opposite direction (i.e. from input port to output port),
-/// instead of from output port to input port.
+/// Returns a re-routed wire from the given model.
+/// First attempts partial autorouting, and defaults to full autorouting if this is not possible.
+/// Reverse indicates if the wire should be processed in backwards, used when an input port (end of wire) is moved.
 let updateWire (model : Model) (wire : Wire) (reverse : bool) =
     let newPort = 
         match reverse with
         | true -> Symbol.getInputPortLocation model.Symbol wire.InputPort
         | false -> Symbol.getOutputPortLocation model.Symbol wire.OutputPort
     if reverse then
-        partialAutoRoute (reverseSegments wire.Segments) newPort
-        |> Option.map reverseSegments
+        partialAutoRoute (reverseWire wire) newPort
+        |> Option.map reverseWire
     else 
-        partialAutoRoute wire.Segments newPort
-    |> Option.map (fun segs -> {wire with Segments = segs})
+        partialAutoRoute wire newPort
     |> Option.defaultValue (autorouteWire model wire)
 
 //---------------------------------------------------------------------------------//
