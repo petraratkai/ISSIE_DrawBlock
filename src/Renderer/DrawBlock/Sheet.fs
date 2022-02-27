@@ -85,6 +85,9 @@ type SnapIndicator =
 type KeyboardMsg =
     | CtrlS | CtrlC | CtrlV | CtrlZ | CtrlY | CtrlA | CtrlW | AltC | AltV | AltZ | AltShiftZ | ZoomIn | ZoomOut | DEL | ESC
 
+type RotateMsg =
+    | Right | Left
+
 type Msg =
     | Wire of BusWire.Msg
     | KeyPress of KeyboardMsg
@@ -111,6 +114,7 @@ type Msg =
     | ToggleNet of CanvasState //This message does nothing in sheet, but will be picked up by the update function
     | SelectWires of ConnectionId list
     | SetSpinner of bool
+    | Rotate of RotateMsg
 
 
 // ------------------ Helper Functions that need to be before the Model type --------------------------- //
@@ -292,7 +296,7 @@ let boxUnion (box:BoundingBox) (box':BoundingBox) =
     }
 
 let symbolToBB (symbol:Symbol.Symbol) =
-    let co = symbol.Compo 
+    let co = symbol.Component
     {TopLeft = {X= float co.X; Y=float co.Y}; W=float (co.W); H=float (co.H)}
     
 
@@ -344,14 +348,13 @@ let isBBoxAllVisible (bb: BoundingBox) =
 
 /// could be made more efficient, since segments contain redundant info
 let getWireBBox (wire: BusWire.Wire) (model: Model) =
-    let coords = 
-        wire.Segments
-        |> List.collect (fun seg -> [seg.Start; seg.End])
-    let xCoords =  coords |> List.map (fun xy -> xy.X)
-    let yCoords =  coords |> List.map (fun xy -> xy.Y)
-    let lh,rh = List.min xCoords, List.max xCoords
-    let top,bottom = List.min yCoords, List.max yCoords
-    {X=lh; Y = top; W = rh - lh; H = bottom - top}
+    let updateBoundingBox segStart (segEnd: XYPos) state seg =
+        let newTop = min state.TopLeft.Y segEnd.Y
+        let newBottom = max (state.TopLeft.Y+state.H) segEnd.Y
+        let newRight = max (state.TopLeft.X+state.W) segEnd.X
+        let newLeft = min state.TopLeft.X segEnd.X
+        {TopLeft={X=newTop; Y=newLeft}; W=newRight-newLeft; H=newBottom-newTop }
+    BusWire.foldOverSegs updateBoundingBox {TopLeft = wire.StartPos; W=0; H=0;} wire
     
 
 let isAllVisible (model: Model)(conns: ConnectionId list) (comps: ComponentId list) =
@@ -655,7 +658,8 @@ let mDownUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
                 then model.SelectedComponents, model.SelectedWires //do not deselect if in toggle mode
                 else [], []
             // Start Creating Selection Box and Reset Selected Components
-            let initialiseSelection = {model.DragToSelectBox with X=mMsg.Pos.X; Y=mMsg.Pos.Y}
+            let initialiseSelection = 
+                {model.DragToSelectBox with TopLeft= {X=mMsg.Pos.X; Y=mMsg.Pos.Y}}
             {model with DragToSelectBox = initialiseSelection; Action = Selecting; SelectedComponents = newComponents; SelectedWires = newWires },
             Cmd.batch [ symbolCmd (Symbol.SelectSymbols newComponents)
                         wireCmd (BusWire.SelectWires newWires) ]
@@ -665,8 +669,8 @@ let mDragUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
     match model.Action with
     | MovingWire connId -> model, wireCmd (BusWire.DragWire (connId, mMsg))
     | Selecting ->
-        let initialX = model.DragToSelectBox.X
-        let initialY = model.DragToSelectBox.Y
+        let initialX = model.DragToSelectBox.TopLeft.X
+        let initialY = model.DragToSelectBox.TopLeft.Y
         let newDragToSelectBox = {model.DragToSelectBox with W = (mMsg.Pos.X - initialX); H = (mMsg.Pos.Y - initialY)}
         {model with DragToSelectBox = newDragToSelectBox
                     ScrollingLastMousePos = {Pos=mMsg.Pos;Move=mMsg.Movement}
@@ -1034,6 +1038,19 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             outputModel, filteredOutputCmd
         else
             { model with AutomaticScrolling = false}, Cmd.none
+
+    | Rotate Left ->
+        model,
+        Cmd.batch [
+            symbolCmd (Symbol.RotateLeft model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
+            //wireCmd (BusWire.Rotate model.SelectedComponents)
+        ]
+    | Rotate Right ->
+        model,
+        Cmd.batch [
+            symbolCmd (Symbol.RotateRight model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
+            //wireCmd (BusWire.Rotate model.SelectedComponents)
+        ]
                 
     // ---------------------------- Issie Messages ---------------------------- //
 
@@ -1048,7 +1065,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             SelectedWires = []
             NearbyComponents = []
             ErrorComponents = []
-            DragToSelectBox = {X=0.0; Y=0.0; H=0.0; W=0.0}
+            DragToSelectBox = {TopLeft={X=0.0; Y=0.0}; H=0.0; W=0.0}
             ConnectPortsLine = {X=0.0; Y=0.0}, {X=0.0; Y=0.0}
             TargetPortId = ""
             Action = Idle

@@ -38,6 +38,12 @@ Changes
 - getEquivalent copied ports completely refactored, made more efficient, not checking every symbol in the list, finds the copied symbol from the port
 - color symbols now O(nlogn) instead of O(n2)
 - noticed: pasteSymbols
+- added ui for rotation, new option in edit menu (idk if it works)
+- bounding boxes should just work with current repr of symbol pos
+- port position hmmmmmmmmmm
+- getPortPos2 rewritten, now it works with rotations as well. Haven't done mux top and pottom coordinates yet though
+- 
 
+                                                                                                                                                                                                                                                                                                                                
 
 
