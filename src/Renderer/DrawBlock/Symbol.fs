@@ -464,9 +464,21 @@ let inverseMap map =
     |> List.map (fun (k,v) -> (v,k))
     |> Map.ofList
 
+let getTopLeftMux (symbol:Symbol) = 
+    let orientation = symbol.STransform.Rotation
+    let centre = getCentre symbol
+    let width = symbol.Component.W
+    let height = symbol.Component.H
+    match orientation with
+    | Degree90 -> {symbol.Pos with X=centre.X-0.3*float(height); Y=centre.Y+float(width/2)}
+    | Degree180 -> {symbol.Pos with Y=symbol.Pos.Y-0.2*float(height)}
+    | Degree270 -> {symbol.Pos with X=centre.X-0.5*float(height) ; Y=centre.Y+0.5*float(width)}
+    | _ -> {symbol.Pos with X=symbol.Pos.X ; Y=symbol.Pos.Y}
+
 ///Symbol Rotation Right
 let rotateRight (symbol:Symbol) (rotateby:Rotation) = 
     let currentorientation = symbol.STransform.Rotation
+    let comptype = symbol.Component.Type
     let centre = getCentre symbol
     let height = symbol.Component.H
     let width = symbol.Component.W
@@ -531,9 +543,11 @@ let rotateRight (symbol:Symbol) (rotateby:Rotation) =
         |> inverseMap
         |> Map.map (fun portlist edge -> rotateSide edge) 
         |> inverseMap
-                       
+        
     match rotateby with
-    | Degree90 | Degree270  -> let newXYpos = getTopLeft symbol centre
+    | Degree90 | Degree270  -> let newXYpos = match comptype with   
+                                              | Mux2 -> getTopLeftMux symbol
+                                              | _ -> getTopLeft symbol centre
                                let newcomp = {symbol.Component with H=width; W=height}
                                {symbol with Pos=newXYpos; 
                                             Component=newcomp; 
@@ -549,6 +563,7 @@ let rotateRight (symbol:Symbol) (rotateby:Rotation) =
 let rotateLeft (symbol:Symbol) (rotate:Rotation) = 
     let currentorientation = symbol.STransform.Rotation
     let centre = getCentre symbol
+    let comptype = symbol.Component.Type
     let height = symbol.Component.H
     let width = symbol.Component.W
 
@@ -635,15 +650,13 @@ let rotateLeft (symbol:Symbol) (rotate:Rotation) =
                        | Degree270 -> {symbol.STransform with Rotation=Degree0}
                        
     match rotate with
-    | Degree90  -> let newXYpos = getTopLeft symbol centre
-                   let newcomp = {symbol.Component with H=width; W=height}
-                   {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation ;PortOrientation=updatePortOrientation; PortOrder=updatePortOrder}
+    | Degree90 | Degree270 -> let newXYpos = match comptype with   
+                                             | Mux2 -> getTopLeftMux symbol
+                                             | _ -> getTopLeft symbol centre
+                              let newcomp = {symbol.Component with H=width; W=height}
+                              {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation ;PortOrientation=updatePortOrientation; PortOrder=updatePortOrder}
 
     | Degree180 -> {symbol with STransform=updateOrientation}    
-
-    | Degree270 -> let newXYpos = getTopLeft symbol centre
-                   let newcomp = {symbol.Component with H=width; W=height}
-                   {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation ; PortOrientation=updatePortOrientation; PortOrder=updatePortOrder}
 
 /// --------------------------------------- SYMBOL DRAWING ------------------------------------------------------ ///   
 
@@ -675,12 +688,16 @@ let compSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
         | Viewer _ -> (sprintf "%f,%i %i,%i %f,%i %i,%i %i,%i" (float(width)*(0.2)) 0 0 halfheight (float(width)*(0.2)) height width height width 0)
         | MergeWires -> (sprintf "%i,%f %i,%f " halfwidth ((1.0/6.0)*float(height)) halfwidth ((5.0/6.0)*float(height)))
         | SplitWire _ ->  (sprintf "%i,%f %i,%f " halfwidth ((1.0/6.0)*float(height)) halfwidth ((5.0/6.0)*float(height)))
-        | Demux2 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(height)*0.2) 0 (float(height)*0.8) width height width 0)
+        | Demux2 -> match orientation with
+                    | Degree0 -> (sprintf "%f,%f %f,%f %f,%f %f,%f" symbolX (symbolY-0.6*float(height)) symbolX symbolY (symbolX+float(width)) (symbolY+0.2*float(height)) (symbolX+float(width)) (symbolY-0.8*float(height)) ) 
+                    | Degree90 -> (sprintf "%f,%f %f,%f %f,%f %f,%f" (symbolX+0.2*float(width)) (symbolY-float(height)) symbolX symbolY (symbolX + float(width)) symbolY (symbolX + 0.8*float(width)) (symbolY-float(height)))
+                    | Degree180 -> (sprintf "%f,%f %f,%f %f,%f %f,%f" symbolX (symbolY-float(height)) symbolX symbolY (symbolX+float(width)) (symbolY-0.2*float(height)) (symbolX+float(width)) (symbolY-0.8*float(height)))
+                    | Degree270 -> (sprintf "%f,%f %f,%f %f,%f %f,%f" (symbolX-0.2*float(width)) (symbolY-float(height)) symbolX symbolY (symbolX+0.6*float(width)) symbolY (symbolX+0.8*float(width)) (symbolY-float(height)))
         | Mux2 -> match orientation with
                  | Degree0 -> (sprintf "%f,%f %f,%f  %f,%f %f,%f" symbolX (symbolY-float(height)) (symbolX+float(width)) (symbolY-0.8*float(height)) (symbolX+float(width)) (symbolY-0.2*float(height)) symbolX symbolY )
-                 | Degree90 -> (sprintf "%f,%f %f,%f  %f,%f %f,%f" (symbolX+0.2*float(width)) (symbolY-float(height)) (symbolX + 0.8*float(width)) (symbolY-float(height)) (symbolX + float(width)) symbolY symbolX symbolY )
+                 | Degree90 -> (sprintf "%f,%f %f,%f  %f,%f %f,%f" (symbolX-0.2*float(width)) (symbolY-float(height)) (symbolX+0.8*float(width)) (symbolY-float(height)) (symbolX+0.6*float(width)) symbolY symbolX symbolY)
                  | Degree180 -> (sprintf "%f,%f %f,%f  %f,%f %f,%f" symbolX (symbolY-0.6*float(height)) (symbolX+float(width)) (symbolY-0.8*float(height)) (symbolX+float(width)) (symbolY+0.2*float(height)) symbolX symbolY)
-                 | Degree270 -> (sprintf "%f,%f %f,%f  %f,%f %f,%f" (symbolX-0.2*float(width)) (symbolY-float(height)) (symbolX+0.8*float(width)) (symbolY+float(height)) (symbolX+0.6*float(width)) symbolY symbolX symbolY)
+                 | Degree270 -> (sprintf "%f,%f %f,%f  %f,%f %f,%f" (symbolX+0.2*float(width)) (symbolY-float(height)) (symbolX + 0.8*float(width)) (symbolY-float(height)) (symbolX + float(width)) symbolY symbolX symbolY )  
         // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
         | BusSelection _ |BusCompare _ -> (sprintf "%i,%i %i,%i %f,%i %f,%f %i,%f %i,%f %f,%f %f,%i ")0 0 0 height (0.6*float(width)) height (0.8*float(width)) (0.7*float(height)) width (0.7*float(height)) width (0.3*float(height)) (0.8*float(width)) (0.3*float(height)) (0.6*float(width)) 0
