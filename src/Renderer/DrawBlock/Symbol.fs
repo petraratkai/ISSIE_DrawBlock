@@ -369,74 +369,20 @@ let addToPortModel (model: Model) (sym: Symbol) =
 let inline getPortPosEdgeGap (ct: ComponentType) =
     match ct with
     | MergeWires | SplitWire _  -> 0.25
-    | _ -> 1.0
-
-let mapOffset offsetlist (keylist:Edge list) =  
-    let emptymap: Map<Edge,float list> = Map.empty
-    let rec loop inL acc map = 
-        match inL with
-        | [] -> map
-        | hd::tl -> let acc = acc + 1
-                    let mapacc = Map.add keylist[acc] hd map
-                    loop tl acc mapacc
-    loop offsetlist -1 emptymap
-
-let APortOffsetMap (symbol:Symbol) = 
-
-    let rotation = symbol.STransform.Rotation
-    let keys = Seq.toList symbol.PortOrder.Keys
-    let gap = getPortPosEdgeGap symbol.Component.Type 
-    let centre = getCentre symbol
-
-    /// Function that calculates the coordinates of ports depending on Edge
-    let getPortGaps edge noofports heightwidth = 
-    
-        let gaps = [0.0..noofports]
-                   |> List.map(fun y -> (float(heightwidth))* (( y + gap )/( float( noofports ) + 2.0*gap - 1.0)))
-    
-        match edge with
-        | Left | Right -> let first = centre.Y - float(heightwidth/2)
-                          List.map(fun x -> x+first) gaps    //Output y coordinate of ports 
-    
-        | Top | Bottom -> let first = centre.X - float(heightwidth/2)
-                          List.map(fun x -> x+first) gaps   //Output x coordinate of ports
-
-    /// Function that generates the list of offsets for each edge from the centre                      
-    let getportOffsetList (edge:Edge)  = 
-        let commonpos = 
-            match edge with
-            | Left -> centre.X - float(symbol.Component.W/2)
-            | Right -> centre.X + float(symbol.Component.W/2)
-            | Top -> centre.Y + float(symbol.Component.H/2)
-            | Bottom -> centre.Y - float(symbol.Component.H/2)
-    
-        let portnumber = symbol.PortOrder[edge].Length
-            
-        match edge with
-        | Left | Right -> let posY = getPortGaps edge portnumber symbol.Component.H
-                          List.map (centreOffset edge commonpos) posY //Take posY list and find offset of each element from centre
-    
-        | Top | Bottom -> let posX = getPortGaps edge portnumber symbol.Component.H
-                          List.map (centreOffset edge commonpos) posX //Take posX list and find offset of each element from centre
-
-    let genAPortOffsets (edge:Edge) = 
-        getportOffsetList edge 
-
-    mapOffset         
-
+    | _ -> 1.0     
 
 let getPortPos (symbol: Symbol) (port:Port) = 
     let (ports, posX) =
         if port.PortType = (PortType.Input) then
-            (comp.InputPorts, 0.0)
+            (symbol.Component.InputPorts, 0.0)
         else 
-            (comp.OutputPorts, float( comp.W ))
+            (symbol.Component.OutputPorts, float( symbol.Component.W ))
     let index = float( List.findIndex (fun (p:Port)  -> p = port) ports )
-    let gap = getPortPosEdgeGap comp.Type 
-    let posY = (float(comp.H))* (( index + gap )/( float( ports.Length ) + 2.0*gap - 1.0))  // the ports are created so that they are equidistant
+    let gap = getPortPosEdgeGap symbol.Component.Type 
+    let posY = (float(symbol.Component.H))* (( index + gap )/( float( ports.Length ) + 2.0*gap - 1.0))  // the ports are created so that they are equidistant
     {X = posX; Y = posY}
 let getPortPosModel (model: Model) (port:Port) =
-    getPortPos (Map.find (ComponentId port.HostId) model.Symbols).Component port
+    getPortPos (Map.find (ComponentId port.HostId) model.Symbols) port
 
 
 //-----------------------------------------DRAWING HELPERS ---------------------------------------------------
@@ -529,23 +475,23 @@ let rotateRight (symbol:Symbol) (rotateby:Rotation) =
     let updateOrientation =
         match currentorientation with 
         | Degree0 -> match rotateby with
-                     | Degree90 -> {symbol.STransform with Rotation=Degree90}
+                     | Degree90 -> {symbol.STransform with Rotation=Degree270}
                      | Degree180 -> {symbol.STransform with Rotation=Degree180}
-                     | Degree270 -> {symbol.STransform with Rotation=Degree270}
+                     | Degree270 -> {symbol.STransform with Rotation=Degree90}
         | Degree90 -> match rotateby with
-                      | Degree90 -> {symbol.STransform with Rotation=Degree180}
+                      | Degree90 -> {symbol.STransform with Rotation=Degree0}
                       | Degree180 -> {symbol.STransform with Rotation=Degree270}
-                      | Degree270 -> {symbol.STransform with Rotation=Degree0}
+                      | Degree270 -> {symbol.STransform with Rotation=Degree180}
 
         | Degree180 -> match rotateby with
-                       | Degree90 -> {symbol.STransform with Rotation=Degree270}
+                       | Degree90 -> {symbol.STransform with Rotation=Degree90}
                        | Degree180 -> {symbol.STransform with Rotation=Degree0}
-                       | Degree270 -> {symbol.STransform with Rotation=Degree90}
+                       | Degree270 -> {symbol.STransform with Rotation=Degree270}
 
         | Degree270 -> match rotateby with
-                       | Degree90 -> {symbol.STransform with Rotation=Degree0}
+                       | Degree90 -> {symbol.STransform with Rotation=Degree180}
                        | Degree180 -> {symbol.STransform with Rotation=Degree90}
-                       | Degree270 -> {symbol.STransform with Rotation=Degree180}
+                       | Degree270 -> {symbol.STransform with Rotation=Degree0}
 
     ///Updates the edges based on the final orientation
     let rotateSide (edge:Edge) = 
@@ -703,6 +649,7 @@ let rotateLeft (symbol:Symbol) (rotate:Rotation) =
 
 let compSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float)= 
     let comp = symbol.Component
+    let centre = getCentre symbol 
     let height = comp.H
     let width = comp.W
     let halfwidth = comp.W/2
