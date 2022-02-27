@@ -127,27 +127,6 @@ let centreOffset (centre:XYPos) (edge:Edge) (commonpos:float) pos =
 
     | Top | Bottom -> {X=float(pos-centre.X) ; Y=float(commonpos - centre.Y)}
 
-
-let mapOrientation stringlist (edgelist:Edge list) =  
-    let emptymap: Map<string,Edge> = Map.empty
-    let rec loop inL acc map = 
-        match inL with
-        | [] -> map
-        | hd::tl -> let acc = acc + 1
-                    let mapacc = Map.add hd edgelist[acc] map
-                    loop tl acc mapacc
-    loop stringlist -1 emptymap
-
-let mapPortOrder (stringlist: string list list) (edgelist:Edge list) =  
-    let emptymap: Map<Edge,string list> = Map.empty
-    let rec loop inL acc map = 
-        match inL with
-        | [] -> map
-        | hd::tl -> let acc = acc + 1
-                    let mapacc = Map.add hd stringlist[acc] map
-                    loop tl acc mapacc
-    loop edgelist -1 emptymap
-
 // ----- helper functions for titles ----- //
 
 ///Insert titles compatible with greater than 1 buswidth
@@ -323,27 +302,36 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
     let comp = makeComp pos comptype id label
     let inputportlength = comp.InputPorts.Length
 
-    let getOrientationOrderMap (controlinput:Port) = 
-        let updatedinputport = List.removeAt inputportlength comp.InputPorts
-        let inputportsid = List.map getId updatedinputport   // Create a list of all the input port ids
+    let getOrientationOrderMap (controlinput:Port) (inputportlist: Port list) = 
+        let inputportsid = List.map getId inputportlist  // Create a list of all the input port ids
         let outputportsid = List.map getId comp.OutputPorts // Create a list of all output port ids
 
         let orientation = 
-            let noselmap = concatMap (portMap inputportsid Left) (portMap outputportsid Right)
-            Map.add controlinput.Id Bottom noselmap
+            let nocontrolmap = concatMap (portMap inputportsid Left) (portMap outputportsid Right)
+            Map.add controlinput.Id Bottom nocontrolmap
         let portorder = Map[Left, inputportsid; Bottom, [controlinput.Id] ; Right, outputportsid]
 
         orientation, portorder
 
-    let maps = match comptype with 
-                      | Mux2 | DFFE | RegisterE _ -> let control = comp.InputPorts[inputportlength]
-                                                     getOrientationOrderMap control
+    let portmaps = match comptype with 
+                      | Mux2 | DFFE | RegisterE _ -> let controlinput = comp.InputPorts[inputportlength]
+                                                     let nocontrollist =  comp.InputPorts
+                                                                          |> List.removeAt inputportlength
 
-                      | NbitsAdder _ -> let control = comp.InputPorts[0]
-                                        getOrientationOrderMap control
+                                                     getOrientationOrderMap controlinput nocontrollist
+
+                      | NbitsAdder _ -> let controlinput = comp.InputPorts[0]
+                                        let nocontrollist = comp.InputPorts
+                                                            |> List.removeAt 0
+
+                                        getOrientationOrderMap controlinput nocontrollist
                                         
-                      | _ -> let inputportsid = List.map getId comp.InputPorts   // Create a list of all the input port ids
-                             let outputportsid = List.map getId comp.OutputPorts // Create a list of all output port ids
+                      | _ -> let inputportsid = comp.InputPorts           // Create a list of all the input port idscomp.InputPorts
+                                                |> List.map getId   
+
+                             let outputportsid =  comp.OutputPorts      // Create a list of all output port ids
+                                                  |> List.map getId  
+
                              let orientation = concatMap (portMap inputportsid Left) (portMap outputportsid Right) //concatentates the input and output port map
                              let portorder = Map[Left,inputportsid; Right,outputportsid]
 
@@ -362,8 +350,8 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
       Opacity = 1.0
       Moving = false
       STransform = {Rotation=Degree0; flipped=false}
-      PortOrientation = fst maps
-      PortOrder = snd maps
+      PortOrientation = fst portmaps
+      PortOrder = snd portmaps
     }
 
 // Function to add ports to port model     
