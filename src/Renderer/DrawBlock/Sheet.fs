@@ -85,6 +85,9 @@ type SnapIndicator =
 type KeyboardMsg =
     | CtrlS | CtrlC | CtrlV | CtrlZ | CtrlY | CtrlA | CtrlW | AltC | AltV | AltZ | AltShiftZ | ZoomIn | ZoomOut | DEL | ESC
 
+type RotateMsg =
+    | Right | Left
+
 type Msg =
     | Wire of BusWire.Msg
     | KeyPress of KeyboardMsg
@@ -111,6 +114,7 @@ type Msg =
     | ToggleNet of CanvasState //This message does nothing in sheet, but will be picked up by the update function
     | SelectWires of ConnectionId list
     | SetSpinner of bool
+    | Rotate of RotateMsg
 
 
 // ------------------ Helper Functions that need to be before the Model type --------------------------- //
@@ -258,7 +262,7 @@ let getScreenEdgeCoords () =
 /// Checks if pos is inside any of the bounding boxes of the components in boundingBoxes
 let insideBox (boundingBoxes: Map<CommonTypes.ComponentId, BoundingBox>) (pos: XYPos) : CommonTypes.ComponentId Option =
     let insideOneBox _ boundingBox =
-        let {BoundingBox.X=xBox; Y=yBox; H=hBox; W=wBox} = boundingBox
+        let {BoundingBox.TopLeft={X = xBox; Y=yBox}; H=hBox; W=wBox} = boundingBox
         pos.X >= xBox && pos.X <= xBox + wBox && pos.Y >= yBox && pos.Y <= yBox + hBox
     
     boundingBoxes
@@ -267,11 +271,11 @@ let insideBox (boundingBoxes: Map<CommonTypes.ComponentId, BoundingBox>) (pos: X
 /// return a BB equivalent to input but with (X,Y) = LH Top coord, (X+W,Y+H) = RH bottom coord
 /// note that LH Top is lower end of the two screen coordinates
 let standardiseBox (box:BoundingBox) =
-    let x = min box.X (box.X+box.W)
-    let y = min box.Y (box.Y+box.H)
+    let x = min box.TopLeft.X (box.TopLeft.X+box.W)
+    let y = min box.TopLeft.Y (box.TopLeft.Y+box.H)
     let w = abs box.W
     let h = abs box.H
-    { X=x; Y=y; W=w;H=h}
+    { TopLeft = {X=x; Y=y} ; W=w;H=h}
 
 
 let transformScreenToPos (screenPos:XYPos) (scrollPos:XYPos) mag =
@@ -281,20 +285,19 @@ let transformScreenToPos (screenPos:XYPos) (scrollPos:XYPos) mag =
 
 /// calculates the smallest bounding box that contains two BBs, in form with W,H > 0
 let boxUnion (box:BoundingBox) (box':BoundingBox) =
-    let maxX = max (box.X+box.W) (box'.X + box'.W)
-    let maxY = max (box.Y + box.H) (box'.Y + box'.H)
-    let minX = min box.X box'.X
-    let minY = min box.Y box'.Y
+    let maxX = max (box.TopLeft.X+box.W) (box'.TopLeft.X + box'.W)
+    let maxY = max (box.TopLeft.Y + box.H) (box'.TopLeft.Y + box'.H)
+    let minX = min box.TopLeft.X box'.TopLeft.X
+    let minY = min box.TopLeft.Y box'.TopLeft.Y
     {
-        X = minX
-        Y = minY
+        TopLeft = {X = minX; Y = minY}
         W = maxX - minX
         H = maxY - minY
     }
 
 let symbolToBB (symbol:Symbol.Symbol) =
-    let co = symbol.Compo 
-    {X= float co.X; Y=float co.Y; W=float (co.W); H=float (co.H)}
+    let co = symbol.Component
+    {TopLeft = {X= float co.X; Y=float co.Y}; W=float (co.W); H=float (co.H)}
     
 
 /// Inputs must also have W,H > 0.
@@ -316,11 +319,10 @@ let fitCircuitToWindowParas (model:Model) =
     let boxOpt = symbolBBUnion model
     let sBox =
         match boxOpt with
-        | None -> {X=100.; Y=100.; W=100.; H=100.} // default if sheet is empty
+        | None -> {TopLeft = {X=100.; Y=100.}; W=100.; H=100.} // default if sheet is empty
         | Some box -> 
             {
-                    X = box.X
-                    Y = box.Y
+                    TopLeft = box.TopLeft
                     W = box.W
                     H = box.H
             }
@@ -328,9 +330,9 @@ let fitCircuitToWindowParas (model:Model) =
     let lh,rh,top,bottom = getScreenEdgeCoords()
     let wantedMag = min ((rh - lh)/(sBox.W+2.*boxEdge)) ((bottom-top)/(sBox.H+2.*boxEdge))
     let magToUse = min wantedMag maxMagnification
-    let xMiddle = (sBox.X + sBox.W/2.)*magToUse
+    let xMiddle = (sBox.TopLeft.X + sBox.W/2.)*magToUse
     let xScroll = xMiddle - (rh-lh)/2.
-    let yMiddle = (sBox.Y + (sBox.H)/2.)*magToUse
+    let yMiddle = (sBox.TopLeft.Y + (sBox.H)/2.)*magToUse
     let yScroll = yMiddle - (bottom-top)/2.
 
     {|ScrollX=xScroll; ScrollY=yScroll; MagToUse=magToUse|}
@@ -339,27 +341,26 @@ let fitCircuitToWindowParas (model:Model) =
 let isBBoxAllVisible (bb: BoundingBox) =
     let lh,rh,top,bottom = getScreenEdgeCoords()
     let bbs = standardiseBox bb
-    lh < bb.Y && 
-    top < bb.X && 
-    bb.Y+bb.H < bottom && 
-    bb.X+bb.W < rh
+    lh < bb.TopLeft.Y && 
+    top < bb.TopLeft.X && 
+    bb.TopLeft.Y+bb.H < bottom && 
+    bb.TopLeft.X+bb.W < rh
 
 /// could be made more efficient, since segments contain redundant info
 let getWireBBox (wire: BusWire.Wire) (model: Model) =
-    let coords = 
-        wire.Segments
-        |> List.collect (fun seg -> [seg.Start; seg.End])
-    let xCoords =  coords |> List.map (fun xy -> xy.X)
-    let yCoords =  coords |> List.map (fun xy -> xy.Y)
-    let lh,rh = List.min xCoords, List.max xCoords
-    let top,bottom = List.min yCoords, List.max yCoords
-    {X=lh; Y = top; W = rh - lh; H = bottom - top}
+    let updateBoundingBox segStart (segEnd: XYPos) state seg =
+        let newTop = min state.TopLeft.Y segEnd.Y
+        let newBottom = max (state.TopLeft.Y+state.H) segEnd.Y
+        let newRight = max (state.TopLeft.X+state.W) segEnd.X
+        let newLeft = min state.TopLeft.X segEnd.X
+        {TopLeft={X=newTop; Y=newLeft}; W=newRight-newLeft; H=newBottom-newTop }
+    BusWire.foldOverSegs updateBoundingBox {TopLeft = wire.StartPos; W=0; H=0;} wire
     
 
 let isAllVisible (model: Model)(conns: ConnectionId list) (comps: ComponentId list) =
     let wVisible =
         conns
-        |> List.map (fun cid -> Map.tryFind cid model.Wire.WX)
+        |> List.map (fun cid -> Map.tryFind cid model.Wire.Wires)
         |> List.map (Option.map (fun wire -> getWireBBox wire model))
         |> List.map (Option.map isBBoxAllVisible)
         |> List.map (Option.defaultValue true)
@@ -379,10 +380,10 @@ let isAllVisible (model: Model)(conns: ConnectionId list) (comps: ComponentId li
 let boxesIntersect (box1: BoundingBox) (box2: BoundingBox) =
     // Requires min and max since H & W can be negative, i.e. we don't know which corner is which automatically
     // Boxes intersect if there is overlap in both x and y coordinates 
-    min box1.X (box1.X + box1.W) < max box2.X (box2.X + box2.W)
-    && min box2.X (box2.X + box2.W) < max box1.X (box1.X + box1.W)
-    && min box1.Y (box1.Y + box1.H) < max box2.Y (box2.Y + box2.H)
-    && min box2.Y (box2.Y + box2.H) < max box1.Y (box1.Y + box1.H)
+    min box1.TopLeft.X (box1.TopLeft.X + box1.W) < max box2.TopLeft.X (box2.TopLeft.X + box2.W)
+    && min box2.TopLeft.X (box2.TopLeft.X + box2.W) < max box1.TopLeft.X (box1.TopLeft.X + box1.W)
+    && min box1.TopLeft.Y (box1.TopLeft.Y + box1.H) < max box2.TopLeft.Y (box2.TopLeft.Y + box2.H)
+    && min box2.TopLeft.Y (box2.TopLeft.Y + box2.H) < max box1.TopLeft.Y (box1.TopLeft.Y + box1.H)
     
 /// Finds all components that touch a bounding box (which is usually the drag-to-select box)
 let findIntersectingComponents (model: Model) (box1: BoundingBox) =
@@ -500,7 +501,7 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
         
         let compId = model.SelectedComponents.Head
         let boundingBox = model.BoundingBoxes[compId]
-        let x1, x2, y1, y2 = boundingBox.X, boundingBox.X + boundingBox.W, boundingBox.Y, boundingBox.Y + boundingBox.H
+        let x1, x2, y1, y2 = boundingBox.TopLeft.X, boundingBox.TopLeft.X + boundingBox.W, boundingBox.TopLeft.Y, boundingBox.TopLeft.Y + boundingBox.H
         
         // printfn "%A" mMsg.Pos.X
         // printfn "%A" model.LastMousePos.X
@@ -657,7 +658,8 @@ let mDownUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
                 then model.SelectedComponents, model.SelectedWires //do not deselect if in toggle mode
                 else [], []
             // Start Creating Selection Box and Reset Selected Components
-            let initialiseSelection = {model.DragToSelectBox with X=mMsg.Pos.X; Y=mMsg.Pos.Y}
+            let initialiseSelection = 
+                {model.DragToSelectBox with TopLeft= {X=mMsg.Pos.X; Y=mMsg.Pos.Y}}
             {model with DragToSelectBox = initialiseSelection; Action = Selecting; SelectedComponents = newComponents; SelectedWires = newWires },
             Cmd.batch [ symbolCmd (Symbol.SelectSymbols newComponents)
                         wireCmd (BusWire.SelectWires newWires) ]
@@ -667,8 +669,8 @@ let mDragUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
     match model.Action with
     | MovingWire connId -> model, wireCmd (BusWire.DragWire (connId, mMsg))
     | Selecting ->
-        let initialX = model.DragToSelectBox.X
-        let initialY = model.DragToSelectBox.Y
+        let initialX = model.DragToSelectBox.TopLeft.X
+        let initialY = model.DragToSelectBox.TopLeft.Y
         let newDragToSelectBox = {model.DragToSelectBox with W = (mMsg.Pos.X - initialX); H = (mMsg.Pos.Y - initialY)}
         {model with DragToSelectBox = newDragToSelectBox
                     ScrollingLastMousePos = {Pos=mMsg.Pos;Move=mMsg.Movement}
@@ -887,7 +889,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
         | [] -> model , Cmd.none
         | prevModel :: lst -> 
             let symModel = { prevModel.Wire.Symbol with CopiedSymbols = model.Wire.Symbol.CopiedSymbols }
-            let wireModel = { prevModel.Wire with CopiedWX = model.Wire.CopiedWX ; Symbol = symModel}
+            let wireModel = { prevModel.Wire with CopiedWires = model.Wire.CopiedWires ; Symbol = symModel}
             { prevModel with Wire = wireModel ; UndoList = lst ; RedoList = model :: model.RedoList ; CurrentKeyPresses = Set.empty } , Cmd.none
     | KeyPress CtrlY -> 
         match model.RedoList with 
@@ -895,7 +897,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
         | newModel :: lst -> { newModel with UndoList = model :: model.UndoList ; RedoList = lst} , Cmd.none
     | KeyPress CtrlA -> 
         let symbols = model.Wire.Symbol.Symbols |> Map.toList |> List.map fst
-        let wires = model.Wire.WX |> Map.toList |> List.map fst
+        let wires = model.Wire.Wires |> Map.toList |> List.map fst
         { model with 
             SelectedComponents = symbols
             SelectedWires = wires
@@ -1036,6 +1038,19 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             outputModel, filteredOutputCmd
         else
             { model with AutomaticScrolling = false}, Cmd.none
+
+    | Rotate Left ->
+        model,
+        Cmd.batch [
+            symbolCmd (Symbol.RotateLeft model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
+            //wireCmd (BusWire.Rotate model.SelectedComponents)
+        ]
+    | Rotate Right ->
+        model,
+        Cmd.batch [
+            symbolCmd (Symbol.RotateRight model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
+            //wireCmd (BusWire.Rotate model.SelectedComponents)
+        ]
                 
     // ---------------------------- Issie Messages ---------------------------- //
 
@@ -1050,7 +1065,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             SelectedWires = []
             NearbyComponents = []
             ErrorComponents = []
-            DragToSelectBox = {X=0.0; Y=0.0; H=0.0; W=0.0}
+            DragToSelectBox = {TopLeft={X=0.0; Y=0.0}; H=0.0; W=0.0}
             ConnectPortsLine = {X=0.0; Y=0.0}, {X=0.0; Y=0.0}
             TargetPortId = ""
             Action = Idle
@@ -1204,7 +1219,7 @@ let view (model:Model) (headerHeight: float) (style) (dispatch : Msg -> unit) =
         ]
         
     let dragToSelectBox =
-        let {BoundingBox.X=fX; Y=fY; H=fH; W=fW} = model.DragToSelectBox
+        let {BoundingBox.TopLeft = {X=fX; Y=fY}; H=fH; W=fW} = model.DragToSelectBox
         let polygonPoints = $"{fX},{fY} {fX+fW},{fY} {fX+fW},{fY+fH} {fX},{fY+fH}"
         let selectionBox = { defaultPolygon with Stroke = "Black"; StrokeWidth = "0.1px"; Fill = "Blue"; FillOpacity = 0.05 }
         
@@ -1262,7 +1277,7 @@ let init () =
         SelectedWires = []
         NearbyComponents = []
         ErrorComponents = []
-        DragToSelectBox = {X=0.0; Y=0.0; H=0.0; W=0.0}
+        DragToSelectBox = {TopLeft = {X=0.0; Y=0.0}; H=0.0; W=0.0}
         ConnectPortsLine = {X=0.0; Y=0.0}, {X=0.0; Y=0.0}
         TargetPortId = ""
         Action = Idle

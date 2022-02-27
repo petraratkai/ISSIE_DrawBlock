@@ -38,7 +38,11 @@ determine offset and orientation of
 port relative to symbol
 • genAPortOffsets: Helper function
 to determine APortOffsetsMap
-• getPortPos: helper to generate port
+• 
+
+
+
+: helper to generate port
 position and orientation from
 symbol and port
 • 2. Transform
@@ -86,7 +90,7 @@ Symbols2
 - uuid: universally unique identifier
 - in PasteSymbol need to increase the counter
 
-
+Component has top left X,Y, symbol has center
 
 Extension idea:
 when component selected it can be moved with the arrow keys
