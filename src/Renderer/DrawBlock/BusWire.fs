@@ -190,11 +190,11 @@ let formatXY (xy: XYPos) = sprintf $"{(xy.X,xy.Y)}"
 let getSegmentOrientation (segStart: XYPos) (segEnd: XYPos) =
     let fpError = 0.000001
     if segStart.X - segEnd.X < fpError then
-        Some Vertical
+        Vertical
     else if segStart.Y - segStart.Y < fpError then
-        Some Horizontal
+        Horizontal
     else
-        None
+        failwithf "ERROR: Diagonal wire" // Should never happen
 
 /// Tries to find and log a segment identified by segId in a wire identified by wireId in the current model.
 /// Assumes wireId can be found in the current model. Returns unit, used for debugging.
@@ -204,9 +204,8 @@ let logSegmentInModel model wireId segId  =
             if seg.Id = segId then 
                 let orientation = 
                     match getSegmentOrientation segStart segEnd with
-                    | Some Vertical -> "V"
-                    | Some Horizontal -> "H"
-                    | _ -> "INVALID ORIENTATION"
+                    | Vertical -> "V"
+                    | Horizontal -> "H"
                 Some (sprintf $"""[{formatSegmentId seg.Id}: {formatXY segStart}->{formatXY segEnd}]-{orientation}-{seg.Index}""")
             else None
 
@@ -839,6 +838,39 @@ type Rectangle = {
     BottomRight: XYPos
 }
 
+//-------------------------XYPos Helper Functions---------------------------------//
+
+/// Returns the X-value of an XYPos
+let toX (pos: XYPos) = pos.X
+
+/// Returns the Y-value of an XYPos
+let toY (pos: XYPos) = pos.X
+
+/// Returns the X and Y fields of an XYPos as a pair of floats
+let getXY (pos: XYPos) = pos.X, pos.Y
+
+/// Returns p1 + p2 as an XYPos
+let posAdd (p1: XYPos) (p2: XYPos) : XYPos =
+    { X = p1.X + p2.X; Y = p1.Y + p2.Y }
+
+/// Returns p1 - p2 as an XYPos
+let posDiff (p1: XYPos) (p2: XYPos) : XYPos = 
+    { X = p1.X - p2.X; Y = p1.Y - p2.Y }
+
+let scalePos (factor: float) (pos: XYPos) : XYPos =
+    { X = factor * pos.X; Y = factor * pos.Y}
+
+/// Returns the dot product of 2 XYPos
+let dotProduct (p1: XYPos) (p2: XYPos) : float = 
+    p1.X * p2.X + p1.Y * p2.Y
+
+/// Returns the squared distance between 2 points using Pythagoras
+let squaredDistance (p1: XYPos) (p2: XYPos) = 
+    let diff = posDiff p1 p2
+    dotProduct diff diff
+
+//--------------------------------------------------------------------------------//
+
 /// Checks if 2 rectangles intersect
 let rectanglesIntersect (rect1: Rectangle) (rect2: Rectangle) =
     /// Checks if there is an intersection in the X or Y dimension
@@ -847,36 +879,38 @@ let rectanglesIntersect (rect1: Rectangle) (rect2: Rectangle) =
         let qLo = max (xOrY rect1.TopLeft) (xOrY rect2.TopLeft)
         qLo < qHi
 
-    let toX (pos: XYPos) = pos.X
-    let toY (pos: XYPos) = pos.X
-
     intersect1D toX && intersect1D toY 
 
 /// Checks if a segment intersects a bounding box using the segment's start and end XYPos
 let segmentIntersectsBoundingBox (bb: BoundingBox) segStart segEnd = 
-    let toRect topLeft bottomRight = {TopLeft = topLeft; BottomRight = bottomRight}
-    let bbRect = toRect bb.TopLeft { X = bb.TopLeft.X + bb.W; Y = bb.TopLeft.Y + bb.H }
+    let toRect topLeft bottomRight =
+        { TopLeft = topLeft
+          BottomRight = bottomRight }
+    
+    let bbBottomRight = { X = bb.TopLeft.X + bb.W; Y = bb.TopLeft.Y + bb.H }
+    let bbRect = toRect bb.TopLeft bbBottomRight
     let segRect = toRect segStart segEnd
     rectanglesIntersect bbRect segRect
 
-/// This distance is given a point and a segment
-/// and it returns the distance between them.
-let distanceFromPointToSegment (point : XYPos) (segStart : XYPos) (segEnd : XYPos) : float = 
-    let x0, y0 = point.X, abs point.Y
-    let x1, y1, x2, y2 = abs segStart.X, abs segStart.Y, abs segEnd.X, abs segEnd.Y
+/// Returns the distance between a point and a segment defined by a start and end XYPos
+let distanceBetweenPointAndSegment (segStart : XYPos) (segEnd : XYPos) (point : XYPos) : float = 
+    match squaredDistance segStart segEnd with
+    | 0. -> failwithf "Segment of length 0" // This should never happen
+    | l2 -> 
+        // Extend the segment to line segStart + t (segEnd - segStart)
+        // The projection of point on this line falls at tProjection
+        let tProjection = dotProduct (posDiff point segStart) (posDiff segEnd segStart) / l2 
+        let tBounded = max 0. (min 1. tProjection) // Bound tProjection to be within the segment
+        let boundedProjection = 
+            posDiff segEnd segStart
+            |> scalePos tBounded
+            |> posAdd segStart
+        sqrt (squaredDistance point boundedProjection)
 
-    if (x1 = x2) then abs (x1 - x0)
-    elif (y1 = y2) then abs (y1 - y0)
-    else
-        let numer = abs (  (x2-x1)*(y1-y0) - (x1-x0)*(y2-y1)  )
-        let denom = sqrt (  (x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)  )
-        numer/denom
-
-        
 /// Finds the Id of the closest segment in a wire to a mouse click using euclidean distance
 let getClickedSegment (model : Model) (wireId : ConnectionId) (mouse : XYPos) : SegmentId =
     let closestSegment segStart segEnd state (seg : Segment) =
-        let currDistance = distanceFromPointToSegment mouse segStart segEnd
+        let currDistance = distanceBetweenPointAndSegment segStart segEnd mouse
         match state with
         | Some (minId, minDistance) -> if currDistance < minDistance then Some (seg.Id, currDistance) else Some (minId, minDistance)
         | None -> Some (seg.Id, currDistance) // Needed to deal with initial case
@@ -885,105 +919,50 @@ let getClickedSegment (model : Model) (wireId : ConnectionId) (mouse : XYPos) : 
     | Some (segmentId, _) -> segmentId
     | None -> failwithf "getClosestSegment was given a wire with no segments" // Should never happen
 
+/// Returns a distance for a wire move that has been reduced if needed to enforce minimum segment lengths.
+let getSafeDistanceForMove (segments: Segment list) (index: int) (distance: float) =
+    let reduceDistance maxDistance =
+        if sign maxDistance = -1 then
+            max maxDistance
+        else 
+            min maxDistance
 
-let segPointsLeft seg = // This seems oddly specific, pretty sure it's never used ? (I can kill?)
-    abs seg.Start.X > abs seg.End.X && seg.Dir = Horizontal
-
-/// Called for segments 1, 2, 3, 4, 5 - if they are vertical and move horizontally.
-/// The function returns distance reduced if need be to prevent wires moving into components
-/// approx equality test is safer tehn exact equality - but probably not needed.
-let getSafeDistanceForMove (seg: Segment) (seg0:Segment) (seg6:Segment) (distance:float) =
-    let shrink = match seg.Index with | 1 | 2 | 4 | 5 -> 0.5 | _ -> 1.0
-    match seg.Index with
-    | _ when seg.Dir = Horizontal ->
-        distance
-    | 3 when distance < 0.0 && abs (abs seg0.Start.Y - abs seg.Start.Y) > 0.0001 ->
-        distance
-    | 3 when distance > 0.0 && abs (abs seg6.Start.Y - abs seg.End.Y) > 0.0001 ->
-        distance
-    | 1 | 2 -> 
-        let minDistance = seg0.Start.X + Wire.stickLength * shrink - abs seg.End.X
-        max minDistance distance
-    | 4 | 5 ->
-        let maxDistance = seg6.End.X -  Wire.stickLength * shrink - abs seg.Start.X
-        min maxDistance distance
-    | 3 ->
-        let minDistance = abs seg0.Start.X + Wire.stickLength * shrink - abs seg.Start.X
-        let maxDistance = abs seg6.End.X -  Wire.stickLength * shrink - abs seg.Start.X
-        distance
-        |> max minDistance
-        |> min maxDistance        
-        
-    | _ -> 
-        distance
-
-        
-/// Adjust wire so that two adjacent horizontal segments that are in opposite directions
-/// get eliminated
-let removeRedundantSegments  (segs: Segment list) = // Again will need to be changed once we remove the abs bs
-    let setAbsX x (pos: XYPos) =
-        let x = if pos.X < 0.0 then - abs x else abs x
-        {pos with X = x}
-    let xDelta seg = abs seg.End.X - abs seg.Start.X
-    let setStartX x (seg:Segment) = {seg with Start = setAbsX x seg.Start}
-    let setEndX x (seg:Segment) = {seg with End = setAbsX x seg.End}
-    let adjust seg1 seg2 =
-        let xd1, xd2 = xDelta seg1, xDelta seg2
-        if seg1.Dir = Horizontal && 
-           seg2.Dir = Horizontal && 
-           sign xd1 <> sign xd2 
-        then
-            if abs xd1 > abs xd2 then
-                [setEndX seg2.End.X seg1; setStartX seg2.End.X seg2]
-            else
-                [setEndX seg1.Start.X seg1; setStartX seg1.End.X seg2]
-        else
-            [seg1;seg2]
-    adjust segs[0] segs[1] @  segs[2..4] @ adjust segs[5] segs[6]
-       
-
-/// This function allows a wire segment to be moved a given amount in a direction perpedicular to
-/// its orientation (Horizontal or Vertical). Used to manually adjust routing by mouse drag.
-/// The moved segment is tagged by negating one of its coordinates so that it cannot be auto-routed
-/// after the move, thus keeping the moved position.
-let moveSegment (seg:Segment) (distance:float) (model:Model) = // negation is a terrible idea, add bool to segment
-    let wire = model.Wires[seg.HostId]
-    let index = seg.Index
-    if index <= 0 || index >= wire.Segments.Length - 1 then
-        failwithf $"Buswire segment index {index} out of range in moveSegment in wire length {wire.Segments.Length}"
-    let prevSeg = wire.Segments[index-1]
-    let nextSeg = wire.Segments[index+1]
-    if seg.Dir = prevSeg.Dir || seg.Dir = nextSeg.Dir then
-        wire
+    if index <= 0 || index >= segments.Length - 1 then
+        0. // We cannot move the first or last segment in a wire
     else
-        //runTestFable()
-        distance      
-        |> getSafeDistanceForMove seg wire.Segments[0] wire.Segments[6]   
-        |> (fun distance' -> // This function could use a name
-            let newPrevEnd, newSegStart, newSegEnd, newNextStart = 
-                match seg.Dir with
-                // Potential function abstraction here?
-                | Vertical -> 
-                    {prevSeg.End with X = - (abs seg.Start.X + distance')}, 
-                    {seg.Start with X = - (abs seg.Start.X + distance')}, 
-                    {seg.End with X = - (abs seg.End.X + distance')}, 
-                    {nextSeg.Start with X = - (abs seg.End.X + distance')}
+        let prev = segments[index - 1]
+        let next = segments[index + 1]
+        let prevMaxDistance = (-prev.Length + (float (sign prev.Length) * Wire.stickLength))
+        let nextMaxDistance = (next.Length - (float (sign next.Length) * Wire.stickLength))
 
-                | Horizontal -> 
-                    {prevSeg.End with Y = - (abs seg.Start.Y + distance')}, 
-                    {seg.Start with Y = - (abs seg.Start.Y + distance')}, 
-                    {seg.End with Y = - (abs seg.End.Y + distance')}, 
-                    {nextSeg.Start with Y = - (abs seg.End.Y + distance')}
+        distance
+        |> reduceDistance prevMaxDistance
+        |> reduceDistance nextMaxDistance
 
-            let newPrevSeg = {prevSeg with End = newPrevEnd}
-            let newSeg = {seg with Start = newSegStart;End = newSegEnd}
-            let newNextSeg = {nextSeg with Start = newNextStart}
-        
-            let newSegments =
-                wire.Segments[.. index-2] @ [newPrevSeg; newSeg; newNextSeg] @ wire.Segments[index+2 ..] // This is kinda cool list slice stuff
-                |> removeRedundantSegments
+/// Returns a wire containing the updated list of segments after a segment is moved by 
+/// a specified distance. The moved segment is tagged as manual so that it is no longer auto-routed.
+/// Throws an error if the segment being moved is out of range.
+let moveSegment (model:Model) (seg:Segment) (distance:float) = 
+    let wire = model.Wires[seg.HostId]
+    let segments = wire.Segments
+    let idx = seg.Index
 
-            {wire with Segments = newSegments})
+    if idx <= 0 || idx >= segments.Length - 1 then
+        failwithf $"Trying to move wire segment {idx}, out of range in wire length {segments.Length}"
+
+    let safeDistance = getSafeDistanceForMove segments idx distance
+    
+    let prevSeg = segments[idx - 1]
+    let nextSeg = segments[idx + 1]
+    let movedSeg = segments[idx]
+
+    let newPrevSeg = { prevSeg with Length = prevSeg.Length + safeDistance }
+    let newNextSeg = { nextSeg with Length = nextSeg.Length + safeDistance }
+    let newMovedSeg = { movedSeg with Mode = Manual }
+    
+    let newSegments = segments[.. idx - 2] @ [newPrevSeg; newMovedSeg; newNextSeg] @ segments[idx + 2 ..]
+
+    {wire with Segments = newSegments}
 
 /// Initialises an empty Wire Model
 let init () = // Doesn't seem that harmful, revisit if we change the model type
@@ -1012,7 +991,7 @@ let getFilteredIdList condition wireLst =
     wireLst
     |> List.filter condition
     |> List.map (fun wire -> wire.Id)
-    |> List.distinct // TODO: Figure out if this is needed
+    //|> List.distinct // TODO: Figure out if this is needed - I don't think it is
 
 ///Returns the IDs of the wires in the model connected to a list of components given by componentIds
 let getConnectedWires (model: Model) (compIds: list<ComponentId>) =
@@ -1027,12 +1006,12 @@ let getConnectedWires (model: Model) (compIds: list<ComponentId>) =
     |> getWireList
     |> getFilteredIdList containsPorts
 
-///Returns a tuple of: wires connected to inputs ONLY, wires connected to outputs ONLY, wires connected to both inputs and outputs
-let filterWiresByCompMoved (wModel: Model) (compIds: list<ComponentId>) =
-    let wireList = getWireList wModel
+/// Returns a tuple of: wires connected to inputs ONLY, wires connected to outputs ONLY, wires connected to both inputs and outputs
+let filterWiresByCompMoved (model: Model) (compIds: list<ComponentId>) =
+    let wireList = getWireList model
 
     let inputPorts, outputPorts =
-        Symbol.getPortLocations wModel.Symbol compIds
+        Symbol.getPortLocations model.Symbol compIds
 
     let containsInputPort wire =
         Map.containsKey wire.InputPort inputPorts
@@ -1054,13 +1033,95 @@ let filterWiresByCompMoved (wModel: Model) (compIds: list<ComponentId>) =
 
     (inputWires, outputWires, fullyConnected)
 
+/// Contains geometric information of a port
+type PortInfo = {
+    Edge: Symbol.Edge
+    Position: XYPos
+}
 
-///Returns a newly autorouted version of a wire for the given model
+/// Returns a PortInfo object given a port edge and position
+let genPortInfo edge position =
+    { Edge = edge; Position = position }
+
+/// Returns an edge rotated 90 degrees anticlockwise
+let rotate90Edge (edge: Symbol.Edge) = 
+    match edge with
+    | Symbol.Top -> Symbol.Left
+    | Symbol.Left -> Symbol.Bottom
+    | Symbol.Bottom -> Symbol.Right
+    | Symbol.Right -> Symbol.Top
+
+/// Returns a port rotated 90 degrees anticlockwise
+let rotate90Port (port: PortInfo) =
+    let newEdge = rotate90Edge port.Edge
+
+    let newPos =
+        { X = -port.Position.Y
+          Y = port.Position.X }
+
+    genPortInfo newEdge newPos
+
+/// Returns a function to rotate a segment list 90 degrees anticlockwise,
+/// depending on its initial orientation
+let rotateSegments90 initialOrientation =
+    let horizontal i =
+        match initialOrientation with
+        | Horizontal -> i % 2 = 0
+        | Vertical -> i % 2 = 1
+
+    List.indexed
+    >> List.map
+        (fun (i, seg) ->
+            if (horizontal i) then 
+                { seg with Length = -seg.Length }
+            else
+                seg)
+
+/// Returns a version of the start and destination ports rotated until the start edge matches the target edge.
+let rec rotateStartDest (target: Symbol.Edge) ((start, dest): PortInfo * PortInfo) = 
+    if start.Edge = target then
+        (start, dest)
+    else
+        rotateStartDest target (rotate90Port start, rotate90Port dest)
+
+/// Gets a wire orientation given a port edge
+let getOrientation (edge: Symbol.Edge) = 
+    match edge with
+    | Symbol.Top | Symbol.Bottom -> Vertical
+    | Symbol.Left | Symbol.Right -> Horizontal
+
+/// Returns an anonymous record containing the starting symbol edge of a wire and its segment list that has been 
+/// rotated to a target symbol edge.
+let rec rotateSegments (target: Symbol.Edge) (wire: {| edge: Symbol.Edge; segments: Segment list |}) =
+    if wire.edge = target then
+        {| edge = wire.edge; segments = wire.segments |}
+    else
+        let rotatedSegs =
+            rotateSegments90 (getOrientation wire.edge) wire.segments
+        
+        {| edge = rotate90Edge wire.edge; segments = rotatedSegs |}
+        |> rotateSegments target 
+
+/// Returns a newly autorouted version of a wire for the given model
 let autorouteWire (model: Model) (wire: Wire) : Wire =
-    let portPositions =
+    let destPos, startPos =
         Symbol.getTwoPortLocations (model.Symbol) (wire.InputPort) (wire.OutputPort)
 
-    { wire with Segments = makeInitialSegmentsList wire.Id portPositions }
+    let destEdge = Symbol.getInputPortOrientation model.Symbol wire.InputPort
+    let startEdge = Symbol.getOutputPortOrientation model.Symbol wire.OutputPort
+
+    let startPort = genPortInfo startEdge startPos
+    let destPort = genPortInfo destEdge destPos
+
+    let normalisedStart, normalisedEnd = rotateStartDest Symbol.Right (startPort, destPort)
+    let initialSegments = makeInitialSegmentsList normalisedStart.Position normalisedEnd.Position normalisedEnd.Edge
+
+    let segments = 
+        {| edge = Symbol.Right; segments = initialSegments |}
+        |> rotateSegments startEdge
+        |> (fun wire -> wire.segments)
+
+    { wire with Segments = segments; InitialOrientation = getOrientation startEdge; StartPos = startPos }
 
 /// Reverses a segment list so that it may be processed in the opposite direction. This function is self-inverse.
 let reverseSegments (segs:Segment list) =
@@ -1139,7 +1200,7 @@ let partialAutoRoute (segs: Segment list) (newPortPos: XYPos) = // This is a pha
         | ((scaledSegs), otherSegs), 1 ->
             Some ((List.map (transformSeg scaleX scaleY) scaledSegs) @ otherSegs)
         | ((firstSeg :: scaledSegs), otherSegs), _ ->
-            Some ((moveAll (Symbol.posAdd diff) 0 [firstSeg] @ List.map (transformSeg scaleX scaleY) scaledSegs) @ otherSegs)
+            Some ((moveAll (posAdd diff) 0 [firstSeg] @ List.map (transformSeg scaleX scaleY) scaledSegs) @ otherSegs)
         | _ -> None
 
     let checkTopology index =
@@ -1164,8 +1225,8 @@ let partialAutoRoute (segs: Segment list) (newPortPos: XYPos) = // This is a pha
 /// Moves a wire by the XY amounts specified by displacement
 let moveWire (wire: Wire) (displacement: XYPos) =
     { wire with
-          StartPos = Symbol.posAdd wire.StartPos displacement
-          EndPos = Symbol.posAdd wire.EndPos displacement }
+          StartPos = posAdd wire.StartPos displacement
+          EndPos = posAdd wire.EndPos displacement }
 
 /// Re-routes a single wire in the model when its ports move.
 /// Tries to preserve manual routing when this makes sense, otherwise re-routes with autoroute.
@@ -1437,7 +1498,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                     | Horizontal -> mMsg.Pos.Y - abs seg.Start.Y
                     | Vertical -> mMsg.Pos.X - abs seg.Start.X
 
-                let newWire = moveSegment seg distanceToMove model
+                let newWire = moveSegment model seg distanceToMove
                 let newWX = Map.add seg.HostId newWire model.Wires
  
                 {model with Wires = newWX}, Cmd.none
@@ -1534,13 +1595,13 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
 
 //---------------Other interface functions--------------------//
 /// Checks if a wire intersects a bounding box by checking if any of its segments intersect
-let wireIntersectsBoundingBox (w : Wire) (bb : BoundingBox) =
-    let segmentIntersectsBox segStart segEnd state seg =
+let wireIntersectsBoundingBox (wire : Wire) (bb : BoundingBox) =
+    let segmentIntersectsBox segStart segEnd state _seg =
         match state with
         | true -> true
         | false -> segmentIntersectsBoundingBox bb segStart segEnd
     
-    foldOverSegs segmentIntersectsBox false w
+    foldOverSegs segmentIntersectsBox false wire
 
 ///
 let getIntersectingWires (wModel : Model) (selectBox : BoundingBox) : list<ConnectionId> = 
