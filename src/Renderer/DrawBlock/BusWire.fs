@@ -99,6 +99,8 @@ type Msg =
     | MakeJumps of list<ConnectionId>
     | ResetModel // For Issie Integration
     | LoadConnections of list<Connection> // For Issie Integration
+    | UpdateWireType of WireType
+    | Rotate of Symbol.Msg
 
 
 /// <summary> Applies a function which requires the segment start and end positions to the segments in a wire, 
@@ -1160,6 +1162,10 @@ let updateWire (model : Model) (wire : Wire) (inOut : bool) =
 //--------------------STS219 CODE SECTION ENDS-------------------------------------//
 //---------------------------------------------------------------------------------//
 
+//---------------------------------------------------------------------------------//
+//--------------------NH1019 CODE SECTION BEGINS-------------------------------------//
+//---------------------------------------------------------------------------------//
+
 let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
     let mutable neWX = model.Wires
     // Arrays are faster to check than lists
@@ -1504,6 +1510,17 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
             
         { model with Wires = newWX }, Cmd.ofMsg (MakeJumps connIds)
 
+    | UpdateWireType (style: WireType) ->
+        let updateStyle =
+            match style with
+            | Jump -> model.Wires |> Map.map (fun (id, w) -> (id, {w with WireType = Jump}))
+            | Radial -> model.Wires |> Map.map (fun (id, w) -> (id, {w with WireType = Radial}))
+            | Modern -> model.Wires |> Map.map (fun (id, w) -> (id, {w with WireType = Modern}))
+
+        { model with Wires = updateStyle }, Cmd.None
+
+    | Rotate -> {model with Wires = updateWires}, Cmd.None
+
 //---------------Other interface functions--------------------//
 /// Checks if a wire intersects a bounding box by checking if any of its segments intersect
 let wireIntersectsBoundingBox (wire : Wire) (bb : BoundingBox) =
@@ -1568,8 +1585,6 @@ let pasteWires (wModel : Model) (newCompIds : list<ComponentId>) : (Model * list
         
     { wModel with Wires = newWireMap }, pastedConnIds
 
-///
-let getPortIdsOfWires (model: Model) (connIds: ConnectionId list) : (InputPortId list * OutputPortId list) =
-    (([], []), connIds)
-    ||> List.fold (fun (inputPorts, outputPorts) connId ->
-            (model.Wires[connId].InputPort :: inputPorts, model.Wires[connId].OutputPort :: outputPorts))
+//---------------------------------------------------------------------------------//
+//--------------------NH1019 CODE SECTION ENDS-------------------------------------//
+//---------------------------------------------------------------------------------//
