@@ -38,7 +38,11 @@ determine offset and orientation of
 port relative to symbol
 • genAPortOffsets: Helper function
 to determine APortOffsetsMap
-• getPortPos: helper to generate port
+• 
+
+
+
+: helper to generate port
 position and orientation from
 symbol and port
 • 2. Transform
