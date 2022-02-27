@@ -160,6 +160,7 @@ let viewMenu dispatch =
 let editMenu dispatch =
     let sheetDispatch sMsg = dispatch (Sheet sMsg)
     let dispatch = Sheet.KeyPress >> sheetDispatch
+    let rotateDispatch = Sheet.Rotate >> sheetDispatch
     let wireTypeDispatch = Sheet.WireType >> sheetDispatch
 
     jsOptions<MenuItemConstructorOptions> <| fun invisibleMenu ->

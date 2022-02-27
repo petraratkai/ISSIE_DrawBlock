@@ -85,6 +85,9 @@ type SnapIndicator =
 type KeyboardMsg =
     | CtrlS | CtrlC | CtrlV | CtrlZ | CtrlY | CtrlA | CtrlW | AltC | AltV | AltZ | AltShiftZ | ZoomIn | ZoomOut | DEL | ESC
 
+type RotateMsg =
+    | Right | Left
+
 type WireTypeMsg = 
     | Jump | Radial | Modern
 
