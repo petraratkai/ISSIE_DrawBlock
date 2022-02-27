@@ -730,6 +730,8 @@ let compSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:
     let w = comp.W
     let halfW = comp.W/2
     let halfH = (comp.H)/2
+    let symbolX = int(symbol.Pos.X)
+    let symbolY = int(symbol.Pos.Y)
 
     let mergeSplitLine posX1 posX2 posY msb lsb =
         let text = 
@@ -739,8 +741,6 @@ let compSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:
             | false, _ -> sprintf $"({msb}:{lsb})"
         addHorizontalColorLine posX1 posX2 (posY*float(h)) opacity colour @
         addText (float (posX1 + posX2)/2.0) (posY*float(h)-11.0) text "middle" "bold" "9px"
-
-
 
     let points =            // Points that specify each symbol 
         match comp.Type with
@@ -756,7 +756,7 @@ let compSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:
         // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
         | BusSelection _ |BusCompare _ -> (sprintf "%i,%i %i,%i %f,%i %f,%f %i,%f %i,%f %f,%f %f,%i ")0 0 0 h (0.6*float(w)) h (0.8*float(w)) (0.7*float(h)) w (0.7*float(h)) w (0.3*float(h)) (0.8*float(w)) (0.3*float(h)) (0.6*float(w)) 0
-        | _ -> (sprintf "%i,%i %i,%i %i,%i %i,%i" 0 (comp.H) comp.W (comp.H) comp.W 0 0 0)
+        | _ -> (sprintf "%i,%i %i,%i %i,%i %i,%i" symbolX symbolY (symbolX+w) symbolY (symbolX+w) (symbolY-h) symbolX (symbolY-h))
     let additions =       // Helper function to add certain characteristics on specific symbols (inverter, enables, clocks)
         match comp.Type with
         | Constant1 (_,_,txt) -> (addHorizontalLine halfW w (float(halfH)) opacity @ addText (float (halfW)-5.0) (float(h)-8.0) txt "middle" "normal" "12px") 
