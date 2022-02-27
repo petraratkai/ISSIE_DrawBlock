@@ -1,0 +1,13 @@
+22/02/2022
+removed posAdd, posDiff and posOf as unecessary
+changed title to use match case and f string with error checking for buswidth < 1 (shouldn't happen)
+same as above for bustitle. only has one use case will see if it needs moving 
+added types to portList changed name to makePorts
+moved makePorts, roundToN, customToLength into makeComp as only used in there
+
+23/02/2022
+compSymbol -> componentSymbol
+changed drawing helpers to use XYPos where applicale
+
+27/02/2022
+changed portpos functions to work take symbol inputs instead

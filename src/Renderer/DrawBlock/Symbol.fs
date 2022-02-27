@@ -13,7 +13,7 @@ open System.Text.RegularExpressions
 
 /// --------- STATIC VARIABLES --------- ///
 
-let GridSize = 30 
+let defaultSize = 30 
 
 /// ---------- SYMBOL TYPES ---------- ///
 type Rotation = | Degree0 | Degree90 | Degree180 | Degree270
@@ -43,16 +43,12 @@ type Model = {
     Symbols: Map<ComponentId, Symbol>
     CopiedSymbols: Map<ComponentId, Symbol>
     Ports: Map<string, Port>                            // string since it's for both input and output ports
-
     InputPortsConnected:  Set<InputPortId>              // we can use a set since we only care if an input port 
                                                         // is connected or not (if so it is included) in the set 
-
     OutputPortsConnected: Map<OutputPortId, int>        // map of output port id to number of wires connected to that port
     }
 
 //----------------------------Message Type-----------------------------------//
-
-
 type Msg =
     | MouseMsg of MouseT
     | AddSymbol of pos:XYPos * compType:ComponentType * lbl: string
@@ -75,26 +71,26 @@ type Msg =
     | WriteMemoryLine of ComponentId * int64 * int64 // For Issie Integration 
     | WriteMemoryType of ComponentId * ComponentType
 
-//---------------------------------helper types and functions----------------//
 
-let posDiff (a:XYPos) (b:XYPos) =
-    {X=a.X-b.X; Y=a.Y-b.Y}
-
-let posAdd (a:XYPos) (b:XYPos) =
-    {X=a.X+b.X; Y=a.Y+b.Y}
-
-let posOf x y = {X=x;Y=y}
-
-
-// ----- helper functions for titles ----- //
+let init () = 
+    {Symbols = Map.empty; CopiedSymbols = Map.empty; Ports = Map.empty; InputPortsConnected= Set.empty; OutputPortsConnected = Map.empty}, Cmd.none
 
 ///Insert titles compatible with greater than 1 buswidth
-let title t (n) =  
-        if n = 1 then t else t + "(" + string(n-1) + "..0)"
+let title (t:string) (n:int) : string =  
+    match n with
+    | 1 -> t
+    | _ when n > 1 -> $"{t}({n-1})"
+    | _ -> failwith "non positive bus width"
+    //    if n = 1 then t else t + "(" + string(n-1) + "..0)"
 
 ///Insert titles for bus select
-let bustitle wob lsb = 
-    if wob <> 1 then"(" + string(wob + lsb - 1) + ".." + string(lsb) +  ")" else string(lsb)
+/// used once 
+let bustitle (wob:int) (lsb:int) : string = 
+    match wob with
+    | 1 -> $"{lsb}"
+    | _ when wob > 1 -> $"({wob+lsb-1}..{lsb})"
+    | _ -> failwith "non positive bus width in bustitle"
+    //if wob <> 1 then"(" + string(wob + lsb - 1) + ".." + string(lsb) +  ")" else string(lsb)
 
 ///Decodes the component type into component labels
 let prefix compType = 
@@ -165,34 +161,33 @@ let portDecName (comp:Component) = //(input port names, output port names)
    // |_ -> ([],[])
    // EXTENSION: Extra Components made that are not currently in Issie. Can be extended later by using this code as it is .
 
-/// Genererates a list of ports:
-let portLists numOfPorts hostID portType =
-    if numOfPorts < 1 
-    then []
-    else
-        [0..(numOfPorts-1)]
-        |> List.collect (fun x ->
-            [{
-                Id = JSHelpers.uuid ()
-                PortNumber = Some x
-                PortType = portType
-                HostId = hostID
-            }])
-
 
 //-----------------------Skeleton Message type for symbols---------------------//
 
-///Rounds an integer to any given number. The first parameter is the number to round to, the second parameter is the input number that will be rounded
-let roundToN (n : int) (x : int) =
-    x + abs((x % n) - n)
-
-let customToLength (lst : (string * int) list) =
-    let labelList = List.map (fst >> String.length) lst
-    if List.isEmpty labelList then 0 //if a component has no inputs or outputs list max will fail
-    else List.max labelList
-
 // helper function to initialise each type of component
 let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) : Component =
+    /// makes a list of ports for component
+    let makePorts (numOfPorts:int) (hostID:string) (portType:PortType) =
+        if numOfPorts < 1 
+        then []
+        else
+            [0..(numOfPorts-1)]
+            |> List.collect (fun x ->
+                [{
+                    Id = JSHelpers.uuid ()
+                    PortNumber = Some x
+                    PortType = portType
+                    HostId = hostID
+                }])
+    /// rounds to next multiple of n from x
+    let roundToN (n : int) (x : int) : int =
+        x + abs((x % n) - n)
+
+    ///finds length of longest string in list returns it
+    let customToLength (lst : (string * int) list) =
+        let labelList = List.map (fst >> String.length) lst
+        if List.isEmpty labelList then 0 //if a component has no inputs or outputs list max will fail
+        else List.max labelList
 
     // function that helps avoid dublicate code by initialising parameters that are the same for all component types and takes as argument the others
     let makeComponent (n, nout, h, w) label : Component=  
@@ -200,8 +195,8 @@ let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) :
             Id = id 
             Type = comptype 
             Label = label 
-            InputPorts = portLists n id PortType.Input 
-            OutputPorts  = portLists nout id PortType.Output 
+            InputPorts = makePorts n id PortType.Input 
+            OutputPorts  = makePorts nout id PortType.Output 
             X  = int (pos.X - float w / 2.0) 
             Y = int (pos.Y - float h / 2.0) 
             H = h 
@@ -214,39 +209,39 @@ let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) :
         match comptype with
         | ROM _ | RAM _ | AsyncROM _ -> 
             failwithf "What? Legacy RAM component types should never occur"
-        | And | Nand | Or | Nor | Xnor | Xor ->  (2 , 1, 2*GridSize , 2*GridSize) 
-        | Not -> ( 1 , 1, 2*GridSize ,  2*GridSize) 
-        | ComponentType.Input (a) -> ( 0 , 1, GridSize ,  2*GridSize)                
-        | ComponentType.Output (a) -> (  1 , 0, GridSize ,  2*GridSize) 
-        | ComponentType.Viewer a -> (  1 , 0, GridSize ,  GridSize) 
-        | ComponentType.IOLabel  ->(  1 , 1, GridSize ,  2*GridSize) 
-        | Decode4 ->( 2 , 4 , 4*GridSize  , 3*GridSize) 
-        | Constant1 (a, b,_) | Constant(a, b) -> (  0 , 1, GridSize ,  2*GridSize) 
-        | MergeWires -> ( 2 , 1, 2*GridSize ,  2*GridSize) 
-        | SplitWire (a) ->(  1 , 2 , 2*GridSize ,  2*GridSize) 
-        | Mux2 -> ( 3  , 1, 3*GridSize ,  2*GridSize) 
-        // EXTENSION:    | Mux4 -> ( 5  , 1, 5*GridSize ,  2*GridSize)   
-        // EXTENSION:    | Mux8 -> ( 9  , 1, 7*GridSize ,  2*GridSize) 
-        | Demux2 ->( 2  , 2, 3*GridSize ,  2*GridSize) 
+        | And | Nand | Or | Nor | Xnor | Xor ->  (2 , 1, 2*defaultSize , 2*defaultSize) 
+        | Not -> ( 1 , 1, 2*defaultSize ,  2*defaultSize) 
+        | ComponentType.Input (a) -> ( 0 , 1, defaultSize ,  2*defaultSize)                
+        | ComponentType.Output (a) -> (  1 , 0, defaultSize ,  2*defaultSize) 
+        | ComponentType.Viewer a -> (  1 , 0, defaultSize ,  defaultSize) 
+        | ComponentType.IOLabel  ->(  1 , 1, defaultSize ,  2*defaultSize) 
+        | Decode4 ->( 2 , 4 , 4*defaultSize  , 3*defaultSize) 
+        | Constant1 (a, b,_) | Constant(a, b) -> (  0 , 1, defaultSize ,  2*defaultSize) 
+        | MergeWires -> ( 2 , 1, 2*defaultSize ,  2*defaultSize) 
+        | SplitWire (a) ->(  1 , 2 , 2*defaultSize ,  2*defaultSize) 
+        | Mux2 -> ( 3  , 1, 3*defaultSize ,  2*defaultSize) 
+        // EXTENSION:    | Mux4 -> ( 5  , 1, 5*defaultSize ,  2*defaultSize)   
+        // EXTENSION:    | Mux8 -> ( 9  , 1, 7*defaultSize ,  2*defaultSize) 
+        | Demux2 ->( 2  , 2, 3*defaultSize ,  2*defaultSize) 
         // EXTENSION:   | Demux4 -> ( 2  , 4, 150 ,  50) 
         // EXTENSION:    | Demux8 -> ( 2  , 8, 200 ,  50) 
-        | BusSelection (a, b) -> (  1 , 1, GridSize,  2*GridSize) 
-        | BusCompare (a, b) -> ( 1 , 1, GridSize ,  2*GridSize) 
-        | DFF -> (  1 , 1, 3*GridSize  , 3*GridSize) 
-        | DFFE -> ( 2  , 1, 3*GridSize  , 3*GridSize) 
-        | Register (a) -> ( 1 , 1, 3*GridSize  , 4*GridSize )
-        | RegisterE (a) -> ( 2 , 1, 3*GridSize  , 4*GridSize) 
-        | AsyncROM1 (a)  -> (  1 , 1, 3*GridSize  , 4*GridSize) 
-        | ROM1 (a) -> (   1 , 1, 3*GridSize  , 4*GridSize) 
-        | RAM1 (a) | AsyncRAM1 a -> ( 3 , 1, 3*GridSize  , 4*GridSize) 
-        | NbitsXor (n) -> (  2 , 1, 3*GridSize  , 4*GridSize) 
-        | NbitsAdder (n) -> (  3 , 2, 3*GridSize  , 4*GridSize) 
+        | BusSelection (a, b) -> (  1 , 1, defaultSize,  2*defaultSize) 
+        | BusCompare (a, b) -> ( 1 , 1, defaultSize ,  2*defaultSize) 
+        | DFF -> (  1 , 1, 3*defaultSize  , 3*defaultSize) 
+        | DFFE -> ( 2  , 1, 3*defaultSize  , 3*defaultSize) 
+        | Register (a) -> ( 1 , 1, 3*defaultSize  , 4*defaultSize )
+        | RegisterE (a) -> ( 2 , 1, 3*defaultSize  , 4*defaultSize) 
+        | AsyncROM1 (a)  -> (  1 , 1, 3*defaultSize  , 4*defaultSize) 
+        | ROM1 (a) -> (   1 , 1, 3*defaultSize  , 4*defaultSize) 
+        | RAM1 (a) | AsyncRAM1 a -> ( 3 , 1, 3*defaultSize  , 4*defaultSize) 
+        | NbitsXor (n) -> (  2 , 1, 3*defaultSize  , 4*defaultSize) 
+        | NbitsAdder (n) -> (  3 , 2, 3*defaultSize  , 4*defaultSize) 
         | Custom x -> 
-            let h = GridSize + GridSize * (List.max [List.length x.InputLabels; List.length x.OutputLabels])
+            let h = defaultSize + defaultSize * (List.max [List.length x.InputLabels; List.length x.OutputLabels])
             let maxInLength, maxOutLength = customToLength x.InputLabels, customToLength x.OutputLabels
             let maxW = maxInLength + maxOutLength + label.Length
-            let scaledW = roundToN GridSize (maxW * GridSize / 5) //Divide by 5 is just abitrary as otherwise the symbols would be too wide 
-            let w = max scaledW (GridSize * 4) //Ensures a minimum width if the labels are very small
+            let scaledW = roundToN defaultSize (maxW * defaultSize / 5) //Divide by 5 is just abitrary as otherwise the symbols would be too wide 
+            let w = max scaledW (defaultSize * 4) //Ensures a minimum width if the labels are very small
             ( List.length x.InputLabels, List.length x.OutputLabels, h ,  w)
                 
     makeComponent args label
@@ -255,26 +250,29 @@ let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) :
 let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
     let id = JSHelpers.uuid ()
     let comp = makeComp pos comptype id label
-    { 
-      Pos = { X = pos.X - float comp.W / 2.0; Y = pos.Y - float comp.H / 2.0 }
-      ShowInputPorts = false
-      ShowOutputPorts = false
-      InWidth0 = None // set by BusWire
-      InWidth1 = None
-      Colour = "lightgrey"
-      Id = ComponentId id
-      Compo = comp
-      Opacity = 1.0
-      Moving = false
+    {
+        Pos = { X = pos.X - float comp.W / 2.0; Y = pos.Y - float comp.H / 2.0 }
+        ShowInputPorts = false
+        ShowOutputPorts = false
+        InWidth0 = None // set by BusWire
+        InWidth1 = None
+        Colour = "lightgrey"
+        Id = ComponentId id
+        Component = comp
+        Opacity = 1.0
+        Moving = false
+        STransform = {Rotation = Degree0; flipped = false}
+        PortOrientation = Map.empty
+        PortOrder = Map.empty //stores the order of ports on each edge
     }
 
 // Function to add ports to port model     
 let addToPortModel (model: Model) (sym: Symbol) =
     let addOnePort (currentPorts: Map<string, Port>) (port: Port) =
-        Map.add port.Id port currentPorts
-    
-    let addedInputPorts = (model.Ports, sym.Compo.InputPorts) ||> List.fold addOnePort
-    (addedInputPorts, sym.Compo.OutputPorts) ||> List.fold addOnePort
+        Map.add port.Id port currentPorts   
+    let addedInputPorts = (model.Ports, sym.Component.InputPorts) ||> List.fold addOnePort
+
+    (addedInputPorts, sym.Component.OutputPorts) ||> List.fold addOnePort
 
 //-----------------------------------------GET PORT POSITION---------------------------------------------------
 // Function that calculates the positions of the ports 
@@ -285,56 +283,58 @@ let inline getPortPosEdgeGap (ct: ComponentType) =
     | MergeWires | SplitWire _  -> 0.25
     | _ -> 1.0
 
-let getPortPos (comp: Component) (port:Port) = 
+let getPortPos (symb: Symbol) (port:Port) = 
     let (ports, posX) =
         if port.PortType = (PortType.Input) then
-            (comp.InputPorts, 0.0)
+            (symb.Component.InputPorts, 0.0)
         else 
-            (comp.OutputPorts, float( comp.W ))
+            (symb.Component.OutputPorts, float( symb.Component.W ))
     let index = float( List.findIndex (fun (p:Port)  -> p = port) ports )
     let gap = getPortPosEdgeGap comp.Type 
     let posY = (float(comp.H))* (( index + gap )/( float( ports.Length ) + 2.0*gap - 1.0))  // the ports are created so that they are equidistant
     {X = posX; Y = posY}
-let getPortPosModel (model: Model) (port:Port) =
-    getPortPos (Map.find (ComponentId port.HostId) model.Symbols).Compo port
 
+/// finds port position inside model
+let getPortPosForModel (model: Model) (port:Port) =
+    getPortPos (Map.find (ComponentId port.HostId) model.Symbols) port
 
 //-----------------------------------------DRAWING HELPERS ---------------------------------------------------
 // Text adding function with many parameters (such as bold, position and text)
-let private addText posX posY name txtPos weight size=
+let private addText (pos: XYPos) name txtPos weight size=
     let text =
             {defaultText with TextAnchor = txtPos; FontWeight = weight; FontSize = size}
-    [makeText posX posY name text]
+    [makeText pos.X pos.Y name text]
 
 // Generate circles
-let private portCircles x y  = 
-    [makeCircle x y portCircle]
+let private portCircles (pos: XYPos) = 
+    [makeCircle pos.X pos.Y portCircle]
+
 // Define the name of each port 
-let private portText x y name portType=
-    let xPos = 
+let private portText (pos: XYPos) name portType =
+    let pos' = 
         if portType = PortType.Output
-        then x - 5.
-        else x + 5.
+        then pos - {X = 5.; Y = 7.}
+        else pos + {X = 5.; Y = -7.}
     let test = if portType = PortType.Output then "end" else "start"
-    (addText xPos (y - 7.0) name test "normal" "12px")
+    (addText pos' name test "normal" "12px")
 
 // Print the name of each port 
-let private drawPortsText (portList: Port List) (listOfNames: string List) (comp: Component)= 
+let private drawPortsText (portList: Port List) (listOfNames: string List) (symb: Symbol) = 
+    let someFun name x = portText (getPortPos symb portList[x]) name (portList.Head.PortType)
     if listOfNames.Length < 1
-        then  []
-        else 
-            [0..(portList.Length-1)]
-            |> List.map2 (fun name x -> (portText (getPortPos comp portList[x]).X (getPortPos comp portList[x]).Y name (portList.Head.PortType))) listOfNames 
-            |> List.collect id
+    then []
+    else 
+        [0..(portList.Length-1)]
+        |> List.map2 someFun listOfNames 
+        |> List.collect id
+//(fun name x -> (portText (getPortPos comp portList[x]).X (getPortPos comp portList[x]).Y name (portList.Head.PortType)))
+// old fun ^
 
 // Function to draw ports using getPortPos. The ports are equidistant     
-let private drawPorts (portList: Port List) (printPorts:bool) (comp: Component)= 
-    if (portList.Length)  < 1 
-    then []
-    else
-        if printPorts
-        then [0..(portList.Length-1)] |> List.collect (fun x -> (portCircles (getPortPos comp portList[x]).X (getPortPos comp portList[x]).Y))
-        else []
+let private drawPorts (portList: Port List) (printPorts:bool) (symb: Symbol)= 
+    if (portList.Length < 1) && printPorts 
+    then [0..(portList.Length-1)] |> List.collect (fun x -> (portCircles (getPortPos symb portList[x])))
+    else []
 
 //------------------------------HELPER FUNCTIONS FOR DRAWING SYMBOLS-------------------------------------
 let private createPolygon points colour opacity = 
@@ -375,7 +375,7 @@ let addHorizontalColorLine posX1 posX2 posY opacity (color:string) = // TODO: Li
 
 /// --------------------------------------- SYMBOL DRAWING ------------------------------------------------------ ///   
 
-let compSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float)= 
+let componentSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float) = 
     let h = comp.H
     let w = comp.W
     let halfW = comp.W/2
@@ -446,17 +446,14 @@ let compSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:
    
     // Put everything together 
     
-    (drawPorts comp.OutputPorts showOutputPorts comp)
-    |> List.append (drawPorts comp.InputPorts showInputPorts comp)
-    |> List.append (drawPortsText comp.InputPorts (fst(portDecName comp)) comp)
-    |> List.append (drawPortsText comp.OutputPorts (snd(portDecName comp)) comp)  
+    (drawPorts comp.OutputPorts showOutputPorts symbol)
+    |> List.append (drawPorts comp.InputPorts showInputPorts symbol)
+    |> List.append (drawPortsText comp.InputPorts (fst(portDecName comp)) symbol)
+    |> List.append (drawPortsText comp.OutputPorts (snd(portDecName comp)) symbol)  
     |> List.append (addText (float halfW) (+5.0) (gateDecoderType comp) "middle" "bold" "14px") 
     |> List.append (addText (float halfW) (-20.0) comp.Label "middle" "normal" "16px")
     |> List.append (additions)
     |> List.append (createBiColorPolygon points colour olColour opacity strokeWidth)
-
-let init () = 
-    { Symbols = Map.empty; CopiedSymbols = Map.empty; Ports = Map.empty ; InputPortsConnected= Set.empty ; OutputPortsConnected = Map.empty}, Cmd.none
 
 //----------------------------View Function for Symbols----------------------------//
 type private RenderSymbolProps =
@@ -473,7 +470,7 @@ let private renderSymbol =
         fun (props : RenderSymbolProps) ->
             let symbol = props.Symbol
             let ({X=fX; Y=fY}:XYPos) = symbol.Pos
-            g ([ Style [ Transform(sprintf "translate(%fpx, %fpx)" fX fY) ] ]) (compSymbol props.Symbol props.Symbol.Compo symbol.Colour symbol.ShowInputPorts symbol.ShowOutputPorts symbol.Opacity)
+            g ([ Style [ Transform(sprintf "translate(%fpx, %fpx)" fX fY) ] ]) (componenetSymbol props.Symbol props.Symbol.Compo symbol.Colour symbol.ShowInputPorts symbol.ShowOutputPorts symbol.Opacity)
             
         , "Symbol"
         , equalsButFunctions
@@ -483,12 +480,12 @@ let private renderSymbol =
 let MapsIntoLists map =
     let listMoving = 
         Map.filter (fun _ sym -> not sym.Moving) map
-        |>Map.toList
-        |>List.map snd
+        |> Map.toList
+        |> List.map snd
     let listNotMoving =
         Map.filter (fun _ sym -> sym.Moving) map
-        |>Map.toList
-        |>List.map snd
+        |> Map.toList
+        |> List.map snd
     listMoving @ listNotMoving
 
 
@@ -532,7 +529,7 @@ let getSymbolPos (symbolModel: Model) compId = //makes sense
 let getInputPortsPositionMap (model: Model) (symbols: Symbol list)  = 
     symbols
     |> List.collect (fun sym -> List.map (fun p -> sym,p) sym.Component.InputPorts)
-    |> List.map (fun (sym,port) -> (InputPortId port.Id, posAdd (getPortPosModel model port) (sym.Pos)))
+    |> List.map (fun (sym,port) -> (InputPortId port.Id, posAdd (getPortPosForModel model port) (sym.Pos)))
     |> Map.ofList
 
 /// This is quite slow, because it gets the whole maps.
@@ -541,7 +538,7 @@ let getInputPortsPositionMap (model: Model) (symbols: Symbol list)  =
 let getOutputPortsPositionMap (model: Model) (symbols: Symbol list)  = //These function add the coordinates of the symbol too
     symbols
     |> List.collect (fun sym -> List.map (fun p -> sym,p) sym.Component.OutputPorts) //gets the output ports of each symbol
-    |> List.map (fun (sym,port) -> (OutputPortId port.Id , posAdd (getPortPosModel model port) (sym.Pos)))
+    |> List.map (fun (sym,port) -> (OutputPortId port.Id , posAdd (getPortPosForModel model port) (sym.Pos)))
     |> Map.ofList
 
 ///Returns the port object associated with a given portId
@@ -600,7 +597,7 @@ let getOnePortLocationNew (symModel: Model) (portId : string) (pType: PortType) 
             List.tryFind (fun (po:Port) -> po.Id = portId) comp.InputPorts
         else
             List.tryFind (fun (po:Port) -> po.Id = portId) comp.OutputPorts
-        |> Option.map (fun port -> posAdd (getPortPosModel symModel port) (sym.Pos))) //pick first then apply function
+        |> Option.map (fun port -> posAdd (getPortPosForModel symModel port) (sym.Pos))) //pick first then apply function
 
 
 /// Returns the locations of a given input portId and output portId
