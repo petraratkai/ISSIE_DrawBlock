@@ -434,19 +434,7 @@ let APortOffsetMap (symbol:Symbol) =
     let genAPortOffsets (edge:Edge) = 
         getportOffsetList edge 
 
-    mapOffset 
-
-
-    (*
-    | Degree180 -> let centre = {X=symbol.Pos.X - float(symbol.Component.W/2) ; Y=symbol.Pos.Y + float(symbol.Component.H/2)}
-                   List.map(fun x -> match x with
-                                    | Left -> let posX = centre.X - float(symbol.Component.W/2)
-                                              let portnumber = symbol.PortOrder[x].Length
-                                              let posY = getPortGaps portnumber symbol.Component.H gap
-                                
-                                              //Take posY list and find offset of each element from centre
-                                              List.map (fun z -> {X=centre.X-posX ; Y=centre.Y-z}) posY) keys
-    *)           
+    mapOffset         
 
 
 let getPortPos (symbol: Symbol) (port:Port) = 
@@ -535,9 +523,15 @@ let addHorizontalColorLine posX1 posX2 posY opacity (color:string) = // TODO: Li
     let olColor = outlineColor color
     [makePolygon points {defaultPolygon with Fill = "olcolor"; Stroke=olColor; StrokeWidth = "2.0"; FillOpacity = opacity}]
 
+//invert key and value
+let inverseMap map =
+    map
+    |> Map.toList
+    |> List.map (fun (k,v) -> (v,k))
+    |> Map.ofList
 
 ///Symbol Rotation Right
-let rotateRight (symbol:Symbol) (rotate:Rotation) = 
+let rotateRight (symbol:Symbol) (rotateby:Rotation) = 
     let currentorientation = symbol.STransform.Rotation
     let centre = getCentre symbol
     let height = symbol.Component.H
@@ -546,21 +540,21 @@ let rotateRight (symbol:Symbol) (rotate:Rotation) =
     ///Update orientation of symbol to give final orientation
     let updateOrientation =
         match currentorientation with 
-        | Degree0 -> match rotate with
+        | Degree0 -> match rotateby with
                      | Degree90 -> {symbol.STransform with Rotation=Degree90}
                      | Degree180 -> {symbol.STransform with Rotation=Degree180}
                      | Degree270 -> {symbol.STransform with Rotation=Degree270}
-        | Degree90 -> match rotate with
+        | Degree90 -> match rotateby with
                       | Degree90 -> {symbol.STransform with Rotation=Degree180}
                       | Degree180 -> {symbol.STransform with Rotation=Degree270}
                       | Degree270 -> {symbol.STransform with Rotation=Degree0}
 
-        | Degree180 -> match rotate with
+        | Degree180 -> match rotateby with
                        | Degree90 -> {symbol.STransform with Rotation=Degree270}
                        | Degree180 -> {symbol.STransform with Rotation=Degree0}
                        | Degree270 -> {symbol.STransform with Rotation=Degree90}
 
-        | Degree270 -> match rotate with
+        | Degree270 -> match rotateby with
                        | Degree90 -> {symbol.STransform with Rotation=Degree0}
                        | Degree180 -> {symbol.STransform with Rotation=Degree90}
                        | Degree270 -> {symbol.STransform with Rotation=Degree180}
@@ -594,30 +588,28 @@ let rotateRight (symbol:Symbol) (rotate:Rotation) =
 
     ///Update port orientation
     let updatePortOrientation = 
-        let portedges = Seq.toList symbol.PortOrientation.Values
-        let newedges = portedges
-                       |> List.map rotateSide
-        let idlist = Seq.toList symbol.PortOrientation.Keys 
-        mapOrientation idlist newedges
+        symbol.PortOrientation
+        |> Map.map (fun portid edge -> rotateSide edge)
 
     ///Update port order
     let updatePortOrder = 
-        let portedges = Seq.toList symbol.PortOrder.Keys
-        let newedges = portedges
-                       |> List.map rotateSide
-        let portlist = Seq.toList symbol.PortOrder.Values
-        mapPortOrder portlist portedges
+        symbol.PortOrder
+        |> inverseMap
+        |> Map.map (fun portlist edge -> rotateSide edge) 
+        |> inverseMap
                        
-    match rotate with
-    | Degree90  -> let newXYpos = getTopLeft symbol centre
-                   let newcomp = {symbol.Component with H=width; W=height}
-                   {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation; PortOrientation=updatePortOrientation; PortOrder=updatePortOrder}
+    match rotateby with
+    | Degree90 | Degree270  -> let newXYpos = getTopLeft symbol centre
+                               let newcomp = {symbol.Component with H=width; W=height}
+                               {symbol with Pos=newXYpos; 
+                                            Component=newcomp; 
+                                            STransform=updateOrientation; 
+                                            PortOrientation=updatePortOrientation; 
+                                            PortOrder=updatePortOrder}
 
-    | Degree180 -> {symbol with STransform=updateOrientation}    
-
-    | Degree270 -> let newXYpos = getTopLeft symbol centre
-                   let newcomp = {symbol.Component with H=width; W=height}
-                   {symbol with Pos=newXYpos; Component=newcomp; STransform=updateOrientation; PortOrientation=updatePortOrientation; PortOrder=updatePortOrder}
+    | Degree180 -> {symbol with STransform=updateOrientation ; 
+                                PortOrientation=updatePortOrientation ; 
+                                PortOrder=updatePortOrder}    
 
 ///Symbol Rotation Left
 let rotateLeft (symbol:Symbol) (rotate:Rotation) = 
@@ -677,19 +669,15 @@ let rotateLeft (symbol:Symbol) (rotate:Rotation) =
 
     ///Update port orientation
     let updatePortOrientation = 
-        let portedges = Seq.toList symbol.PortOrientation.Values
-        let newedges = portedges
-                       |> List.map rotateSide
-        let idlist = Seq.toList symbol.PortOrientation.Keys 
-        mapOrientation idlist newedges
+        symbol.PortOrientation
+        |> Map.map (fun portid edge -> rotateSide edge)
 
     ///Update port order
     let updatePortOrder = 
-        let portedges = Seq.toList symbol.PortOrder.Keys
-        let newedges = portedges
-                       |> List.map rotateSide
-        let portlist = Seq.toList symbol.PortOrder.Values
-        mapPortOrder portlist portedges
+        symbol.PortOrder
+        |> inverseMap
+        |> Map.map (fun portlist edge -> rotateSide edge) 
+        |> inverseMap
 
     let updateOrientation =
         match currentorientation with 
