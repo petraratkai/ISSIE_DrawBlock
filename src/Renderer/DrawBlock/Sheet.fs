@@ -85,6 +85,9 @@ type SnapIndicator =
 type KeyboardMsg =
     | CtrlS | CtrlC | CtrlV | CtrlZ | CtrlY | CtrlA | CtrlW | AltC | AltV | AltZ | AltShiftZ | ZoomIn | ZoomOut | DEL | ESC
 
+type WireTypeMsg = 
+    | Jump | Radial | Modern
+
 type Msg =
     | Wire of BusWire.Msg
     | KeyPress of KeyboardMsg
@@ -111,6 +114,7 @@ type Msg =
     | ToggleNet of CanvasState //This message does nothing in sheet, but will be picked up by the update function
     | SelectWires of ConnectionId list
     | SetSpinner of bool
+    | WireType of WireTypeMsg
 
 
 // ------------------ Helper Functions that need to be before the Model type --------------------------- //

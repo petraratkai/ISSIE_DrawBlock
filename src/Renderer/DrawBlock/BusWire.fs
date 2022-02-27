@@ -99,6 +99,8 @@ type Msg =
     | MakeJumps of list<ConnectionId>
     | ResetModel // For Issie Integration
     | LoadConnections of list<Connection> // For Issie Integration
+    | UpdateWireType of WireType
+    | Rotate of Symbol.Msg
 
 
 /// <summary> Applies a function which requires the segment start and end positions to the segments in a wire, 
@@ -1489,6 +1491,17 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
             
         { model with Wires = newWX }, Cmd.ofMsg (MakeJumps connIds)
 
+    | UpdateWireType (style: WireType) ->
+        let updateStyle =
+            match style with
+            | Jump -> model.Wires |> Map.map (fun (id, w) -> (id, {w with WireType = Jump}))
+            | Radial -> model.Wires |> Map.map (fun (id, w) -> (id, {w with WireType = Radial}))
+            | Modern -> model.Wires |> Map.map (fun (id, w) -> (id, {w with WireType = Modern}))
+
+        { model with Wires = updateStyle }, Cmd.None
+
+    | Rotate -> {model with Wires = updateWires}, Cmd.None
+
 //---------------Other interface functions--------------------//
 
 ///
@@ -1549,7 +1562,6 @@ let pasteWires (wModel : Model) (newCompIds : list<ComponentId>) : (Model * list
         |> List.map fst
         
     { wModel with Wires = newWireMap }, pastedConnIds
-
 
 //---------------------------------------------------------------------------------//
 //--------------------NH1019 CODE SECTION ENDS-------------------------------------//
