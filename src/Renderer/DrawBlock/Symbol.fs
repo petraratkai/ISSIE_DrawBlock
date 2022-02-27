@@ -649,13 +649,13 @@ let rotateLeft (symbol:Symbol) (rotate:Rotation) =
 
 let compSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float)= 
     let comp = symbol.Component
-    let centre = getCentre symbol 
+    let orientation = symbol.STransform.Rotation
     let height = comp.H
     let width = comp.W
     let halfwidth = comp.W/2
     let halfheight = (comp.H)/2
-    let symbolX = int(symbol.Pos.X)
-    let symbolY = int(symbol.Pos.Y)
+    let symbolX = symbol.Pos.X
+    let symbolY = symbol.Pos.Y
 
     let mergeSplitLine posX1 posX2 posY msb lsb =
         let text = 
@@ -676,11 +676,15 @@ let compSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
         | MergeWires -> (sprintf "%i,%f %i,%f " halfwidth ((1.0/6.0)*float(height)) halfwidth ((5.0/6.0)*float(height)))
         | SplitWire _ ->  (sprintf "%i,%f %i,%f " halfwidth ((1.0/6.0)*float(height)) halfwidth ((5.0/6.0)*float(height)))
         | Demux2 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(height)*0.2) 0 (float(height)*0.8) width height width 0)
-        | Mux2 -> (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 width (float(height)*0.2) width (float(height)*0.8) 0 height )
+        | Mux2 -> match orientation with
+                 | Degree0 -> (sprintf "%f,%f %f,%f  %f,%f %f,%f" symbolX (symbolY-float(height)) (symbolX+float(width)) (symbolY-0.8*float(height)) (symbolX+float(width)) (symbolY-0.2*float(height)) symbolX symbolY )
+                 | Degree90 -> (sprintf "%f,%f %f,%f  %f,%f %f,%f" (symbolX+0.2*float(width)) (symbolY-float(height)) (symbolX + 0.8*float(width)) (symbolY-float(height)) (symbolX + float(width)) symbolY symbolX symbolY )
+                 | Degree180 -> (sprintf "%f,%f %f,%f  %f,%f %f,%f" symbolX (symbolY-0.6*float(height)) (symbolX+float(width)) (symbolY-0.8*float(height)) (symbolX+float(width)) (symbolY+0.2*float(height)) symbolX symbolY)
+                 | Degree270 -> (sprintf "%f,%f %f,%f  %f,%f %f,%f" (symbolX-0.2*float(width)) (symbolY-float(height)) (symbolX+0.8*float(width)) (symbolY+float(height)) (symbolX+0.6*float(width)) symbolY symbolX symbolY)
         // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
         | BusSelection _ |BusCompare _ -> (sprintf "%i,%i %i,%i %f,%i %f,%f %i,%f %i,%f %f,%f %f,%i ")0 0 0 height (0.6*float(width)) height (0.8*float(width)) (0.7*float(height)) width (0.7*float(height)) width (0.3*float(height)) (0.8*float(width)) (0.3*float(height)) (0.6*float(width)) 0
-        | _ -> (sprintf "%i,%i %i,%i %i,%i %i,%i" symbolX symbolY (symbolX+width) symbolY (symbolX+width) (symbolY-height) symbolX (symbolY-height))
+        | _ -> (sprintf "%f,%f %f,%f %f,%f %f,%f" symbolX symbolY (symbolX+float(width)) symbolY (symbolX+float(width)) (symbolY-float(height)) symbolX (symbolY-float(height)))
 
     let additionalinput =       // Helper function to add certain characteristics on specific symbols (inverter, enables, clocks)
         match comp.Type with
