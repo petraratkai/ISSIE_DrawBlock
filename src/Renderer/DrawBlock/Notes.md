@@ -40,3 +40,9 @@ createNewSymbol
 
 Created map helper functions to obtain the orientation and order map for MUX REGE Adder and DFFE blocks
 
+CompSymbol
+
+In compSymbol, symbols are initialized at (0,0) but I decided to make the change that symbols are initialized at the XYPos
+deleted component parameter since we can use symbol.component
+-refactored addition to be named additionalinput to be more specific
+-refactored h,w,halfW,halfH to height,weight,halfweight,halfheight

@@ -725,11 +725,12 @@ let rotateLeft (symbol:Symbol) (rotate:Rotation) =
 
 /// --------------------------------------- SYMBOL DRAWING ------------------------------------------------------ ///   
 
-let compSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float)= 
-    let h = comp.H
-    let w = comp.W
-    let halfW = comp.W/2
-    let halfH = (comp.H)/2
+let compSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float)= 
+    let comp = symbol.Component
+    let height = comp.H
+    let width = comp.W
+    let halfwidth = comp.W/2
+    let halfheight = (comp.H)/2
     let symbolX = int(symbol.Pos.X)
     let symbolY = int(symbol.Pos.Y)
 
@@ -739,28 +740,29 @@ let compSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:
             | _, false -> ""
             | true, _ -> sprintf $"({msb})"
             | false, _ -> sprintf $"({msb}:{lsb})"
-        addHorizontalColorLine posX1 posX2 (posY*float(h)) opacity colour @
-        addText (float (posX1 + posX2)/2.0) (posY*float(h)-11.0) text "middle" "bold" "9px"
+        addHorizontalColorLine posX1 posX2 (posY*float(height)) opacity colour @
+        addText (float (posX1 + posX2)/2.0) (posY*float(height)-11.0) text "middle" "bold" "9px"
 
     let points =            // Points that specify each symbol 
         match comp.Type with
-        | Input _ -> (sprintf "%i,%i %i,%i %f,%i %i,%i %f,%i" 0 0 0 h (float(w)*(0.66)) h w halfH (float(w)*(0.66)) 0)
-        | Constant1 _ -> (sprintf "%i,%i %i,%i %i,%i" 0 comp.H halfW halfH 0 0)
-        | IOLabel -> (sprintf "%f,%i %i,%i %f,%i %f,%i %i,%i %f,%i"  (float(w)*(0.33)) 0 0 halfH (float(w)*(0.33)) h (float(w)*(0.66)) h w halfH (float(w)*(0.66)) 0)
-        | Output _ -> (sprintf "%f,%i %i,%i %f,%i %i,%i %i,%i" (float(w)*(0.2)) 0 0 halfH (float(w)*(0.2)) h w h w 0)
-        | Viewer _ -> (sprintf "%f,%i %i,%i %f,%i %i,%i %i,%i" (float(w)*(0.2)) 0 0 halfH (float(w)*(0.2)) h w h w 0)
-        | MergeWires -> (sprintf "%i,%f %i,%f " halfW ((1.0/6.0)*float(h)) halfW ((5.0/6.0)*float(h)))
-        | SplitWire _ ->  (sprintf "%i,%f %i,%f " halfW ((1.0/6.0)*float(h)) halfW ((5.0/6.0)*float(h)))
-        | Demux2 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
-        | Mux2 -> (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
+        | Input _ -> (sprintf "%i,%i %i,%i %f,%i %i,%i %f,%i" 0 0 0 height (float(width)*(0.66)) height width halfheight (float(width)*(0.66)) 0)
+        | Constant1 _ -> (sprintf "%i,%i %i,%i %i,%i" 0 comp.H halfwidth halfheight 0 0)
+        | IOLabel -> (sprintf "%f,%i %i,%i %f,%i %f,%i %i,%i %f,%i"  (float(width)*(0.33)) 0 0 halfheight (float(width)*(0.33)) height (float(width)*(0.66)) height width halfheight (float(width)*(0.66)) 0)
+        | Output _ -> (sprintf "%f,%i %i,%i %f,%i %i,%i %i,%i" (float(width)*(0.2)) 0 0 halfheight (float(width)*(0.2)) height width height width 0)
+        | Viewer _ -> (sprintf "%f,%i %i,%i %f,%i %i,%i %i,%i" (float(width)*(0.2)) 0 0 halfheight (float(width)*(0.2)) height width height width 0)
+        | MergeWires -> (sprintf "%i,%f %i,%f " halfwidth ((1.0/6.0)*float(height)) halfwidth ((5.0/6.0)*float(height)))
+        | SplitWire _ ->  (sprintf "%i,%f %i,%f " halfwidth ((1.0/6.0)*float(height)) halfwidth ((5.0/6.0)*float(height)))
+        | Demux2 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(height)*0.2) 0 (float(height)*0.8) width height width 0)
+        | Mux2 -> (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 width (float(height)*0.2) width (float(height)*0.8) 0 height )
         // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
-        | BusSelection _ |BusCompare _ -> (sprintf "%i,%i %i,%i %f,%i %f,%f %i,%f %i,%f %f,%f %f,%i ")0 0 0 h (0.6*float(w)) h (0.8*float(w)) (0.7*float(h)) w (0.7*float(h)) w (0.3*float(h)) (0.8*float(w)) (0.3*float(h)) (0.6*float(w)) 0
-        | _ -> (sprintf "%i,%i %i,%i %i,%i %i,%i" symbolX symbolY (symbolX+w) symbolY (symbolX+w) (symbolY-h) symbolX (symbolY-h))
-    let additions =       // Helper function to add certain characteristics on specific symbols (inverter, enables, clocks)
+        | BusSelection _ |BusCompare _ -> (sprintf "%i,%i %i,%i %f,%i %f,%f %i,%f %i,%f %f,%f %f,%i ")0 0 0 height (0.6*float(width)) height (0.8*float(width)) (0.7*float(height)) width (0.7*float(height)) width (0.3*float(height)) (0.8*float(width)) (0.3*float(height)) (0.6*float(width)) 0
+        | _ -> (sprintf "%i,%i %i,%i %i,%i %i,%i" symbolX symbolY (symbolX+width) symbolY (symbolX+width) (symbolY-height) symbolX (symbolY-height))
+
+    let additionalinput =       // Helper function to add certain characteristics on specific symbols (inverter, enables, clocks)
         match comp.Type with
-        | Constant1 (_,_,txt) -> (addHorizontalLine halfW w (float(halfH)) opacity @ addText (float (halfW)-5.0) (float(h)-8.0) txt "middle" "normal" "12px") 
-        | Nand | Nor | Xnor |Not -> (addInvertor w halfH colour opacity)
+        | Constant1 (_,_,txt) -> (addHorizontalLine halfwidth width (float(halfheight)) opacity @ addText (float (halfwidth)-5.0) (float(height)-8.0) txt "middle" "normal" "12px") 
+        | Nand | Nor | Xnor |Not -> (addInvertor width halfheight colour opacity)
         | MergeWires -> 
             let lo, hi = 
                 match symbol.InWidth0, symbol.InWidth1  with 
@@ -769,24 +771,24 @@ let compSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:
             let msb = hi + lo - 1
             let midb = lo
             let midt = lo - 1
-            mergeSplitLine 0 halfW (1.0/6.0) midt 0 @ 
-            mergeSplitLine 0 halfW (5.0/6.0) msb midb @ 
-            mergeSplitLine halfW w 0.5 msb 0
+            mergeSplitLine 0 halfwidth (1.0/6.0) midt 0 @ 
+            mergeSplitLine 0 halfwidth (5.0/6.0) msb midb @ 
+            mergeSplitLine halfwidth width 0.5 msb 0
         | SplitWire mid -> 
             let msb, mid' = match symbol.InWidth0 with | Some n -> n - 1, mid | _ -> -100, -50
             let midb = mid'
             let midt = mid'-1
-            mergeSplitLine halfW w (1.0/6.0) midt 0 @ 
-            mergeSplitLine halfW w (5.0/6.0) msb midb @ 
-            mergeSplitLine 0 halfW 0.5 msb 0
-        | DFF |DFFE -> (addClock 0 h colour opacity)
-        | Register _ |RegisterE _ -> (addClock 0 h colour opacity)
-        | ROM1 _ |RAM1 _ | AsyncRAM1 _ -> (addClock 0 h colour opacity)
-        | BusSelection(x,y) -> (addText  (float(w/2)-5.0) ((float(h)/2.7)-2.0) (bustitle x y) "middle" "normal" "12px")
-        | BusCompare (_,y) -> (addText  (float(w/2)-6.0) (float(h)/2.7-1.0) ("=" + NumberHelpers.hex(int y)) "middle" "bold" "10px")
-        | Input (x) -> (addText  (float(w/2)-5.0) ((float(h)/2.7)-3.0) (title "" x) "middle" "normal" "12px")
-        | Output (x) -> (addText  (float(w/2)) ((float(h)/2.7)-3.0) (title "" x) "middle" "normal" "12px")
-        | Viewer (x) -> (addText  (float(w/2)) ((float(h)/2.7)-1.25) (title "" x) "middle" "normal" "9px")
+            mergeSplitLine halfwidth width (1.0/6.0) midt 0 @ 
+            mergeSplitLine halfwidth width (5.0/6.0) msb midb @ 
+            mergeSplitLine 0 halfwidth 0.5 msb 0
+        | DFF |DFFE -> (addClock 0 height colour opacity)
+        | Register _ |RegisterE _ -> (addClock 0 height colour opacity)
+        | ROM1 _ |RAM1 _ | AsyncRAM1 _ -> (addClock 0 height colour opacity)
+        | BusSelection(x,y) -> (addText  (float(width/2)-5.0) ((float(height)/2.7)-2.0) (bustitle x y) "middle" "normal" "12px")
+        | BusCompare (_,y) -> (addText  (float(width/2)-6.0) (float(height)/2.7-1.0) ("=" + NumberHelpers.hex(int y)) "middle" "bold" "10px")
+        | Input (x) -> (addText  (float(width/2)-5.0) ((float(height)/2.7)-3.0) (title "" x) "middle" "normal" "12px")
+        | Output (x) -> (addText  (float(width/2)) ((float(height)/2.7)-3.0) (title "" x) "middle" "normal" "12px")
+        | Viewer (x) -> (addText  (float(width/2)) ((float(height)/2.7)-1.25) (title "" x) "middle" "normal" "9px")
         | _ -> []
 
     let olColour, strokeWidth =
@@ -800,9 +802,9 @@ let compSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:
     |> List.append (drawPorts comp.InputPorts showInputPorts symbol)
     |> List.append (drawPortsText comp.InputPorts (fst(portDecName comp)) symbol)
     |> List.append (drawPortsText comp.OutputPorts (snd(portDecName comp)) symbol)  
-    |> List.append (addText (float halfW) (+5.0) (gateDecoderType comp) "middle" "bold" "14px") 
-    |> List.append (addText (float halfW) (-20.0) comp.Label "middle" "normal" "16px")
-    |> List.append (additions)
+    |> List.append (addText (float halfwidth) (+5.0) (gateDecoderType comp) "middle" "bold" "14px") 
+    |> List.append (addText (float halfwidth) (-20.0) comp.Label "middle" "normal" "16px")
+    |> List.append (additionalinput)
     |> List.append (createBiColorPolygon points colour olColour opacity strokeWidth)
 
 let init () = 
@@ -823,7 +825,7 @@ let private renderSymbol =
         fun (props : RenderSymbolProps) ->
             let symbol = props.Symbol
             let ({X=fX; Y=fY}:XYPos) = symbol.Pos
-            g ([ Style [ Transform(sprintf "translate(%fpx, %fpx)" fX fY) ] ]) (compSymbol props.Symbol props.Symbol.Component symbol.Colour symbol.ShowInputPorts symbol.ShowOutputPorts symbol.Opacity)
+            g ([ Style [ Transform(sprintf "translate(%fpx, %fpx)" fX fY) ] ]) (compSymbol props.Symbol symbol.Colour symbol.ShowInputPorts symbol.ShowOutputPorts symbol.Opacity)
             
         , "Symbol"
         , equalsButFunctions
