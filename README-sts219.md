@@ -83,6 +83,10 @@ This function is too long, and uses many sub-function / other functions, some of
 
 #### Other problems
 
+**Segments**
+This type is terrible in a few ways:
+- Segments containing both a start and an end position is duplicate information
+- Negating the XYPos of a segment is an awful way of indicating that a wire is being manually routed, and leads to `abs` being used everywhere in the code
 State **concisely** Issues with existing code, or in refactoring for new types, that do not fit into per function list. 
 Again numbered points, at most 3. Choose the most inmportant if you have too much to say. You can should
 refer to documentation (not XML docs) in code where this helps.
