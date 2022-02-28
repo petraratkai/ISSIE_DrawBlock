@@ -280,8 +280,8 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
             | Symbol.Bottom->  [{X = xStart; Y = yStart};
                     {X = xStart+5.0; Y = yStart}; //Stick horizontal
                     {X = xStart+5.0; Y = yStart}; //Length 0 vertical
-                    {X = xEnd-20.; Y = yStart};
-                    {X = xEnd-20.; Y = yEnd+20.};
+                    {X = (xEnd+xStart)/2.; Y = yStart};
+                    {X = (xEnd+xStart)/2.; Y = yEnd+20.};
                     {X = xEnd; Y = yEnd+20.};
                     {X = xEnd; Y = yEnd+5.}; //Stick vertical
                     {X = xEnd; Y = yEnd+5.}; //Length 0 horizontal
@@ -289,8 +289,8 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
             | Symbol.Left ->  [{X = xStart; Y = yStart};
                     {X = xStart+5.0; Y = yStart}; //Stick horizontal
                     {X = xStart+5.0; Y = yStart}; //Length 0 vertical
-                    {X = xEnd-20.; Y = yStart};
-                    {X = xEnd-20.; Y = yEnd};
+                    {X = (xEnd+xStart)/2.; Y = yStart};
+                    {X = (xEnd+xStart)/2.; Y = yEnd};
                     {X = xEnd-5.; Y = yEnd}; //Stick vertical
                     {X = xEnd-5.; Y = yEnd}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
@@ -314,8 +314,8 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
             | Symbol.Top ->  [{X = xStart; Y = yStart};
                     {X = xStart+5.0; Y = yStart}; //Stick horizontal
                     {X = xStart+5.0; Y = yStart}; //Length 0 vertical
-                    {X = xEnd-20.; Y = yStart};
-                    {X = xEnd-20.; Y = yEnd-20.};
+                    {X = (xEnd+xStart)/2.; Y = yStart};
+                    {X = (xEnd+xStart)/2.; Y = yEnd-20.};
                     {X = xEnd; Y = yEnd-20.};
                     {X = xEnd; Y = yEnd-5.}; //Stick vertical
                     {X = xEnd; Y = yEnd-5.}; //Length 0 horizontal
@@ -323,8 +323,8 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
             | Symbol.Left ->  [{X = xStart; Y = yStart};
                     {X = xStart+5.0; Y = yStart}; //Stick horizontal
                     {X = xStart+5.0; Y = yStart}; //Length 0 vertical
-                    {X = xEnd-20.; Y = yStart};
-                    {X = xEnd-20.; Y = yEnd};
+                    {X = (xEnd+xStart)/2.; Y = yStart};
+                    {X = (xEnd+xStart)/2.; Y = yEnd};
                     {X = xEnd-5.; Y = yEnd}; //Stick horizontal
                     {X = xEnd-5.; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}]
@@ -335,8 +335,8 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
             | Symbol.Bottom ->  [{X = xStart; Y = yStart};
                     {X = xStart+5.0; Y = yStart}; //Stick horizontal
                     {X = xStart+5.0; Y = yStart}; //Length 0 vertical
-                    {X = xStart+20.; Y = yStart};
-                    {X = xStart+20.; Y = yEnd+20.};
+                    {X = xStart+5.0; Y = yStart}; //Length 0 horizontal
+                    {X = xStart+5.0; Y = yEnd+20.};
                     {X = xEnd; Y = yEnd+20.};
                     {X = xEnd; Y = yEnd+5.}; //Stick vertical
                     {X = xEnd; Y = yEnd+5.}; //Length 0 horizontal
@@ -344,26 +344,24 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
             | Symbol.Right ->  [{X = xStart; Y = yStart};
                     {X = xStart+5.0; Y = yStart}; //Stick horizontal
                     {X = xStart+5.0; Y = yStart}; //Length 0 vertical
-                    {X = xStart+20.; Y = yStart};
-                    {X = xStart+20.; Y = yEnd};
+                    {X = xStart+5.0; Y = yStart}; //Lenght 0 horizontal (for dragging)
+                    {X = xStart+5.0; Y = yEnd};
                     {X = xEnd+5.; Y = yEnd}; //Stick horizontal
                     {X = xEnd+5.; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}]
             | Symbol.Top ->  [{X = xStart; Y = yStart};
                     {X = xStart+5.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
-                    {X = xStart+20.; Y = yStart};
-                    {X = xStart+20.; Y = yEnd-20.};
-                    {X = xEnd; Y = yEnd-20.};
+                    {X = xStart+5.0; Y = (yStart+yEnd)/2.}; //Length 0 vertical
+                    {X = xEnd; Y = (yStart+yEnd)/2.};
                     {X = xEnd; Y = yEnd-5.}; //Stick vertical
                     {X = xEnd; Y = yEnd-5.}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
             | Symbol.Left ->  [{X = xStart; Y = yStart};
                     {X = xStart+5.0; Y = yStart}; //Stick horizontal
                     {X = xStart+5.0; Y = yStart}; //Length 0 vertical
-                    {X = xStart+20.; Y = yStart};
-                    {X = xStart+20.; Y = yEnd-20.};
-                    {X = xEnd-20.; Y = yEnd-20.};
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
+                    {X = xStart+5.0; Y = (yStart+yEnd)/2.}; 
+                    {X = xEnd-20.; Y = (yStart+yEnd)/2.}; 
                     {X = xEnd-20.; Y = yEnd};
                     {X = xEnd-5.; Y = yEnd}; //Stick horizontal
                     {X = xEnd-5.; Y = yEnd}; //Length 0 vertical
@@ -372,36 +370,32 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
             match portOrientation with
             | Symbol.Top ->  [{X = xStart; Y = yStart};
                     {X = xStart+5.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
-                    {X = xStart+20.; Y = yStart};
-                    {X = xStart+20.; Y = yEnd-20.};
+                    {X = xStart+5.0; Y = yEnd-20.}; //Length 0 vertical
                     {X = xEnd; Y = yEnd-20.};
-                    {X = xEnd; Y = yEnd-5.};//Stick vertical
+                    {X = xEnd; Y = yEnd-5.}; //Stick vertical
                     {X = xEnd; Y = yEnd-5.}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
             | Symbol.Right ->  [{X = xStart; Y = yStart};
                     {X = xStart+5.0; Y = yStart}; //Stick horizontal
                     {X = xStart+5.0; Y = yStart}; //Length 0 vertical
-                    {X = xStart+20.; Y = yStart};
-                    {X = xStart+20.; Y = yEnd};
+                    {X = xStart+5.0; Y = yStart};
+                    {X = xStart+5.0; Y = yEnd};
                     {X = xEnd+5.; Y = yEnd}; //Stick horizontal
                     {X = xEnd+5.; Y = yEnd}; //Lenght 0 vertical
                     {X = xEnd; Y = yEnd}]
             | Symbol.Bottom ->  [{X = xStart; Y = yStart};
                     {X = xStart+5.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
-                    {X = xStart+20.; Y = yStart};
-                    {X = xStart+20.; Y = yEnd+20.};
-                    {X = xEnd; Y = yEnd+20.};
-                    {X = xEnd; Y = yEnd+5.};//Stick vertical
-                    {X = xEnd; Y = yEnd+5.}; //Length 0 horizontal
+                    {X = xStart+5.0; Y = (yStart+yEnd)/2.}; //Length 0 vertical
+                    {X = xEnd; Y = (yStart+yEnd)/2.};
+                    {X = xEnd; Y = yEnd-5.}; //Stick vertical
+                    {X = xEnd; Y = yEnd-5.}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
             | Symbol.Left ->  [{X = xStart; Y = yStart};
                     {X = xStart+5.0; Y = yStart}; //Stick horizontal
                     {X = xStart+5.0; Y = yStart}; //Length 0 vertical
-                    {X = xStart+20.; Y = yStart};
-                    {X = xStart+20.; Y = yEnd+20.};
-                    {X = xEnd-20.; Y = yEnd+20.};
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
+                    {X = xStart+5.0; Y = (yStart+yEnd)/2.}; 
+                    {X = xEnd-20.; Y = (yStart+yEnd)/2.}; 
                     {X = xEnd-20.; Y = yEnd};
                     {X = xEnd-5.; Y = yEnd}; //Stick horizontal
                     {X = xEnd-5.; Y = yEnd}; //Length 0 vertical
@@ -439,9 +433,10 @@ let xyVerticesToSegments connId (xyVerticesList: XYPos list) =
                 IntersectCoordinateList = [];
                 Mode = Auto
                 Draggable =
-                    match i with
-                    | 0  -> false
-                    | _ -> true
+                    if i = 0 || i = xyVerticesList.Length - 2 then
+                        false
+                    else
+                        true
             })
 
 /// Convert a (possibly legacy) issie Connection stored as a list of vertices to Wire
@@ -843,7 +838,6 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
 //---------------------------------------------------------------------------------//
 //--------------------TL319 CODE SECTION ENDS-------------------------------------//
 //---------------------------------------------------------------------------------//
-
 //---------------------------------------------------------------------------------//
 //--------------------STS219 CODE SECTION STARTS-------------------------------------//
 //---------------------------------------------------------------------------------//
@@ -979,22 +973,27 @@ let getSafeDistanceForMove (segments: Segment list) (index: int) (distance: floa
         if findBindingIndex bindingSegs <> index then 
             distance
         else
-            findDistanceFromPort bindingSegs
+            findDistanceFromPort bindingSegs |> (fun dist -> printfn $"Bounded distance {dist}"; dist)
             |> (fun dist -> 
                     if sign dist = -1 then 
                         max distance (dist + Wire.stickLength/2.)
                     else 
                         min distance (dist - Wire.stickLength/2.))
-
+    printfn $"All segments, target: {index}"
+    List.map logSegment segments |> ignore
     let bindingInputSegs = 
+        printfn "Binding input segments"
         segments
         |> findBindingSegments 0
         |> List.map (fun seg -> { seg with Length = -seg.Length})
 
     let bindingOutputSegs =
+        printfn "Binding output segments"
         List.rev segments
         |> findBindingSegments (segments.Length - 1)
+        |> List.map logSegment
 
+    printfn $"Start distance {distance}"
     distance
     |> reduceDistance bindingInputSegs findInputBindingIndex
     |> reduceDistance bindingOutputSegs findOutputBindingIndex
@@ -1369,7 +1368,6 @@ let updateWire (model : Model) (wire : Wire) (reverse : bool) =
 //---------------------------------------------------------------------------------//
 //--------------------STS219 CODE SECTION ENDS-------------------------------------//
 //---------------------------------------------------------------------------------//
-
 
 //---------------------------------------------------------------------------------//
 //--------------------NH1019 CODE SECTION BEGINS-------------------------------------//
