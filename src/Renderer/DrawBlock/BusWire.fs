@@ -98,8 +98,10 @@ type Msg =
     | ErrorWires of list<ConnectionId>
     | ResetJumps of list<ConnectionId>
     | MakeJumps of list<ConnectionId>
+    | UpdateWireType of WireType
     | ResetModel // For Issie Integration
     | LoadConnections of list<Connection> // For Issie Integration
+    | Rotate of list<ComponentId>
 
 /// Returns an XYPos shifted by length in an X or Y direction defined by orientation.
 let addLengthToPos (position: XYPos) orientation length =
@@ -263,14 +265,14 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
         match yStart - yEnd < 0 with
         | true -> 
             match portOrientation with
-            | top  ->  [{X = xStart; Y = yStart};
+            | Symbol.Top  ->  [{X = xStart; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xEnd; Y = yStart};
                     {X = xEnd; Y = yEnd-1.0}; // Stick vertical
                     {X = xEnd; Y = yEnd-1.0};// Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
-            | right ->  [{X = xStart; Y = yStart};
+            | Symbol.Right ->  [{X = xStart; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xEnd+10.; Y = yStart};
@@ -278,7 +280,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd+1.; Y = yEnd}; //Stick horizontal
                     {X = xEnd+1.; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}]
-            | bottom->  [{X = xStart; Y = yStart};
+            | Symbol.Bottom->  [{X = xStart; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xEnd-10.; Y = yStart};
@@ -287,7 +289,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd; Y = yEnd+1.}; //Stick vertical
                     {X = xEnd; Y = yEnd+1.}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
-            | left ->  [{X = xStart; Y = yStart};
+            | Symbol.Left ->  [{X = xStart; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xEnd-10.; Y = yStart};
@@ -297,14 +299,14 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd; Y = yEnd}]
         | false -> 
             match portOrientation with
-            | bottom ->  [{X = xStart; Y = yStart};
+            | Symbol.Bottom ->  [{X = xStart; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xEnd; Y = yStart};
                     {X = xEnd; Y = yEnd+1.}; //Stick vertical
                     {X = xEnd; Y = yEnd+1.}; //Length 0 hortizontal
                     {X = xEnd; Y = yEnd}]
-            | left ->  [{X = xStart; Y = yStart};
+            | Symbol.Left ->  [{X = xStart; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xEnd+10.; Y = yStart};
@@ -312,7 +314,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd+1.; Y = yEnd}; //Stick horizontal
                     {X = xEnd+1.; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}]
-            | top ->  [{X = xStart; Y = yStart};
+            | Symbol.Top ->  [{X = xStart; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xEnd-10.; Y = yStart};
@@ -321,7 +323,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd; Y = yEnd-1.}; //Stick vertical
                     {X = xEnd; Y = yEnd-1.}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
-            | left ->  [{X = xStart; Y = yStart};
+            | Symbol.Left ->  [{X = xStart; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xEnd-10.; Y = yStart};
@@ -705,7 +707,7 @@ let renderSegment (vertexPair : VertexPair) (colour : string) (width : string) :
                 makeCircle Xb Yb circleParameters
             ]
         g [] segmentElements
-    | _ -> failwithf "error"
+
 ///
 
 type WireRenderProps =
@@ -1253,6 +1255,16 @@ let reverseWire (wire: Wire) =
         EndOrientation = wire.InitialOrientation }
 
 /// Returns the end of the segment at the target index in the given wire. Throws an error if the target index isn't found
+let getAbsoluteSegmentPos (wire: Wire) (target: int) =
+    (None, wire)
+    ||> foldOverSegs
+        (fun startPos endPos state seg ->
+            if seg.Index = target then Some (startPos, endPos) else state)
+    |> (function
+        | None -> failwithf $"Couldn't find index {target} in wire"
+        | Some pos -> pos)     
+
+/// Returns the end of the segment at the target index in the given wire. Throws an error if the target index isn't found
 let getSegmentEnd (wire: Wire) (target: int) =
     (None, wire)
     ||> foldOverSegs
@@ -1261,6 +1273,8 @@ let getSegmentEnd (wire: Wire) (target: int) =
     |> (function
         | None -> failwithf $"Couldn't find index {target} in wire"
         | Some pos -> pos)        
+
+
 
 /// Scales a segment length for partial autorouting
 let scale fixedPoint newStart oldStart length =
@@ -1369,16 +1383,55 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
 
         newWX <- Map.add wid { newWX[wid] with Segments = changeSegment newWX[wid].Segments } newWX
 
-    let segs =
+    let wires =
         model.Wires
         |> Map.toArray
-        |> Array.mapi (fun i (wid, w) -> List.toArray w.Segments)
+        |> Array.map (fun (_wid, w) -> w)
 
-    let verticalSeg (seg: Segment) (segStart: XYPos) (segEnd: XYPos): bool =
+    let verticalSeg (segStart: XYPos) (segEnd: XYPos): bool =
             match getSegmentOrientation segStart segEnd with
             | Vertical -> true
             | Horizontal -> false
 
+
+    for w1 in 0 .. wires.Length - 1 do
+        let wire = wires[w1]
+        if not (Array.contains wire.Id wiresWithNoJumpsA) then
+            // Call folder function
+            let findJumpsForSegment (segStart: XYPos) (segEnd: XYPos) (_state) (seg: Segment) =
+                if not (verticalSeg segStart segEnd) then
+                    let mutable jumps: (float * SegmentId) list = []
+                    for w2 in 0 .. wires.Length - 1 do
+                        let wire' = wires[w2]
+                        if not (Array.contains wire'.Id wiresWithNoJumpsA) then
+                            // Execute other folder function
+                            let innerFold (segStart: XYPos) (segEnd: XYPos) (horizontalStart: XYPos, horizontalEnd: XYPos) (seg: Segment) =
+                                if verticalSeg segStart segEnd then
+                                    let x, x1, x2 = segStart.X, horizontalStart.X, horizontalEnd.X
+                                    let y, y1, y2 = segStart.Y, horizontalStart.Y, horizontalEnd.Y
+                                    let xhi, xlo = max x1 x2, min x1 x2
+                                    let yhi, ylo = max y1 y2, min y1 y2
+
+                                    if x < xhi - 5. && x > xlo + 5. && y < yhi - 5. && y > ylo + 5. then
+                                        jumps <- (x, seg.Id) :: jumps
+                                (horizontalStart, horizontalEnd)
+                            foldOverSegs innerFold (segStart, segEnd) wire'
+                            |> ignore
+
+                    match jumps, seg.IntersectCoordinateList with
+                    | [], [] -> ()
+                    | [ a ], [ b ] when a <> b -> changeJumps seg.HostId seg.Index jumps
+                    | [], _ -> changeJumps seg.HostId seg.Index jumps
+                    | _, [] -> // in this case we need to sort the jump list
+                        changeJumps seg.HostId seg.Index (List.sort jumps)
+                    | newJumps, oldJ ->
+                        let newJ = List.sort newJumps
+                        if newJ <> oldJ then changeJumps seg.HostId seg.Index newJumps else ()
+            foldOverSegs findJumpsForSegment () wire
+
+    { model with Wires = newWX}
+
+    (*
     let newJumps (segA: Segment) (segB: Segment) (segStart: XYPos) (segEnd: XYPos) =
          let mutable jumps: (float * SegmentId) list = []
          match verticalSeg segA segStart segEnd with
@@ -1409,7 +1462,7 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
     foldOverSegs 
     newJumps model.Wires
 
-    { model with Wires = newWX }
+    { model with Wires = newWX } *)
 
 
 let updateWireSegmentJumps (wireList: list<ConnectionId>) (wModel: Model) : Model =
@@ -1482,11 +1535,11 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                 Color = HighLightColor.DarkSlateGrey
                 Width = 1
                 Segments = segmentList
-                Type = Jump
+                Type = Jump // CHANGE THIS
                 StartPos = portOnePos
                 EndPos = portTwoPos
-                InitialOrientation = ???
-                EndOrientation = ???
+                InitialOrientation = Symbol.getInputPortOrientation model.Symbol inputId |> getOrientation
+                EndOrientation = Symbol.getOutputPortOrientation model.Symbol outputId |> getOrientation
             }
             
         let wireAddedMap = Map.add newWire.Id newWire model.Wires
@@ -1510,7 +1563,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                     let symId = ComponentId inPort.HostId
                     let symbol = m[symId]
 
-                    match symbol.Compo.Type with
+                    match symbol.Component.Type with
                     | SplitWire n ->
                         match inPort.PortNumber with 
                         | Some 0 -> {symbol with InWidth0 = Some wire.Width}
@@ -1604,11 +1657,12 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
             let seg = getSeg model.Wires[connId].Segments
             if seg.Draggable then
                 let distanceToMove = 
-                    match seg.Dir with
-                    | Horizontal -> mMsg.Pos.Y - abs seg.Start.Y
-                    | Vertical -> mMsg.Pos.X - abs seg.Start.X
+                    let (segStart, segEnd) = getAbsoluteSegmentPos model.Wires[connId] seg.Index
+                    match getSegmentOrientation segStart segEnd with
+                    | Horizontal -> mMsg.Pos.Y - segStart.Y
+                    | Vertical -> mMsg.Pos.X - segStart.X
 
-                let newWire = moveSegment seg distanceToMove model
+                let newWire = moveSegment model seg distanceToMove 
                 let newWX = Map.add seg.HostId newWire model.Wires
  
                 {model with Wires = newWX}, Cmd.none
@@ -1680,7 +1734,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                                             Map.tryFind connId model.Symbol.Ports
                                             |> Option.map (fun port -> port.HostId)
                                             |> Option.bind (fun symId -> Map.tryFind (ComponentId symId) model.Symbol.Symbols)
-                                            |> Option.map (fun sym -> sym.Compo.Label)
+                                            |> Option.map (fun sym -> sym.Component.Label)
                                         printfn $"Updating loaded wire from {getS conn.Source.Id}->{getS conn.Target.Id} of wire "
                                         updateWire model wire inOut)
                                 
@@ -1691,7 +1745,12 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                               OutputPort = outputId
                               Color = HighLightColor.DarkSlateGrey
                               Width = 1
-                              Segments = segments}
+                              Segments = segments
+                              Type = Jump // CHANGE THIS
+                              StartPos = Symbol.getInputPortLocation model.Symbol inputId
+                              EndPos = Symbol.getOutputPortLocation model.Symbol outputId
+                              InitialOrientation = Symbol.getInputPortOrientation model.Symbol inputId |> getOrientation
+                              EndOrientation = Symbol.getOutputPortOrientation model.Symbol outputId |> getOrientation }
                             |> makeWirePosMatchSymbol false
                             |> makeWirePosMatchSymbol true
                         )
@@ -1706,20 +1765,27 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
     | UpdateWireType (style: WireType) ->
         let updateStyle =
             match style with
-            | Jump -> model.Wires |> Map.map (fun (id, w) -> (id, {w with WireType = Jump}))
-            | Radial -> model.Wires |> Map.map (fun (id, w) -> (id, {w with WireType = Radial}))
-            | Modern -> model.Wires |> Map.map (fun (id, w) -> (id, {w with WireType = Modern}))
+            | Jump -> model.Wires |> Map.map (fun id w -> {w with Type = Jump})
+            | Radial -> model.Wires |> Map.map (fun id w -> {w with Type = Radial})
+            | Modern -> model.Wires |> Map.map (fun id w -> {w with Type = Modern})
 
         { model with Wires = updateStyle }, Cmd.None
 
-    | Rotate -> {model with Wires = updateWires}, Cmd.None
+    (* Basically, go through all the componentIds, and call autrouting on all their wires
+    | Rotate (componentIds: ComponentId list) -> 
+        
+        {model with Wires = updateWires}, Cmd.None*)
 
 //---------------Other interface functions--------------------//
 
-///
-let wireIntersectsBoundingBox (w : Wire) (bb : BoundingBox) =
-    let boolList = List.map (fun seg -> fst(segmentIntersectsBoundingBoxCoordinates seg bb)) w.Segments
-    List.contains true boolList
+/// Checks if a wire intersects a bounding box by checking if any of its segments intersect
+let wireIntersectsBoundingBox (wire : Wire) (bb : BoundingBox) =
+    let segmentIntersectsBox segStart segEnd state _seg =
+        match state with
+        | true -> true
+        | false -> segmentIntersectsBoundingBox bb segStart segEnd
+    
+    foldOverSegs segmentIntersectsBox false wire
 
 ///
 let getIntersectingWires (wModel : Model) (selectBox : BoundingBox) : list<ConnectionId> = 
@@ -1732,7 +1798,7 @@ let getIntersectingWires (wModel : Model) (selectBox : BoundingBox) : list<Conne
 ///searches if the position of the cursor is on a wire in a model
 ///Where n is 5 pixels adjusted for top level zoom
 let getWireIfClicked (wModel : Model) (pos : XYPos) (n : float) : ConnectionId Option =
-    let boundingBox = {BoundingBox.X = pos.X - n; Y = pos.Y - n; H = n*2.; W = n*2.}
+    let boundingBox = {BoundingBox.TopLeft = {X = pos.X - n; Y = pos.Y - n}; H = n*2.; W = n*2.}
     let intersectingWires = getIntersectingWires (wModel : Model) boundingBox
     List.tryHead intersectingWires
 
