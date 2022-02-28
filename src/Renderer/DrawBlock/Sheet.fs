@@ -118,7 +118,6 @@ type Msg =
     | SelectWires of ConnectionId list
     | SetSpinner of bool
     | Rotate of RotateMsg
-    | WireType of WireTypeMsg
 
 
 // ------------------ Helper Functions that need to be before the Model type --------------------------- //
