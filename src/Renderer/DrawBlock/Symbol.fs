@@ -78,9 +78,6 @@ type Msg =
     | RotateRight of compList: ComponentId list
 
 
-let init () = 
-    {Symbols = Map.empty; CopiedSymbols = Map.empty; Ports = Map.empty; InputPortsConnected= Set.empty; OutputPortsConnected = Map.empty}, Cmd.none
-
 ///Insert titles compatible with greater than 1 buswidth
 let title (t:string) (n:int) : string =  
     match n with
@@ -474,7 +471,7 @@ let componentSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputP
         | Viewer (x) -> (addText {X = float(w/2); Y = (float(h)/2.7)-1.25} (title "" x) "middle" "normal" "9px")
         | _ -> []
 
-    let olColour, strokeWidth =
+    let outlineColour, strokeWidth =
         match comp.Type with
         | SplitWire _ | MergeWires -> outlineColor colour, "2.0"
         | _ -> "black", "1.0"
@@ -488,7 +485,7 @@ let componentSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputP
     |> List.append (addText {X = (float halfW); Y = 5.0} (gateDecoderType comp) "middle" "bold" "14px") 
     |> List.append (addText {X = (float halfW); Y = -20.0} comp.Label "middle" "normal" "16px")
     |> List.append (additions)
-    |> List.append (createBiColorPolygon points colour olColour opacity strokeWidth)
+    |> List.append (createBiColorPolygon points colour outlineColour opacity strokeWidth)
 
 //----------------------------View Function for Symbols----------------------------//
 
@@ -500,8 +497,7 @@ type private RenderSymbolProps =
     }
 
 /// View for one symbol. Using FunctionComponent.Of to improve efficiency (not printing all symbols but only those that are changing)
-let private renderSymbol =
-    
+let private renderSymbol =    
     FunctionComponent.Of(
         fun (props : RenderSymbolProps) ->
             let symbol = props.Symbol
@@ -512,11 +508,7 @@ let private renderSymbol =
         , equalsButFunctions
         )
     
-
-
-
-let view (model : Model) (dispatch : Msg -> unit) = 
-    
+let view (model : Model) (dispatch : Msg -> unit) =    
     /// View function for symbol layer of SVG
     let MapsIntoLists map =
         let listMoving = 
@@ -542,6 +534,9 @@ let view (model : Model) (dispatch : Msg -> unit) =
     )
     |> ofList
     |> TimeHelpers.instrumentInterval "SymbolView" start
+
+let init () = 
+    {Symbols = Map.empty; CopiedSymbols = Map.empty; Ports = Map.empty; InputPortsConnected= Set.empty; OutputPortsConnected = Map.empty}, Cmd.none
 
 //------------------------GET BOUNDING BOXES FUNCS--------------------------------used by sheet.
 /// Returns the bounding box of a symbol. It is defined by the height and the width as well as the x,y position of the symbol. TODO: handle rotation -> should be good
