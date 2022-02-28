@@ -17,11 +17,51 @@ open System.Text.RegularExpressions
 let blockSize = 30 
 
 /// ---------- SYMBOL TYPES ---------- ///
-type Rotation = | Degree0 | Degree90 | Degree180 | Degree270
+type Rotation = | Degree0 | Degree90 | Degree180 | Degree270 with
+    member this.rotateLeft() =
+        match this with
+        | Degree0 -> Degree270
+        | Degree90 -> Degree0
+        | Degree180 -> Degree90
+        | Degree270 -> Degree180
 
-type STransform = {Rotation: Rotation; flipped: bool}
+    member this.rotateRight() =
+        match this with
+        | Degree0 -> Degree90
+        | Degree90 -> Degree180
+        | Degree180 -> Degree270
+        | Degree270 -> Degree0
 
-type Edge = | Top | Bottom | Left | Right
+    
+
+type STransform = {Rotation: Rotation; flipped: bool} with
+    member this.rotateLeft() =
+        this.Rotation.rotateLeft()
+    
+    member this.rotateRight() =
+        this.Rotation.rotateRight()
+
+type Edge = | Top | Bottom | Left | Right with
+    member this.rotateLeft() = 
+        match this with
+        | Top -> Left
+        | Left -> Bottom
+        | Bottom -> Right
+        | Right -> Top
+
+    member this.rotateRight() = 
+        match this with
+        | Top -> Right
+        | Left -> Top
+        | Bottom -> Left
+        | Right -> Bottom
+
+    member this.flip() = 
+        match this with
+        | Top -> Bottom
+        | Left -> Right
+        | Bottom -> Top
+        | Right -> Left
 
 type PortId = | InputId of InputPortId | OutputId of OutputPortId
 
@@ -264,15 +304,15 @@ let defaultPortOrientation (comp : Component) : Map<string,Edge> =
     let assignEdge (side:Edge) (port:Port) =
         (port.Id,side)
 
-    let decideEdges : Map<string,Edge> = 
+    let defaultEdges : Map<string,Edge> = 
         List.map (assignEdge Left) comp.InputPorts @ List.map (assignEdge Right) comp.OutputPorts
         |> Map.ofList             
 
     let portOrientationMap = 
         match comp.Type with
-        | Mux2 -> decideEdges
-        | Custom x -> decideEdges
-        | _ -> decideEdges
+        | Mux2 -> defaultEdges
+        | Custom x -> defaultEdges
+        | _ -> defaultEdges
 
     portOrientationMap
 
@@ -297,9 +337,14 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
         PortOrder = findPortOrder orientation //stores the order of ports on each edge
     }
 
-let rotateSymbol (symb:Symbol) direction:Rotation = //Symbol = 
-    failwithf "gi"
+let rotateSymbol (symb:Symbol) direction = //Symbol = 
+    let rotateRight =
+        symb.STransform.Rotation 
+    let rotateLeft = 
 
+    match direction with
+    | Left -> rotateRight
+    | Right -> rotateLeft
 
 // Function to add ports to port model     
 let addToPortModel (model: Model) (sym: Symbol) =
@@ -502,7 +547,7 @@ let private renderSymbol =
         fun (props : RenderSymbolProps) ->
             let symbol = props.Symbol
             let ({X=fX; Y=fY}:XYPos) = symbol.Pos
-            g ([ Style [ Transform(sprintf $"translate({fX}px, {fY}px)" ] ]) (componentSymbol props.Symbol props.Symbol.Component symbol.Colour symbol.ShowInputPorts symbol.ShowOutputPorts symbol.Opacity)
+            g ([ Style [ Transform(sprintf $"translate({fX}px, {fY}px)") ] ]) (componentSymbol props.Symbol props.Symbol.Component symbol.Colour symbol.ShowInputPorts symbol.ShowOutputPorts symbol.Opacity)
             
         , "Symbol"
         , equalsButFunctions

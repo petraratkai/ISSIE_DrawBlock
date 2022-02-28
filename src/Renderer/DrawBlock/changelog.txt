@@ -16,4 +16,5 @@ changed all of points in componentSymbol to use interpolated strings
 
 28/02/2022
 Added symbol initiation for PortOrientation and PortOrder (findPortOrder, defaultPortOrientation)
+added member functions for rotating and flipping in sides and rotation
 
