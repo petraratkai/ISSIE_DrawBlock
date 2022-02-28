@@ -79,6 +79,7 @@ type Msg =
     | WriteMemoryType of ComponentId * ComponentType
     | RotateLeft of compList : ComponentId list
     | RotateRight of compList: ComponentId list
+    | Flip of compList: ComponentId list
 
 //---------------------------------helper types and functions----------------//
 
@@ -225,7 +226,7 @@ let initPortOrientation (comp: Component) =
         ||> List.fold (addPortToMaps Left)
 
     let res = 
-        (inputMaps, comp.OutputPorts)
+        (inputMaps, (List.rev comp.OutputPorts))
         ||> List.fold (addPortToMaps Right)
     match comp.Type with //need to put some ports to different edges
     | Mux2 -> //need to remove select port from left and move to right
@@ -390,11 +391,17 @@ let getPortPos (sym: Symbol) (port: Port) : XYPos =
     let baseOffset' = baseOffset + getMuxSelOffset sym side
     let h,w = getHAndW sym
     match side with
-    | Left | Right ->
+    | Left ->
         let yOffset = (float(h))* (( index + gap )/( float( ports.Length ) + 2.0*gap - 1.0))
         baseOffset' + {X = 0.0; Y = yOffset }
-    | _ -> 
+    | Right -> 
+        let yOffset = (float(h))* (( float( ports.Length ) - index - 1.0 + gap )/( float( ports.Length ) + 2.0*gap - 1.0))
+        baseOffset' + {X = 0.0; Y = yOffset }
+    | Bottom -> 
         let xOffset = (float(w))* ((index + gap)/(float (ports.Length) + 2.0*gap - 1.0))
+        baseOffset' + {X = xOffset; Y = 0.0 }
+    | Top ->
+        let xOffset = (float(w))* (( float( ports.Length ) - index - 1.0 + gap)/(float (ports.Length) + 2.0*gap - 1.0))
         baseOffset' + {X = xOffset; Y = 0.0 }
 
 let getPortPosModel (model: Model) (port:Port) =
@@ -1260,6 +1267,47 @@ let rotateSymbolRight (sym: Symbol) : Symbol =
             STransform =newSTransform;  
         }
 
+let flipAngleHorizontal (rotation: Rotation): Rotation =
+    match rotation with
+    | Degree0 | Degree180 -> 
+        rotation
+        |> rotateAngleRight
+        |> rotateAngleRight
+    | _ -> rotation
+
+
+let flipSideHorizontal (edge: Edge) : Edge =
+    match edge with
+    | Top | Bottom ->
+        edge
+        |> rotateSideRight
+        |> rotateSideRight
+    | _ -> edge
+
+let flipSymbolHorizontal (sym:Symbol) : Symbol =
+    match sym.Component.Type with
+    | Custom _ -> sym
+    | _ ->
+        let newPortOrientation = 
+            sym.PortOrientation |> Map.map (fun id side -> flipSideHorizontal side)
+
+        let flipPortList currPortOrder side =
+            currPortOrder |> Map.add (flipSideHorizontal side ) sym.PortOrder[side]
+
+        let newPortOrder = 
+            (Map.empty, [Top; Left; Bottom; Right]) ||> List.fold flipPortList
+            |> Map.map (fun edge order -> List.rev order)
+
+        let newSTransform = 
+            {sym.STransform with 
+                Rotation = flipAngleHorizontal sym.STransform.Rotation}
+        { sym with
+            PortOrientation = newPortOrientation
+            PortOrder = newPortOrder
+            STransform = newSTransform
+        }
+        
+
 /// update function which displays symbols
 let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
     match msg with
@@ -1351,6 +1399,14 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
             compList |> List.map (fun id-> rotateSymbolRight model.Symbols[id])
         let newSymbolMap = 
             (model.Symbols, rotatedSymbols) 
+            ||> List.fold (fun currSymMap sym -> currSymMap |> Map.add sym.Id sym)
+        { model with Symbols = newSymbolMap }, Cmd.none
+
+    | Flip compList ->
+        let flippedSymbols = 
+            compList |> List.map (fun id-> flipSymbolHorizontal model.Symbols[id])
+        let newSymbolMap = 
+            (model.Symbols, flippedSymbols) 
             ||> List.fold (fun currSymMap sym -> currSymMap |> Map.add sym.Id sym)
         { model with Symbols = newSymbolMap }, Cmd.none
         

@@ -115,6 +115,7 @@ type Msg =
     | SelectWires of ConnectionId list
     | SetSpinner of bool
     | Rotate of RotateMsg
+    | Flip
 
 
 // ------------------ Helper Functions that need to be before the Model type --------------------------- //
@@ -1059,6 +1060,13 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             symbolCmd (Symbol.RotateRight model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
             //wireCmd (BusWire.Rotate model.SelectedComponents)
         ]
+
+    | Flip ->
+        model,
+        Cmd.batch [
+            symbolCmd (Symbol.Flip model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
+            //wireCmd (BusWire.Flip model.SelectedComponents)
+    ]
                 
     // ---------------------------- Issie Messages ---------------------------- //
 
