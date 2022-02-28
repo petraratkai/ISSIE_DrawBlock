@@ -295,8 +295,8 @@ let getPortPos (symb: Symbol) (port:Port) =
         else 
             (symb.Component.OutputPorts, float( symb.Component.W ))
     let index = float( List.findIndex (fun (p:Port)  -> p = port) ports )
-    let gap = getPortPosEdgeGap comp.Type 
-    let posY = (float(comp.H))* (( index + gap )/( float( ports.Length ) + 2.0*gap - 1.0))  // the ports are created so that they are equidistant
+    let gap = getPortPosEdgeGap symb.Component.Type 
+    let posY = (float(symb.Component.H))* (( index + gap )/( float( ports.Length ) + 2.0*gap - 1.0))  // the ports are created so that they are equidistant
     {X = posX; Y = posY}
 
 /// finds port position inside model
@@ -305,7 +305,7 @@ let getPortPosForModel (model: Model) (port:Port) =
 
 //-----------------------------------------DRAWING HELPERS ---------------------------------------------------
 // Text adding function with many parameters (such as bold, position and text)
-let private addText (pos: XYPos) name txtPos weight size=
+let private addText (pos: XYPos) name txtPos weight size =
     let text =
             {defaultText with TextAnchor = txtPos; FontWeight = weight; FontSize = size}
     [makeText pos.X pos.Y name text]
@@ -352,16 +352,16 @@ let createBiColorPolygon points colour strokeColor opacity strokeWidth=
         [makePolygon points {defaultPolygon with Fill = colour; FillOpacity = opacity; StrokeWidth = strokeWidth}]
 
 let addInvertor posX posY colour opacity =
-    let points = (sprintf "%i,%i %i,%i %i,%i" posX (posY) (posX+9) (posY) posX (posY-8))
+    let points = sprintf $"{posX},{posY},{posX+9.},{posY},{posX},{posY-8.}"
     createPolygon points colour opacity
 
-let addClock posX posY colour opacity =
-    let points = (sprintf "%i,%i %i,%i %i,%i" posX (posY-1) (posX+8) (posY-7) posX (posY-13))
+let addClock (pos: XYPos) colour opacity =
+    let points = sprintf $"{pos.X},{pos.Y-1.},{pos.X+8.},{pos.Y-7.},{pos.X},{pos.Y-13.}"
     createPolygon points colour opacity
-    |> List.append (addText (float(posX+10)) (float(posY-13)) " clk" "start" "normal" "12px")
+    |> List.append (addText (pos + {X = 10.; Y = -13.} ) " clk" "start" "normal" "12px")
 
 let addHorizontalLine posX1 posX2 posY opacity = // TODO: Line instead of polygon?
-    let points = (sprintf "%i,%f %i,%f" posX1 posY posX2 posY)
+    let points = sprintf $"{posX1},{posY},{posX2},{posY}"
     createPolygon points "lightgray" opacity
 
 let outlineColor (color:string) =
@@ -376,10 +376,7 @@ let addHorizontalColorLine posX1 posX2 posY opacity (color:string) = // TODO: Li
     let olColor = outlineColor color
     [makePolygon points {defaultPolygon with Fill = "olcolor"; Stroke=olColor; StrokeWidth = "2.0"; FillOpacity = opacity}]
 
-
-
 /// --------------------------------------- SYMBOL DRAWING ------------------------------------------------------ ///   
-
 let componentSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float) = 
     let h = comp.H
     let w = comp.W
@@ -393,28 +390,28 @@ let componentSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputP
             | true, _ -> sprintf $"({msb})"
             | false, _ -> sprintf $"({msb}:{lsb})"
         addHorizontalColorLine posX1 posX2 (posY*float(h)) opacity colour @
-        addText (float (posX1 + posX2)/2.0) (posY*float(h)-11.0) text "middle" "bold" "9px"
+        addText {X = float((posX1 + posX2)/2); Y = (posY*float(h)-11.0)} text "middle" "bold" "9px"
 
 
 
     let points =            // Points that specify each symbol 
         match comp.Type with
-        | Input _ -> (sprintf "%i,%i %i,%i %f,%i %i,%i %f,%i" 0 0 0 h (float(w)*(0.66)) h w halfH (float(w)*(0.66)) 0)
-        | Constant1 _ -> (sprintf "%i,%i %i,%i %i,%i" 0 comp.H halfW halfH 0 0)
-        | IOLabel -> (sprintf "%f,%i %i,%i %f,%i %f,%i %i,%i %f,%i"  (float(w)*(0.33)) 0 0 halfH (float(w)*(0.33)) h (float(w)*(0.66)) h w halfH (float(w)*(0.66)) 0)
-        | Output _ -> (sprintf "%f,%i %i,%i %f,%i %i,%i %i,%i" (float(w)*(0.2)) 0 0 halfH (float(w)*(0.2)) h w h w 0)
-        | Viewer _ -> (sprintf "%f,%i %i,%i %f,%i %i,%i %i,%i" (float(w)*(0.2)) 0 0 halfH (float(w)*(0.2)) h w h w 0)
-        | MergeWires -> (sprintf "%i,%f %i,%f " halfW ((1.0/6.0)*float(h)) halfW ((5.0/6.0)*float(h)))
-        | SplitWire _ ->  (sprintf "%i,%f %i,%f " halfW ((1.0/6.0)*float(h)) halfW ((5.0/6.0)*float(h)))
-        | Demux2 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
-        | Mux2 -> (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
+        | Input _ -> sprintf $"0,0,0,{h},{float(w*2)/3.},{h},{w},{halfH},{float(w*2)/3.},0"
+        | Constant1 _ -> sprintf $"0,{comp.H},{halfW},{halfH},0,0"
+        | IOLabel -> sprintf $"{float(w)/3.},0,0,{halfH},{float(w)/3.},{h},{float(w*2)/3.},{h},{w},{halfH},{float(w*2)/3.},0"
+        | Output _ -> sprintf $"{float(w)/5.},0,0,{halfH},{float(w)/5.},{h},{w},{h},{w},0"
+        | Viewer _ -> sprintf $"{float(w)/5.},0,0,{halfH},{float(w)/5.},{h},{w},{h},{w},0"
+        | MergeWires -> sprintf $"{halfW},{float(h)/6.},{halfW},{float(5*h)/6.}"
+        | SplitWire _ -> sprintf $"{halfW},{float(h)/6.},{halfW},{float(5*h)/6.}"
+        | Demux2 -> sprintf $"0,{float(h)/5.},0,{float(h)*0.8},{w},{h},{w},0"
+        | Mux2 -> sprintf $"0,0,{w},{float(h)/5.},{w},{float(h)*0.8},0,{h}"
         // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
-        | BusSelection _ |BusCompare _ -> (sprintf "%i,%i %i,%i %f,%i %f,%f %i,%f %i,%f %f,%f %f,%i ")0 0 0 h (0.6*float(w)) h (0.8*float(w)) (0.7*float(h)) w (0.7*float(h)) w (0.3*float(h)) (0.8*float(w)) (0.3*float(h)) (0.6*float(w)) 0
-        | _ -> (sprintf "%i,%i %i,%i %i,%i %i,%i" 0 (comp.H) comp.W (comp.H) comp.W 0 0 0)
+        | BusSelection _ |BusCompare _ -> sprintf $"0,0,0,{h},{0.6*float(w)},{h},{0.8*float(w)},{0.7*float(h)},{w},{0.7*float(h)},{w},{0.3*float(h)},{0.8*float(w)},{0.3*float(h)},{0.6*float(w)},0"
+        | _ -> sprintf $"0,{comp.H},{comp.W},{comp.H},{comp.W},0,0,0"
     let additions =       // Helper function to add certain characteristics on specific symbols (inverter, enables, clocks)
         match comp.Type with
-        | Constant1 (_,_,txt) -> (addHorizontalLine halfW w (float(halfH)) opacity @ addText (float (halfW)-5.0) (float(h)-8.0) txt "middle" "normal" "12px") 
+        | Constant1 (_,_,txt) -> (addHorizontalLine halfW w (float(halfH)) opacity @ addText {X = float(halfW-5); Y = float(h-8)} txt "middle" "normal" "12px")
         | Nand | Nor | Xnor |Not -> (addInvertor w halfH colour opacity)
         | MergeWires -> 
             let lo, hi = 
@@ -424,24 +421,24 @@ let componentSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputP
             let msb = hi + lo - 1
             let midb = lo
             let midt = lo - 1
-            mergeSplitLine 0 halfW (1.0/6.0) midt 0 @ 
-            mergeSplitLine 0 halfW (5.0/6.0) msb midb @ 
+            mergeSplitLine 0 halfW (1./6.) midt 0 @ 
+            mergeSplitLine 0 halfW (5./6.) msb midb @ 
             mergeSplitLine halfW w 0.5 msb 0
         | SplitWire mid -> 
             let msb, mid' = match symbol.InWidth0 with | Some n -> n - 1, mid | _ -> -100, -50
             let midb = mid'
             let midt = mid'-1
-            mergeSplitLine halfW w (1.0/6.0) midt 0 @ 
-            mergeSplitLine halfW w (5.0/6.0) msb midb @ 
+            mergeSplitLine halfW w (1./6.) midt 0 @ 
+            mergeSplitLine halfW w (5./6.) msb midb @ 
             mergeSplitLine 0 halfW 0.5 msb 0
-        | DFF |DFFE -> (addClock 0 h colour opacity)
-        | Register _ |RegisterE _ -> (addClock 0 h colour opacity)
-        | ROM1 _ |RAM1 _ | AsyncRAM1 _ -> (addClock 0 h colour opacity)
-        | BusSelection(x,y) -> (addText  (float(w/2)-5.0) ((float(h)/2.7)-2.0) (bustitle x y) "middle" "normal" "12px")
-        | BusCompare (_,y) -> (addText  (float(w/2)-6.0) (float(h)/2.7-1.0) ("=" + NumberHelpers.hex(int y)) "middle" "bold" "10px")
-        | Input (x) -> (addText  (float(w/2)-5.0) ((float(h)/2.7)-3.0) (title "" x) "middle" "normal" "12px")
-        | Output (x) -> (addText  (float(w/2)) ((float(h)/2.7)-3.0) (title "" x) "middle" "normal" "12px")
-        | Viewer (x) -> (addText  (float(w/2)) ((float(h)/2.7)-1.25) (title "" x) "middle" "normal" "9px")
+        | DFF |DFFE -> (addClock {X = 0.; Y = h} colour opacity)
+        | Register _ |RegisterE _ -> (addClock {X=0.; Y = h} colour opacity)
+        | ROM1 _ |RAM1 _ | AsyncRAM1 _ -> (addClock {X = 0.; Y = h} colour opacity)
+        | BusSelection(x,y) -> (addText {X = (float(w/2)-5.); Y = ((float(h)/2.7)-2.)} (bustitle x y) "middle" "normal" "12px")
+        | BusCompare (_,y) -> (addText {X = (float(w/2)-6.); Y = (float(h)/2.7-1.)} ("=" + NumberHelpers.hex(int y)) "middle" "bold" "10px")
+        | Input (x) -> (addText {X = float(w/2)-5.; Y = (float(h)/2.7)-3.} (title "" x) "middle" "normal" "12px")
+        | Output (x) -> (addText {X = float(w/2); Y = (float(h)/2.7)-3.} (title "" x) "middle" "normal" "12px")
+        | Viewer (x) -> (addText {X = float(w/2); Y = (float(h)/2.7)-1.25} (title "" x) "middle" "normal" "9px")
         | _ -> []
 
     let olColour, strokeWidth =
@@ -455,8 +452,8 @@ let componentSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputP
     |> List.append (drawPorts comp.InputPorts showInputPorts symbol)
     |> List.append (drawPortsText comp.InputPorts (fst(portDecName comp)) symbol)
     |> List.append (drawPortsText comp.OutputPorts (snd(portDecName comp)) symbol)  
-    |> List.append (addText (float halfW) (+5.0) (gateDecoderType comp) "middle" "bold" "14px") 
-    |> List.append (addText (float halfW) (-20.0) comp.Label "middle" "normal" "16px")
+    |> List.append (addText {X = (float halfW); Y = 5.0} (gateDecoderType comp) "middle" "bold" "14px") 
+    |> List.append (addText {X = (float halfW); Y = -20.0} comp.Label "middle" "normal" "16px")
     |> List.append (additions)
     |> List.append (createBiColorPolygon points colour olColour opacity strokeWidth)
 
@@ -475,7 +472,7 @@ let private renderSymbol =
         fun (props : RenderSymbolProps) ->
             let symbol = props.Symbol
             let ({X=fX; Y=fY}:XYPos) = symbol.Pos
-            g ([ Style [ Transform(sprintf "translate(%fpx, %fpx)" fX fY) ] ]) (compSymbol props.Symbol props.Symbol.Component symbol.Colour symbol.ShowInputPorts symbol.ShowOutputPorts symbol.Opacity)
+            g ([ Style [ Transform(sprintf $"translate({fX}px, {fY}px)" ] ]) (componentSymbol props.Symbol props.Symbol.Component symbol.Colour symbol.ShowInputPorts symbol.ShowOutputPorts symbol.Opacity)
             
         , "Symbol"
         , equalsButFunctions
