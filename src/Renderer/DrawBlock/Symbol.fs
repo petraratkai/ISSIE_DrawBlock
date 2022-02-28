@@ -816,14 +816,13 @@ let initCopiedPorts (oldSymbol:Symbol) (newComp: Component) =
     let portOrder =
         (emptyPortOrder, oldSymbol.PortOrder)
         ||> Map.fold 
-            (fun currMap side oldList 
-                -> 
-                    let newList =
-                        ([], oldList)
-                        ||> List.fold 
-                            (fun currList oldPortId ->
-                                currList @ [equivPortIds[oldPortId]])
-                    Map.add side newList currMap)
+            (fun currMap side oldList -> 
+                let newList =
+                    ([], oldList)
+                    ||> List.fold 
+                        (fun currList oldPortId ->
+                            currList @ [equivPortIds[oldPortId]])
+                Map.add side newList currMap)
     portOrientation, portOrder
 
 /// Interface function to paste symbols. Is a function instead of a message because we want an output.
