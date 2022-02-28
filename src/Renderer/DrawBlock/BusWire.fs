@@ -140,42 +140,42 @@ let foldOverSegs folder state wire =
 //-------------------------Debugging functions---------------------------------//
 
 /// Formats a SegmentId for logging purposes.
-(* let formatSegmentId (Id: SegmentId) =
-    Id
+let formatSegmentId (id: SegmentId) =
+    id
     |> (fun (SegmentId str) -> str)
-    |> (fun str -> str[0..2]) *)
+    |> (fun str -> str[0..2])
 
 /// Formats a WireId for logging purposes
-(* let formatWireId (Id: ConnectionId) =
-    Id
+let formatWireId (id: ConnectionId) =
+    id
     |> (fun (ConnectionId str) -> str)
-    |> (fun str -> str[0..2]) *)
+    |> (fun str -> str[0..2])
 
 /// Logs the given SegmentId and returns it unchanged. Used for debugging.
-(* let logSegmentId (Id:SegmentId) =
-    printfn $"{formatSegmentId Id}"; Id *)
+let logSegmentId (id:SegmentId) =
+    printfn $"{formatSegmentId id}"; id
 
 /// Logs the given Segment and returns it unchanged. Used for debugging.
-(* let logSegment (seg:Segment) =
-    printfn $"|{seg.Index}:{formatSegmentId seg.Id}|"; seg *)
+let logSegment (seg:Segment) =
+    printfn $"|{seg.Index}:{formatSegmentId seg.Id}|"; seg
 
 /// Logs the given ConnectionId and returns it unchanged. Used for debugging.
-(* let logConnectionId (Id:ConnectionId) =
-        Id
+let logConnectionId (id:ConnectionId) =
+        id
         |> (fun (ConnectionId str) -> str)
-        |> (fun str -> printfn $"{str[0..2]}"; Id) *)
+        |> (fun str -> printfn $"{str[0..2]}"; id)
 
 /// Formats an intersection map for logging purposes.
-(* let formatIntersectionMap (m:Map<SegmentId, (ConnectionId * SegmentId) list>) =
+let formatIntersectionMap (m:Map<SegmentId, (ConnectionId * SegmentId) list>) =
     m
     |> Map.toList
     |> List.map (fun (segId, lst) ->
         List.map (snd >> formatSegmentId) lst
         |> (fun segs -> sprintf $"""<{formatSegmentId segId}->[{String.concat ";" segs}]"""))
-        |> String.concat ";\n" *)
+        |> String.concat ";\n"
 
 /// Logs the intersection maps of a given model and returns it unchanged. Used for debugging
-(* let logIntersectionMaps (model:Model) =
+let logIntersectionMaps (model:Model) =
     let intersections =
         let formatSegmentIntersections segments =
             segments
@@ -195,7 +195,7 @@ let foldOverSegs folder state wire =
     printfn $"Intersections"
     printfn $"{intersections}"
     printfn "---- --------------"
-    model *)
+    model
 
 /// Formats an XYPos for logging purposes.
 let formatXY (xy: XYPos) = sprintf $"{(xy.X,xy.Y)}"
@@ -213,7 +213,7 @@ let getSegmentOrientation (segStart: XYPos) (segEnd: XYPos) =
 
 /// Tries to find and log a segment identified by segId in a wire identified by wireId in the current model.
 /// Assumes wireId can be found in the current model. Returns unit, used for debugging.
-(* let logSegmentInModel model wireId segId  = 
+let logSegmentInModel model wireId segId  = 
         let wire = model.Wires[wireId]
         let findAndFormatSeg segStart segEnd (_state: string option) (seg: Segment) =
             if seg.Id = segId then 
@@ -227,17 +227,16 @@ let getSegmentOrientation (segStart: XYPos) (segEnd: XYPos) =
         match foldOverSegs findAndFormatSeg None wire with
         | Some str -> printfn $"{str}"
         | _ -> printfn $"ERROR: Could not find segment {formatSegmentId segId} in wire {formatWireId wireId}"
-        *) 
+        
 
 
 /// Tries to find and log each segment to its corresponding wire identified in wireSegmentIdPairs in the current model.
 /// Returns the model unchanged. Used for debugging.
-(* let logSegmentsInModel (model: Model) (wireSegmentIdPairs: (ConnectionId * SegmentId) list)= 
+let logSegmentsInModel (model: Model) (wireSegmentIdPairs: (ConnectionId * SegmentId) list)= 
     wireSegmentIdPairs
     |> List.map  ( fun (wireId, segId) -> logSegmentInModel model wireId segId)
     |> ignore
     model
- *)
 
 //-------------------------------Implementation code----------------------------//
 
@@ -494,7 +493,7 @@ let onSegment (p : XYPos) (q : XYPos) (r : XYPos) : bool =
         (q.Y <= max (p.Y) (r.Y)) &&
         (q.Y >= min (p.Y) (r.Y))
     )
-  
+ (*
 /// Given three points p, q, r, the function returns:
 /// - 0 if p, q and r are colinear;
 /// - 1 if the path that you must follow when you start at p, you visit q and you end at r, is a CLOCKWISE path;
@@ -563,7 +562,7 @@ let onSegment (p : XYPos) (q : XYPos) (r : XYPos) : bool =
 (* let distanceBetweenTwoPoints (pos1 : XYPos) (pos2 : XYPos) : float =
     sqrt ( (pos1.X - pos2.X)*(pos1.X - pos2.X) + (pos1.Y - pos2.Y)*(pos1.Y - pos2.Y) )
  *)
-
+ *)
 /// Given the coordinates of two port locations that correspond
 /// to the endpoints of a wire, this function returns a list of
 /// Segment(s).
@@ -972,10 +971,9 @@ let getSafeDistanceForMove (segments: Segment list) (index: int) (distance: floa
     distance
     |> reduceDistance bindingInputSegs
     |> reduceDistance bindingOutputSegs
-            
+ (*          
 /// TODO: REIMPLEMENT THIS, Bound distances so that you cant get too close to segment edges (sticklength / 2)
 /// This version ensures all wires are of a minimum length
-(*
 let getSafeDistanceForMove (segments: Segment list) (index: int) (distance: float) =
     let reduceDistance maxDistance =
         if sign maxDistance = -1 then
@@ -1771,6 +1769,9 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
 
         { model with Wires = updateStyle }, Cmd.none
 
+    | Rotate (componentIds: ComponentId list) ->
+        printfn $"Rotating!"
+        model, Cmd.none
     (* Basically, go through all the componentIds, and call autrouting on all their wires
     | Rotate (componentIds: ComponentId list) -> 
         
