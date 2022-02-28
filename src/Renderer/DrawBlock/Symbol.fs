@@ -359,8 +359,6 @@ let rotateSymbol (symb:Symbol) direction : Symbol = //Symbol =
     {symb with STransform = newSTransform; PortOrientation = rotatedPortOrientation; PortOrder = rotatedPortOrder}
 
 
-    
-
 // Function to add ports to port model     
 let addToPortModel (model: Model) (sym: Symbol) =
     let addOnePort (currentPorts: Map<string, Port>) (port: Port) =
