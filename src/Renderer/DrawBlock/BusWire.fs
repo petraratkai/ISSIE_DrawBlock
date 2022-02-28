@@ -863,7 +863,7 @@ type Rectangle = {
 let toX (pos: XYPos) = pos.X
 
 /// Returns the Y-value of an XYPos
-let toY (pos: XYPos) = pos.X
+let toY (pos: XYPos) = pos.Y
 
 /// Returns the X and Y fields of an XYPos as a pair of floats
 let getXY (pos: XYPos) = pos.X, pos.Y
@@ -878,6 +878,10 @@ let posDiff (p1: XYPos) (p2: XYPos) : XYPos =
 
 let scalePos (factor: float) (pos: XYPos) : XYPos =
     { X = factor * pos.X; Y = factor * pos.Y}
+
+/// Returns true if p1 is less than or equal to p2 (has both smaller X and Y values
+let lThanEqualPos (p1: XYPos) (p2: XYPos) : bool =
+    p1.X <= p2.X && p1.Y <= p2.Y
 
 /// Returns the dot product of 2 XYPos
 let dotProduct (p1: XYPos) (p2: XYPos) : float = 
@@ -896,19 +900,29 @@ let rectanglesIntersect (rect1: Rectangle) (rect2: Rectangle) =
     let intersect1D (xOrY: XYPos -> float): bool =
         let qHi = min (xOrY rect1.BottomRight) (xOrY rect2.BottomRight)
         let qLo = max (xOrY rect1.TopLeft) (xOrY rect2.TopLeft)
-        qLo < qHi
+        qLo <= qHi
 
-    intersect1D toX && intersect1D toY 
+    (intersect1D toX) && (intersect1D toY)
 
 /// Checks if a segment intersects a bounding box using the segment's start and end XYPos
-let segmentIntersectsBoundingBox (bb: BoundingBox) segStart segEnd = 
-    let toRect topLeft bottomRight =
+let segmentIntersectsBoundingBox (bb: BoundingBox) segStart segEnd =
+    let toRect p1 p2 =
+        let topLeft, bottomRight =
+            if lThanEqualPos p1 p2 then
+                p1, p2
+            else
+                p2, p1
+
         { TopLeft = topLeft
           BottomRight = bottomRight }
-    
-    let bbBottomRight = { X = bb.TopLeft.X + bb.W; Y = bb.TopLeft.Y + bb.H }
+
+    let bbBottomRight =
+        { X = bb.TopLeft.X + bb.W
+          Y = bb.TopLeft.Y + bb.H }
+
     let bbRect = toRect bb.TopLeft bbBottomRight
     let segRect = toRect segStart segEnd
+
     rectanglesIntersect bbRect segRect
 
 /// Returns the distance between a point and a segment defined by a start and end XYPos, and None if the segment is of 0 length (can't be clicked)
@@ -1166,13 +1180,12 @@ let autorouteWire (model: Model) (wire: Wire) : Wire =
 
     let startPort = genPortInfo startEdge startPos
     let destPort = genPortInfo destEdge destPos
-
+    
     let normalisedStart, normalisedEnd =
         rotateStartDest Symbol.Right (startPort, destPort)
-
+    printfn $"Start = {startPort}\nNormalised start = {normalisedStart}\n,Dest = {destPort}\nnormalised dest = {normalisedEnd}"
     let initialSegments =
         makeInitialSegmentsList wire.Id normalisedStart.Position normalisedEnd.Position normalisedEnd.Edge
-
     let segments =
         {| edge = Symbol.Right
            segments = initialSegments |}
@@ -1778,7 +1791,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
 
 /// Checks if a wire intersects a bounding box by checking if any of its segments intersect
 let wireIntersectsBoundingBox (wire : Wire) (bb : BoundingBox) =
-    let segmentIntersectsBox segStart segEnd state _seg =
+    let segmentIntersectsBox segStart segEnd state seg =
         match state with
         | true -> true
         | false -> segmentIntersectsBoundingBox bb segStart segEnd
@@ -1797,6 +1810,7 @@ let getIntersectingWires (wModel : Model) (selectBox : BoundingBox) : list<Conne
 ///Where n is 5 pixels adjusted for top level zoom
 let getWireIfClicked (wModel : Model) (pos : XYPos) (n : float) : ConnectionId Option =
     let boundingBox = {BoundingBox.TopLeft = {X = pos.X - n; Y = pos.Y - n}; H = n*2.; W = n*2.}
+    //printfn $"Click Bounding Box: {boundingBox}"
     let intersectingWires = getIntersectingWires (wModel : Model) boundingBox
     List.tryHead intersectingWires
 
