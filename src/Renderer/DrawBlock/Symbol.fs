@@ -12,7 +12,6 @@ open System.Text.RegularExpressions
 
 
 /// --------- STATIC VARIABLES --------- ///
-
 let GridSize = 30 
 
 /// ---------- SYMBOL TYPES ---------- ///
@@ -476,7 +475,6 @@ let addHorizontalColorLine posX1 posX2 posY opacity (color:string) = // TODO: Li
 
 
 /// --------------------------------------- SYMBOL DRAWING ------------------------------------------------------ ///   
-
 let compSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float)= 
     let h,w = getHAndW symbol
     let halfW = comp.W/2
@@ -928,7 +926,6 @@ let changeConstantf (symModel:Model) (compId:ComponentId) (constantVal:int64) (c
 //Helper functions for the upadte function
 
 /// initialises the port positions of a component that are needed in Symbol
-
 
 /// Given a model and a list of component ids deletes the specified components from the model and returns the updated model
 let inline deleteSymbols (model: Model) compIds =
