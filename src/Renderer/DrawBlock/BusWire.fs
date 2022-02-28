@@ -323,7 +323,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd; Y = yEnd-1.}; //Stick vertical
                     {X = xEnd; Y = yEnd-1.}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
-            | Symbol.Left ->  [{X = xStart; Y = yStart};
+            | Symbol.Right ->  [{X = xStart; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xEnd-10.; Y = yStart};
@@ -335,7 +335,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
         match yStart - yEnd < 0 with
         | true ->
             match portOrientation with
-            | bottom ->  [{X = xStart; Y = yStart};
+            | Symbol.Bottom ->  [{X = xStart; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xStart+10.; Y = yStart};
@@ -344,7 +344,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd; Y = yEnd+1.}; //Stick vertical
                     {X = xEnd; Y = yEnd+1.}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
-            | right ->  [{X = xEnd; Y = yStart};
+            | Symbol.Right ->  [{X = xEnd; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xStart+10.; Y = yStart};
@@ -352,7 +352,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd+1.; Y = yEnd}; //Stick horizontal
                     {X = xEnd+1.; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}]
-            | top ->  [{X = xStart; Y = yStart};
+            | Symbol.Top ->  [{X = xStart; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xStart+10.; Y = yStart};
@@ -361,7 +361,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd; Y = yEnd-1.}; //Stick vertical
                     {X = xEnd; Y = yEnd-1.}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
-            | left ->  [{X = xStart; Y = yStart};
+            | Symbol.Left ->  [{X = xStart; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xStart+10.; Y = yStart};
@@ -373,7 +373,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd; Y = yEnd}]
         | false ->
             match portOrientation with
-            | top ->  [{X = xStart; Y = yStart};
+            | Symbol.Top ->  [{X = xStart; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xStart+10.; Y = yStart};
@@ -382,7 +382,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd; Y = yEnd-1.};//Stick vertical
                     {X = xEnd; Y = yEnd-1.}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
-            | right ->  [{X = xStart; Y = yStart};
+            | Symbol.Right ->  [{X = xStart; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xStart+10.; Y = yStart};
@@ -390,7 +390,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd+1.; Y = yEnd}; //Stick horizontal
                     {X = xEnd+1.; Y = yEnd}; //Lenght 0 vertical
                     {X = xEnd; Y = yEnd}]
-            | bottom ->  [{X = xStart; Y = yStart};
+            | Symbol.Bottom ->  [{X = xStart; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xStart+10.; Y = yStart};
@@ -399,7 +399,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd; Y = yEnd+1.};//Stick vertical
                     {X = xEnd; Y = yEnd+1.}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
-            | left ->  [{X = xStart; Y = yStart};
+            | Symbol.Left ->  [{X = xStart; Y = yStart};
                     {X = xStart+1.0; Y = yStart}; //Stick horizontal
                     {X = xStart+1.0; Y = yStart}; //Length 0 vertical
                     {X = xStart+10.; Y = yStart};
