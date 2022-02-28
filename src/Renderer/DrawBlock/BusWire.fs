@@ -1769,7 +1769,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
             | Radial -> model.Wires |> Map.map (fun id w -> {w with Type = Radial})
             | Modern -> model.Wires |> Map.map (fun id w -> {w with Type = Modern})
 
-        { model with Wires = updateStyle }, Cmd.None
+        { model with Wires = updateStyle }, Cmd.none
 
     (* Basically, go through all the componentIds, and call autrouting on all their wires
     | Rotate (componentIds: ComponentId list) -> 
