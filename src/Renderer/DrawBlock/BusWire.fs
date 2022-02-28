@@ -1173,7 +1173,7 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
     for w1 in 0 .. wires.Length-1 do
         let wire = wires[w1]
         if not (Array.contains wire.Id wiresWithNoJumpsA) then
-            let findJumpsForSegment (segSttart: XYPos) (segEnd: XYPos) (_state) (seg: Segment) =
+            let findJumpsForSegment (segStart: XYPos) (segEnd: XYPos) (_state) (seg: Segment) =
                 if not verticalSeg segStart segEnd then
                     let mutable jumps: (float * SegmentId) list = []
                     for w2 in 0 .. wires.Length-1 do
