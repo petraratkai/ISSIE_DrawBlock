@@ -689,19 +689,27 @@ let compSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
         | MergeWires -> (sprintf "%i,%f %i,%f " halfwidth ((1.0/6.0)*float(height)) halfwidth ((5.0/6.0)*float(height)))
         | SplitWire _ ->  (sprintf "%i,%f %i,%f " halfwidth ((1.0/6.0)*float(height)) halfwidth ((5.0/6.0)*float(height)))
         | Demux2 -> match orientation with
-                    | Degree0 -> (sprintf "%f,%f %f,%f %f,%f %f,%f" symbolX (symbolY-0.6*float(height)) symbolX symbolY (symbolX+float(width)) (symbolY+0.2*float(height)) (symbolX+float(width)) (symbolY-0.8*float(height)) ) 
-                    | Degree90 -> (sprintf "%f,%f %f,%f %f,%f %f,%f" (symbolX+0.2*float(width)) (symbolY-float(height)) symbolX symbolY (symbolX + float(width)) symbolY (symbolX + 0.8*float(width)) (symbolY-float(height)))
-                    | Degree180 -> (sprintf "%f,%f %f,%f %f,%f %f,%f" symbolX (symbolY-float(height)) symbolX symbolY (symbolX+float(width)) (symbolY-0.2*float(height)) (symbolX+float(width)) (symbolY-0.8*float(height)))
-                    | Degree270 -> (sprintf "%f,%f %f,%f %f,%f %f,%f" (symbolX-0.2*float(width)) (symbolY-float(height)) symbolX symbolY (symbolX+0.6*float(width)) symbolY (symbolX+0.8*float(width)) (symbolY-float(height)))
+                    | Degree0 -> 
+                        (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (0.2*float(height)) 0 (0.8*float(height)) width height width 0) 
+                    | Degree90 -> 
+                        (sprintf "%f,%i %i,%i %i,%i %f,%i" (0.2*float(width)) 0 0 height width height (0.8*float(width)) 0)
+                    | Degree180 -> 
+                        (sprintf "%i,%i %i,%i %i,%f %i,%f" 0 0 0 height width (0.8*float(height)) width (0.2*float(height)))
+                    | Degree270 -> 
+                        (sprintf "%i,%i %f,%i %f,%i %i,%i" 0 0 (0.2*float(width)) height (0.8*float(width)) height width 0 )
         | Mux2 -> match orientation with
-                 | Degree0 -> (sprintf "%f,%f %f,%f  %f,%f %f,%f" symbolX (symbolY-float(height)) (symbolX+float(width)) (symbolY-0.8*float(height)) (symbolX+float(width)) (symbolY-0.2*float(height)) symbolX symbolY )
-                 | Degree90 -> (sprintf "%f,%f %f,%f  %f,%f %f,%f" (symbolX-0.2*float(width)) (symbolY-float(height)) (symbolX+0.8*float(width)) (symbolY-float(height)) (symbolX+0.6*float(width)) symbolY symbolX symbolY)
-                 | Degree180 -> (sprintf "%f,%f %f,%f  %f,%f %f,%f" symbolX (symbolY-0.6*float(height)) (symbolX+float(width)) (symbolY-0.8*float(height)) (symbolX+float(width)) (symbolY+0.2*float(height)) symbolX symbolY)
-                 | Degree270 -> (sprintf "%f,%f %f,%f  %f,%f %f,%f" (symbolX+0.2*float(width)) (symbolY-float(height)) (symbolX + 0.8*float(width)) (symbolY-float(height)) (symbolX + float(width)) symbolY symbolX symbolY )  
+                 | Degree0 -> 
+                    (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 width (0.2*float(height)) width (0.8*float(height)) 0 height ) 
+                 | Degree90 -> 
+                    (sprintf "%i,%i %i,%i  %f,%i %f,%i" 0 0 width 0 (0.8*float(width)) height (0.2*float(width)) height) 
+                 | Degree180 -> 
+                    (sprintf "%i,%f %i,%i  %i,%i %i,%f" 0 (0.2*float(height)) width 0 width height 0 (0.8*float(height))) 
+                 | Degree270 -> 
+                    (sprintf "%f,%i %f,%i  %i,%i %i,%i" (0.2*float(width)) 0 (0.8*float(width)) 0 width height 0 height)  
         // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
         | BusSelection _ |BusCompare _ -> (sprintf "%i,%i %i,%i %f,%i %f,%f %i,%f %i,%f %f,%f %f,%i ")0 0 0 height (0.6*float(width)) height (0.8*float(width)) (0.7*float(height)) width (0.7*float(height)) width (0.3*float(height)) (0.8*float(width)) (0.3*float(height)) (0.6*float(width)) 0
-        | _ -> (sprintf "%f,%f %f,%f %f,%f %f,%f" symbolX symbolY (symbolX+float(width)) symbolY (symbolX+float(width)) (symbolY-float(height)) symbolX (symbolY-float(height)))
+        | _ -> (sprintf "%i,%i %i,%i %i,%i %i,%i" 0 height width height width 0 0 0)
 
     let additionalinput =       // Helper function to add certain characteristics on specific symbols (inverter, enables, clocks)
         match comp.Type with
