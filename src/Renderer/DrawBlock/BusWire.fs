@@ -907,10 +907,10 @@ let segmentIntersectsBoundingBox (bb: BoundingBox) segStart segEnd =
     let segRect = toRect segStart segEnd
     rectanglesIntersect bbRect segRect
 
-/// Returns the distance between a point and a segment defined by a start and end XYPos
-let distanceBetweenPointAndSegment (segStart : XYPos) (segEnd : XYPos) (point : XYPos) : float = 
+/// Returns the distance between a point and a segment defined by a start and end XYPos, and None if the segment is of 0 length (can't be clicked)
+let distanceBetweenPointAndSegment (segStart : XYPos) (segEnd : XYPos) (point : XYPos) : float option = 
     match squaredDistance segStart segEnd with
-    | 0. -> failwithf "Segment of length 0" // This should never happen
+    | 0. -> None
     | l2 -> 
         // Extend the segment to line segStart + t (segEnd - segStart)
         // The projection of point on this line falls at tProjection
@@ -920,16 +920,21 @@ let distanceBetweenPointAndSegment (segStart : XYPos) (segEnd : XYPos) (point : 
             posDiff segEnd segStart
             |> scalePos tBounded
             |> posAdd segStart
-        sqrt (squaredDistance point boundedProjection)
+        Some (sqrt (squaredDistance point boundedProjection))
 
 /// Finds the Id of the closest segment in a wire to a mouse click using euclidean distance
-let getClickedSegment (model : Model) (wireId : ConnectionId) (mouse : XYPos) : SegmentId =
-    let closestSegment segStart segEnd state (seg : Segment) =
-        let currDistance = distanceBetweenPointAndSegment segStart segEnd mouse
-        match state with
-        | Some (minId, minDistance) -> if currDistance < minDistance then Some (seg.Id, currDistance) else Some (minId, minDistance)
-        | None -> Some (seg.Id, currDistance) // Needed to deal with initial case
-    
+let getClickedSegment (model: Model) (wireId: ConnectionId) (mouse: XYPos) : SegmentId =
+    let closestSegment segStart segEnd state (seg: Segment) =
+        distanceBetweenPointAndSegment segStart segEnd mouse
+        |> Option.map (fun dist ->
+            match state with
+            | Some (minId, minDistance) ->
+                if dist < minDistance then
+                    (seg.Id, dist)
+                else
+                    (minId, minDistance)
+            | None -> (seg.Id, dist)) // Needed to deal with initial state
+
     match foldOverSegs closestSegment None model.Wires[wireId] with
     | Some (segmentId, _) -> segmentId
     | None -> failwithf "getClosestSegment was given a wire with no segments" // Should never happen
@@ -1651,7 +1656,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
             let rec getSeg (segList: list<Segment>) = 
                 match segList with
                 | h::t -> if h.Id = segId then h else getSeg t
-                | _ -> failwithf "segment Id not found in segment list"
+                | _ -> failwithf $"segment Id {segId} not found in segment list"
             let seg = getSeg model.Wires[connId].Segments
             if seg.Draggable then
                 let distanceToMove = 
