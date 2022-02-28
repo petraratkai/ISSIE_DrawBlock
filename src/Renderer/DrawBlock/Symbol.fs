@@ -77,8 +77,8 @@ type Msg =
     | LoadComponents of  Component list // For Issie Integration
     | WriteMemoryLine of ComponentId * int64 * int64 // For Issie Integration 
     | WriteMemoryType of ComponentId * ComponentType
-    | RotateLeft of compList : ComponentId list
-    | RotateRight of compList: ComponentId list
+    | RotateLeft of compList : ComponentId list * rotateby: Rotation
+    | RotateRight of compList: ComponentId list * rotateby: Rotation
 
 //---------------------------------helper types and functions----------------//
 
@@ -586,7 +586,7 @@ let getCentre (symbol:Symbol) =
     | _ -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; Y=symbol.Pos.Y - float(symbol.Component.H/2)}
 
 ///Symbol Rotation Right
-let rotateRight (symbol:Symbol) (rotateby:Rotation) = 
+let rotateSymbolRight (symbol:Symbol) (rotateby:Rotation) = 
     let currentorientation = symbol.STransform.Rotation
     let comptype = symbol.Component.Type
     let centre = getCentre symbol
@@ -664,7 +664,7 @@ let rotateRight (symbol:Symbol) (rotateby:Rotation) =
                  PortOrder=updatePortOrder}                 
 
 ///Symbol Rotation Left
-let rotateLeft (symbol:Symbol) (rotate:Rotation) = 
+let rotateSymbolLeft (symbol:Symbol) (rotate:Rotation) = 
     let currentorientation = symbol.STransform.Rotation
     let centre = getCentre symbol
     let comptype = symbol.Component.Type
@@ -1449,89 +1449,6 @@ let inline writeMemoryType model compId memory =
     
     { model with Symbols = newSymbols }
 
-let rotateSideLeft (side:Edge) :Edge =
-    match side with
-    | Top -> Left
-    | Left -> Bottom
-    | Bottom -> Right
-    | Right -> Top
-
-let rotateSideRight (side:Edge) :Edge =
-    match side with
-    | Top -> Right
-    | Left -> Top
-    | Bottom -> Left
-    | Right -> Bottom
-
-let rotateAngleLeft (rotation: Rotation) : Rotation =
-    match rotation with
-    | Degree0 -> Degree90
-    | Degree90 -> Degree180
-    | Degree180 -> Degree270
-    | Degree270 -> Degree0
-
-let rotateAngleRight (rotation: Rotation) : Rotation =
-    match rotation with
-    | Degree0 -> Degree270
-    | Degree90 -> Degree0
-    | Degree180 -> Degree90
-    | Degree270 -> Degree180
-
-let rotateSymbolLeft (sym: Symbol) : Symbol =
-    // update comp w h
-    match sym.Component.Type with
-    | Custom _-> sym
-    | _ ->
-        let h,w = getHAndW sym
-        let newXY = sym.Pos + { X = (float)w/2.0 - (float) h/2.0 ;Y = (float) h/2.0 - (float)w/2.0 }
-
-        //need to update portOrientation and portOrder
-        let newPortOrientation = 
-            sym.PortOrientation |> Map.map (fun id side -> rotateSideLeft side)
-
-        let rotatePortListLeft currPortOrder side =
-            currPortOrder |> Map.add (rotateSideLeft side ) sym.PortOrder[side]
-
-        let newPortOrder = 
-            (Map.empty, [Top; Left; Bottom; Right]) ||> List.fold rotatePortListLeft
-
-        let newSTransform = 
-            {sym.STransform with Rotation = rotateAngleLeft sym.STransform.Rotation}
-
-        { sym with 
-            Pos = newXY;
-            PortOrientation = newPortOrientation;
-            PortOrder = newPortOrder;
-            STransform =newSTransform;  
-        }
-
-let rotateSymbolRight (sym: Symbol) : Symbol =
-    match sym.Component.Type with
-    | Custom _-> sym
-    | _ ->
-        let h,w = getHAndW sym
-        let newXY = sym.Pos + { X = (float)w/2.0 - (float) h/2.0 ;Y = (float) h/2.0 - (float)w/2.0 }
-
-        //need to update portOrientation and portOrder
-        let newPortOrientation = 
-            sym.PortOrientation |> Map.map (fun id side -> rotateSideRight side)
-
-        let rotatePortListRight currPortOrder side =
-            currPortOrder |> Map.add (rotateSideRight side ) sym.PortOrder[side]
-
-        let newPortOrder = 
-            (Map.empty, [Top; Left; Bottom; Right]) ||> List.fold rotatePortListRight
-
-        let newSTransform = 
-            {sym.STransform with Rotation = rotateAngleRight sym.STransform.Rotation}
-
-        { sym with 
-            Pos = newXY;
-            PortOrientation = newPortOrientation;
-            PortOrder = newPortOrder;
-            STransform =newSTransform;  
-        }
-
 /// update function which displays symbols
 let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
     match msg with
@@ -1611,16 +1528,16 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
         writeMemoryLine model (compId, addr, value), Cmd.none
     | WriteMemoryType (compId, memory) ->
         (writeMemoryType model compId memory), Cmd.none
-    | RotateLeft compList ->
+    | RotateLeft (compList, rotateby) ->
         let rotatedSymbols = 
-            compList |> List.map (fun id-> rotateSymbolLeft model.Symbols[id])
+            compList |> List.map (fun id-> rotateSymbolLeft model.Symbols[id] rotateby)
         let newSymbolMap = 
             (model.Symbols, rotatedSymbols) 
             ||> List.fold (fun currSymMap sym -> currSymMap |> Map.add sym.Id sym)
         { model with Symbols = newSymbolMap }, Cmd.none
-    | RotateRight compList ->
+    | RotateRight (compList, rotateby) ->
         let rotatedSymbols = 
-            compList |> List.map (fun id-> rotateSymbolRight model.Symbols[id])
+            compList |> List.map (fun id-> rotateSymbolRight model.Symbols[id] rotateby)
         let newSymbolMap = 
             (model.Symbols, rotatedSymbols) 
             ||> List.fold (fun currSymMap sym -> currSymMap |> Map.add sym.Id sym)
