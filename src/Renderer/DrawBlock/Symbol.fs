@@ -362,13 +362,14 @@ let getPortBaseOffset (sym: Symbol) (side: Edge): XYPos=
 
 /// Returns true if an edge has the select port of a mux
 let isMuxSel (sym:Symbol) (side:Edge): bool =
-    match (sym.Component.Type, sym.STransform.Rotation, side) with
-    | (Mux2, Degree0, Bottom ) | (Demux2, Degree0, Bottom )-> true
-    | (Mux2,Degree90, Right) | (Demux2,Degree90, Right)-> true
-    | (Mux2, Degree180, Top) | (Demux2, Degree180, Top) -> true
-    | (Mux2, Degree270, Left) | (Demux2, Degree270, Left)-> true
+        match (sym.Component.Type, sym.STransform.Rotation, side) with
+        | (Mux2, Degree0, Bottom ) | (Demux2, Degree0, Bottom )-> true
+        | (Mux2,Degree90, Right) | (Demux2,Degree90, Right)-> true
+        | (Mux2, Degree180, Top) | (Demux2, Degree180, Top) -> true
+        | (Mux2, Degree270, Left) | (Demux2, Degree270, Left)-> true
+        | _ -> false
 
-    | _ -> false
+
 ///based on a symbol and an edge, if the port is a mux select, return an extra offset required for the port (because of the weird shape of the mux)
 let getMuxSelOffset (sym: Symbol) (side: Edge): XYPos =
     if isMuxSel sym side then
@@ -509,7 +510,7 @@ let compSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:
         | Viewer _ -> (sprintf "%f,%i %i,%i %f,%i %i,%i %i,%i" (float(w)*(0.2)) 0 0 halfH (float(w)*(0.2)) h w h w 0)
         | MergeWires -> (sprintf "%i,%f %i,%f " halfW ((1.0/6.0)*float(h)) halfW ((5.0/6.0)*float(h)))
         | SplitWire _ ->  (sprintf "%i,%f %i,%f " halfW ((1.0/6.0)*float(h)) halfW ((5.0/6.0)*float(h)))
-        | Demux2 -> 
+        | Demux2 when symbol.STransform.flipped = false -> 
             match symbol.STransform. Rotation with
             | Degree0 | Degree180 ->
                 (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
@@ -517,7 +518,7 @@ let compSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:
                 (sprintf "%i,%i %i,%i %f,%i %f,%i" 0 0 w 0  (float(w)*0.8) h (float(w)*0.2)  h)
             | Degree270 ->
                 (sprintf "%f,%i %f,%i %i,%i %i,%i" (float(w)*0.2) 0 (float(w)*0.8) 0 w h 0 h)
-        | Mux2 -> 
+        | Demux2 when symbol.STransform.flipped ->
             match symbol.STransform.Rotation with 
             | Degree0 | Degree180 -> 
                 (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
@@ -525,6 +526,22 @@ let compSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:
                 (sprintf "%f,%i %f,%i  %i,%i %i,%i" (float(w)*0.2) 0 (float(w)*0.8) 0 w h 0 h )
             | Degree270 ->
                 (sprintf "%i,%i %i,%i  %f,%i %f,%i" 0 0 w 0 (float(w)*0.8) h (float(w)*0.2 ) h)
+        | Mux2 when symbol.STransform.flipped = false-> 
+            match symbol.STransform.Rotation with 
+            | Degree0 | Degree180 -> 
+                (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
+            | Degree90 ->
+                (sprintf "%f,%i %f,%i  %i,%i %i,%i" (float(w)*0.2) 0 (float(w)*0.8) 0 w h 0 h )
+            | Degree270 ->
+                (sprintf "%i,%i %i,%i  %f,%i %f,%i" 0 0 w 0 (float(w)*0.8) h (float(w)*0.2 ) h)
+        | Mux2 ->
+            match symbol.STransform. Rotation with
+            | Degree0 | Degree180 ->
+                (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
+            | Degree90 ->
+                (sprintf "%i,%i %i,%i %f,%i %f,%i" 0 0 w 0  (float(w)*0.8) h (float(w)*0.2)  h)
+            | Degree270 ->
+                (sprintf "%f,%i %f,%i %i,%i %i,%i" (float(w)*0.2) 0 (float(w)*0.8) 0 w h 0 h)
         // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
         | BusSelection _ |BusCompare _ -> (sprintf "%i,%i %i,%i %f,%i %f,%f %i,%f %i,%f %f,%f %f,%i ")0 0 0 h (0.6*float(w)) h (0.8*float(w)) (0.7*float(h)) w (0.7*float(h)) w (0.3*float(h)) (0.8*float(w)) (0.3*float(h)) (0.6*float(w)) 0
@@ -1269,7 +1286,7 @@ let rotateSymbolRight (sym: Symbol) : Symbol =
 
 let flipAngleHorizontal (rotation: Rotation): Rotation =
     match rotation with
-    | Degree0 | Degree180 -> 
+    | Degree90 | Degree270 -> 
         rotation
         |> rotateAngleRight
         |> rotateAngleRight
@@ -1278,7 +1295,7 @@ let flipAngleHorizontal (rotation: Rotation): Rotation =
 
 let flipSideHorizontal (edge: Edge) : Edge =
     match edge with
-    | Top | Bottom ->
+    | Left | Right ->
         edge
         |> rotateSideRight
         |> rotateSideRight
@@ -1299,8 +1316,9 @@ let flipSymbolHorizontal (sym:Symbol) : Symbol =
             |> Map.map (fun edge order -> List.rev order)
 
         let newSTransform = 
-            {sym.STransform with 
-                Rotation = flipAngleHorizontal sym.STransform.Rotation}
+            {flipped= not sym.STransform.flipped;
+            Rotation= flipAngleHorizontal sym.STransform.Rotation}
+
         { sym with
             PortOrientation = newPortOrientation
             PortOrder = newPortOrder
