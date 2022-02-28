@@ -925,18 +925,19 @@ let distanceBetweenPointAndSegment (segStart : XYPos) (segEnd : XYPos) (point : 
 /// Finds the Id of the closest segment in a wire to a mouse click using euclidean distance
 let getClickedSegment (model: Model) (wireId: ConnectionId) (mouse: XYPos) : SegmentId =
     let closestSegment segStart segEnd state (seg: Segment) =
-        distanceBetweenPointAndSegment segStart segEnd mouse
-        |> Option.map (fun dist ->
-            match state with
-            | Some (minId, minDistance) ->
-                if dist < minDistance then
-                    (seg.Id, dist)
-                else
-                    (minId, minDistance)
-            | None -> (seg.Id, dist)) // Needed to deal with initial state
+        let currDist = 
+            distanceBetweenPointAndSegment segStart segEnd mouse
+        match state with
+        | Some (minId, minDist) ->
+            let dist = Option.defaultValue minDist currDist
+            if dist < minDist then
+                Some (seg.Id, dist)
+            else
+                Some (minId, minDist)
+        | None -> Option.map (fun dist -> (seg.Id, dist)) currDist // Needed to deal with initial state
 
     match foldOverSegs closestSegment None model.Wires[wireId] with
-    | Some (segmentId, _) -> segmentId
+    | Some (segmentId, dist) -> segmentId 
     | None -> failwithf "getClosestSegment was given a wire with no segments" // Should never happen
 
 /// Returns a distance for a wire move that has been reduced if needed to enforce minimum first/last segment lengths.
@@ -958,21 +959,27 @@ let getSafeDistanceForMove (segments: Segment list) (index: int) (distance: floa
         if findBindingIndex bindingSegs <> index then 
             distance
         else
-            findDistanceFromPort bindingSegs
+            findDistanceFromPort bindingSegs |> (fun dist -> printfn $"Bounded distance {dist}"; dist)
             |> (fun dist -> 
                     if sign dist = -1 then 
                         max distance (dist + Wire.stickLength/2.)
                     else 
                         min distance (dist - Wire.stickLength/2.))
-
+    printfn $"All segments, target: {index}"
+    List.map logSegment segments |> ignore
     let bindingInputSegs = 
+        printfn "Binding input segments"
         segments
         |> findBindingSegments 0
+        |> List.map logSegment
 
     let bindingOutputSegs =
+        printfn "Binding output segments"
         List.rev segments
         |> findBindingSegments (segments.Length - 1)
+        |> List.map logSegment
 
+    printfn $"Start distance {distance}"
     distance
     |> reduceDistance bindingInputSegs
     |> reduceDistance bindingOutputSegs
@@ -1007,7 +1014,7 @@ let moveSegment (model:Model) (seg:Segment) (distance:float) =
     let idx = seg.Index
 
     if idx <= 0 || idx >= segments.Length - 1 then
-        failwithf $"Trying to move wire segment {idx}, out of range in wire length {segments.Length}"
+        failwithf $"Trying to move wire segment {seg.Index}:{formatSegmentId seg.Id}, out of range in wire length {segments.Length}"
 
     let safeDistance = getSafeDistanceForMove segments idx distance
     
