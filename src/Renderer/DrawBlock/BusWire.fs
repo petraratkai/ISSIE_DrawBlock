@@ -1006,7 +1006,6 @@ let getSafeDistanceForMove (segments: Segment list) (index: int) (distance: floa
 /// a specified distance. The moved segment is tagged as manual so that it is no longer auto-routed.
 /// Throws an error if the segment being moved is out of range.
 let moveSegment (model:Model) (seg:Segment) (distance:float) = 
-    printfn $"Distance = {distance}"
     let wire = model.Wires[seg.HostId]
     let segments = wire.Segments
     let idx = seg.Index
@@ -1668,7 +1667,6 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                     match getSegmentOrientation segStart segEnd with
                     | Horizontal -> mMsg.Pos.Y - segStart.Y
                     | Vertical -> mMsg.Pos.X - segStart.X
-                    |> (fun res -> printfn $"Segment startpos {segStart}, endpos {segEnd}, orientation {getSegmentOrientation segStart segEnd}, mousepos {mMsg.Pos}, distance {res}"; res)
 
                 let newWire = moveSegment model seg distanceToMove 
                 let newWX = Map.add seg.HostId newWire model.Wires
