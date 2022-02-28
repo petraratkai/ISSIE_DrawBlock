@@ -117,7 +117,7 @@ type Msg =
     | ToggleNet of CanvasState //This message does nothing in sheet, but will be picked up by the update function
     | SelectWires of ConnectionId list
     | SetSpinner of bool
-    | WireType of WireTypeMsg
+    | Rotate of RotateMsg
 
 
 // ------------------ Helper Functions that need to be before the Model type --------------------------- //
