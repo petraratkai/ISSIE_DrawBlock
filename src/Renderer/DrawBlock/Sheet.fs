@@ -13,7 +13,6 @@ open DrawHelpers
 
 let mutable canvasDiv:Types.Element option = None
 
-
 /// Used to keep mouse movement (AKA velocity) info as well as position
 type XYPosMov = {
     Pos: XYPos
@@ -86,7 +85,7 @@ type KeyboardMsg =
     | CtrlS | CtrlC | CtrlV | CtrlZ | CtrlY | CtrlA | CtrlW | AltC | AltV | AltZ | AltShiftZ | ZoomIn | ZoomOut | DEL | ESC
 
 type RotateMsg =
-    | Right | Left
+    | Right90Degree | Right180Degree | Right270Degree | Left90Degree | Left180Degree | Left270Degree
 
 type Msg =
     | Wire of BusWire.Msg
@@ -1038,20 +1037,47 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             outputModel, filteredOutputCmd
         else
             { model with AutomaticScrolling = false}, Cmd.none
+    
+    | Rotate Right90Degree ->
+        model,
+        Cmd.batch [
+            symbolCmd (Symbol.RotateRight (model.SelectedComponents,Symbol.Degree90)) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
+            //wireCmd (BusWire.Rotate model.SelectedComponents)
+        ]
 
-    | Rotate Left ->
+    | Rotate Right180Degree ->
         model,
         Cmd.batch [
-            symbolCmd (Symbol.RotateLeft model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
+            symbolCmd (Symbol.RotateRight (model.SelectedComponents,Symbol.Degree180)) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
             //wireCmd (BusWire.Rotate model.SelectedComponents)
         ]
-    | Rotate Right ->
+
+    | Rotate Right270Degree ->
         model,
         Cmd.batch [
-            symbolCmd (Symbol.RotateRight model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
+            symbolCmd (Symbol.RotateRight (model.SelectedComponents,Symbol.Degree270)) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
             //wireCmd (BusWire.Rotate model.SelectedComponents)
         ]
-                
+
+    | Rotate Left90Degree ->
+        model,
+        Cmd.batch [
+            symbolCmd (Symbol.RotateLeft (model.SelectedComponents,Symbol.Degree90)) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
+            //wireCmd (BusWire.Rotate model.SelectedComponents)
+        ]
+    | Rotate Left180Degree ->
+        model,
+        Cmd.batch [
+            symbolCmd (Symbol.RotateLeft (model.SelectedComponents,Symbol.Degree180)) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
+            //wireCmd (BusWire.Rotate model.SelectedComponents)
+        ]
+    | Rotate Left270Degree ->
+        model,
+        Cmd.batch [
+            symbolCmd (Symbol.RotateLeft (model.SelectedComponents,Symbol.Degree270)) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
+            //wireCmd (BusWire.Rotate model.SelectedComponents)
+        ]
+
     // ---------------------------- Issie Messages ---------------------------- //
 
     | InitialiseCreateComponent (compType, lbl) ->
