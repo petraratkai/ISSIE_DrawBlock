@@ -316,6 +316,10 @@ let defaultPortOrientation (comp : Component) : Map<string,Edge> =
     let portOrientationMap = 
         match comp.Type with
         | Mux2 -> defaultEdges
+        | DFFE -> defaultEdges
+        | Demux2 -> defaultEdges
+        | NbitsAdder width -> defaultEdges
+        | RegisterE width -> defaultEdges
         | Custom x -> defaultEdges
         | _ -> defaultEdges
 
@@ -1265,21 +1269,22 @@ let inline createSymbol prevSymbols comp =
                 comp.H, comp.W
         prevSymbols
         |> Map.add (ComponentId comp.Id)
-            { Pos = xyPos
-              ShowInputPorts = false //do not show input ports initially
-              ShowOutputPorts = false //do not show output ports initially
-              Colour = "lightgrey"     // initial color 
-              Id = ComponentId comp.Id
-              Component = {comp with H=h ; W = w}
-              Opacity = 1.0
-              Moving = false
-              InWidth0 = None
-              InWidth1 = None
-              STransform = {Rotation= Degree0; flipped= false}
-              PortOrientation = orientation
-              PortOrder = findPortOrder orientation                           
-              //PortOrientation = portOrientation
-              //PortOrder = portOrder
+            {
+                Pos = xyPos
+                ShowInputPorts = false //do not show input ports initially
+                ShowOutputPorts = false //do not show output ports initially
+                Colour = "lightgrey"     // initial color 
+                Id = ComponentId comp.Id
+                Component = {comp with H=h ; W = w}
+                Opacity = 1.0
+                Moving = false
+                InWidth0 = None
+                InWidth1 = None
+                STransform = {Rotation= Degree0; flipped= false}
+                PortOrientation = orientation
+                PortOrder = findPortOrder orientation                           
+                //PortOrientation = portOrientation
+                //PortOrder = portOrder
             }
 
 /// Given a model and a list of components, it creates and adds the symbols containing the specified components and returns the updated model.

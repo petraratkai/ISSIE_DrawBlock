@@ -1,5 +1,7 @@
 add rotation for symbols
+
 add defualt port positions for mux DFFE, REGE, ADDER etc
+
 change the way text is generated for rotated symbols
 
 "Add rotation, adjustable edge for custom comp ports (this also changes port

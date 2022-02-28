@@ -1,4 +1,4 @@
-﻿(*
+(*
 This module implements wires between symbol ports. Wires can be autorouted, or manually routed by dragging segments.
 Moving symbols causes the corresponding wires to move.
 Wires are read and written from Issie as lists of wire vertices, whatever teh internal representation is.
@@ -865,6 +865,7 @@ let getSafeDistanceForMove (seg: Segment) (seg0:Segment) (seg6:Segment) (distanc
         
     | _ -> 
         distance
+
         
 /// Adjust wire so that two adjacent horizontal segments that are in opposite directions
 /// get eliminated
@@ -1085,93 +1086,29 @@ let partialAutoRoute (segs: Segment list) (newPortPos: XYPos) =
             Some ((moveAll (addPosPos diff) 0 [firstSeg] @ List.map (transformSeg scaleX scaleY) scaledSegs) @ otherSegs)
         | _ -> None
 
-    { wire with
-        Segments = newSegs
-        StartPos = wire.EndPos
-        EndPos = wire.StartPos
-        InitialOrientation = wire.EndOrientation
-        EndOrientation = wire.InitialOrientation }
-
-/// Returns the end of the segment at the target index in the given wire. Throws an error if the target index isn't found
-let getSegmentEnd (wire: Wire) (target: int) =
-    (None, wire)
-    ||> foldOverSegs
-        (fun _ endPos state seg ->
-            if seg.Index = target then Some endPos else state)
-    |> (function
-        | None -> failwithf $"Couldn't find index {target} in wire"
-        | Some pos -> pos)        
-
-/// Scales a segment length for partial autorouting
-let scale fixedPoint newStart oldStart length =
-    if newStart = fixedPoint then 
-        length 
-    else 
-        fixedPoint + (length * (newStart - fixedPoint) / (oldStart - fixedPoint))
-
-/// Given a segment list, returns the first manual segment index
-let getManualIndex segList =
-    segList
-    |> List.tryFind (fun seg -> seg.Mode = Manual)
-    |> Option.map (fun seg -> seg.Index)
-
-/// Returns None if full autoroute is required or applies partial autorouting
-/// from the start of the wire at newPortPos to the first manually routed segment 
-/// and returns Some wire with the new segments.
-let partialAutoRoute (wire: Wire) (newPortPos: XYPos) = 
-    let segs = wire.Segments
-    let portPos = wire.StartPos
-    let manualIndex = getManualIndex segs
-    
-    let getStartPos portPos =
-        manualIndex
-        |> Option.map (fun idx -> 
-            if idx = 1 then 
-                portPos 
-            else 
-                (addLengthToPos portPos wire.InitialOrientation segs[0].Length))
-        |> Option.defaultValue portPos
-
-    let startPos = getStartPos portPos
-    let newStartPos = getStartPos newPortPos
-
-    let eligibleForPartialRouting index =
-        let fixedPoint = getSegmentEnd wire index
-        let relativeToFixed = relativePosition fixedPoint
-        if relativeToFixed newStartPos = relativeToFixed startPos then
-            Some index
+    let checkTopology index =
+        let finalPt = segs[6].Start
+        let oldTop x = topology (if index = 1 then portPos else wirePos) x
+        let newTop x = topology (if index = 1 then newPortPos else newWirePos) x
+        if oldTop finalPt <> newTop finalPt then
+            // always aandon manual routing
+            None 
         else
-            None
-    /// Scales the lengths of the segment list to the segment at index
-    let scaleSegmentsToIndex index =
-        let fixedPoint = getSegmentEnd wire index
-        let scaleXOrY xOrY = scale (xOrY fixedPoint) (xOrY newStartPos) (xOrY startPos) 
-        let scaleX = scaleXOrY toX
-        let scaleY = scaleXOrY toY
-
-        match List.splitAt (index + 1) segs, index with
-        | ((scaledSegs), remainingSegs), 1 -> // We only scale the nub if it's the only Auto segment
-            Some(
-                transformSegments scaleX scaleY wire.InitialOrientation scaledSegs
-                @ remainingSegs
-            )
-        | ((nub :: scaledSegs), remainingSegs), _ ->
-            Some(
-                [ nub ]
-                @ transformSegments scaleX scaleY wire.InitialOrientation scaledSegs
-                @ remainingSegs
-            )
-        | _ -> None
-
-    manualIndex
-    |> Option.bind eligibleForPartialRouting
-    |> Option.bind scaleSegmentsToIndex
-    |> Option.map (fun segs -> { wire with Segments = segs })
+            let manSegEndPt = segs[index].End
+            let oldT = oldTop manSegEndPt
+            let newT = newTop manSegEndPt
+            if oldT = newT then
+                Some index
+            else
+                None
+    lastAutoIndex
+    |> Option.bind checkTopology
+    |> Option.bind scaleBeforeSegmentEnd
 
 
 ///Returns the new positions keeping manual coordinates negative, and auto coordinates positive
 let negXYPos (pos : XYPos) (diff : XYPos) : XYPos =
-    let newPos = Symbol.posAdd (getAbsXY pos) diff
+    let newPos = (getAbsXY pos) + diff
     if pos.X < 0. || pos.Y < 0. then {X = - newPos.X; Y = - newPos.Y}
     else newPos
 
@@ -1193,14 +1130,15 @@ let moveWire (wire : Wire) (diff : XYPos) =
 /// inout = true => reroute input (target) side of wire.
 let updateWire (model : Model) (wire : Wire) (inOut : bool) =
     let newPort = 
-        match reverse with
+        match inOut with
         | true -> Symbol.getInputPortLocation model.Symbol wire.InputPort
         | false -> Symbol.getOutputPortLocation model.Symbol wire.OutputPort
     if inOut then
         partialAutoRoute (revSegments wire.Segments) newPort
         |> Option.map revSegments
     else 
-        partialAutoRoute wire newPort
+        partialAutoRoute wire.Segments newPort
+    |> Option.map (fun segs -> {wire with Segments = segs})
     |> Option.defaultValue (autorouteWire model wire)
 
 let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
