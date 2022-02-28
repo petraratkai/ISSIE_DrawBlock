@@ -13,3 +13,7 @@ changed drawing helpers to use XYPos where applicale
 changed portpos functions to work take symbol inputs instead
 refactored addText, addClock to use XYPos
 changed all of points in componentSymbol to use interpolated strings 
+
+28/02/2022
+Added symbol initiation for PortOrientation and PortOrder (findPortOrder, defaultPortOrientation)
+

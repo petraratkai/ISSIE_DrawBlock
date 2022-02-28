@@ -13,7 +13,8 @@ open System.Text.RegularExpressions
 
 /// --------- STATIC VARIABLES --------- ///
 
-let defaultSize = 30 
+/// default block size 
+let blockSize = 30 
 
 /// ---------- SYMBOL TYPES ---------- ///
 type Rotation = | Degree0 | Degree90 | Degree180 | Degree270
@@ -170,7 +171,7 @@ let portDecName (comp:Component) = //(input port names, output port names)
 //-----------------------Skeleton Message type for symbols---------------------//
 
 // helper function to initialise each type of component
-let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) : Component =
+let makeComponent (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) : Component =
     /// makes a list of ports for component
     let makePorts (numOfPorts:int) (hostID:string) (portType:PortType) =
         if numOfPorts < 1 
@@ -195,7 +196,7 @@ let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) :
         else List.max labelList
 
     // function that helps avoid dublicate code by initialising parameters that are the same for all component types and takes as argument the others
-    let makeComponent (n, nout, h, w) label : Component=  
+    let makeComponent' (n, nout, h, w) label : Component=  
         {
             Id = id 
             Type = comptype 
@@ -214,47 +215,75 @@ let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) :
         match comptype with
         | ROM _ | RAM _ | AsyncROM _ -> 
             failwithf "What? Legacy RAM component types should never occur"
-        | And | Nand | Or | Nor | Xnor | Xor ->  (2 , 1, 2*defaultSize , 2*defaultSize) 
-        | Not -> ( 1 , 1, 2*defaultSize ,  2*defaultSize) 
-        | ComponentType.Input (a) -> ( 0 , 1, defaultSize ,  2*defaultSize)                
-        | ComponentType.Output (a) -> (  1 , 0, defaultSize ,  2*defaultSize) 
-        | ComponentType.Viewer a -> (  1 , 0, defaultSize ,  defaultSize) 
-        | ComponentType.IOLabel  ->(  1 , 1, defaultSize ,  2*defaultSize) 
-        | Decode4 ->( 2 , 4 , 4*defaultSize  , 3*defaultSize) 
-        | Constant1 (a, b,_) | Constant(a, b) -> (  0 , 1, defaultSize ,  2*defaultSize) 
-        | MergeWires -> ( 2 , 1, 2*defaultSize ,  2*defaultSize) 
-        | SplitWire (a) ->(  1 , 2 , 2*defaultSize ,  2*defaultSize) 
-        | Mux2 -> ( 3  , 1, 3*defaultSize ,  2*defaultSize) 
-        // EXTENSION:    | Mux4 -> ( 5  , 1, 5*defaultSize ,  2*defaultSize)   
-        // EXTENSION:    | Mux8 -> ( 9  , 1, 7*defaultSize ,  2*defaultSize) 
-        | Demux2 ->( 2  , 2, 3*defaultSize ,  2*defaultSize) 
+        | And | Nand | Or | Nor | Xnor | Xor ->  (2 , 1, 2*blockSize , 2*blockSize) 
+        | Not -> ( 1 , 1, 2*blockSize ,  2*blockSize) 
+        | ComponentType.Input (a) -> ( 0 , 1, blockSize ,  2*blockSize)                
+        | ComponentType.Output (a) -> (  1 , 0, blockSize ,  2*blockSize) 
+        | ComponentType.Viewer a -> (  1 , 0, blockSize ,  blockSize) 
+        | ComponentType.IOLabel  ->(  1 , 1, blockSize ,  2*blockSize) 
+        | Decode4 ->( 2 , 4 , 4*blockSize  , 3*blockSize) 
+        | Constant1 (a, b,_) | Constant(a, b) -> (  0 , 1, blockSize ,  2*blockSize) 
+        | MergeWires -> ( 2 , 1, 2*blockSize ,  2*blockSize) 
+        | SplitWire (a) ->(  1 , 2 , 2*blockSize ,  2*blockSize) 
+        | Mux2 -> ( 3  , 1, 3*blockSize ,  2*blockSize) 
+        // EXTENSION:    | Mux4 -> ( 5  , 1, 5*blockSize ,  2*blockSize)   
+        // EXTENSION:    | Mux8 -> ( 9  , 1, 7*blockSize ,  2*blockSize) 
+        | Demux2 ->( 2  , 2, 3*blockSize ,  2*blockSize) 
         // EXTENSION:   | Demux4 -> ( 2  , 4, 150 ,  50) 
         // EXTENSION:    | Demux8 -> ( 2  , 8, 200 ,  50) 
-        | BusSelection (a, b) -> (  1 , 1, defaultSize,  2*defaultSize) 
-        | BusCompare (a, b) -> ( 1 , 1, defaultSize ,  2*defaultSize) 
-        | DFF -> (  1 , 1, 3*defaultSize  , 3*defaultSize) 
-        | DFFE -> ( 2  , 1, 3*defaultSize  , 3*defaultSize) 
-        | Register (a) -> ( 1 , 1, 3*defaultSize  , 4*defaultSize )
-        | RegisterE (a) -> ( 2 , 1, 3*defaultSize  , 4*defaultSize) 
-        | AsyncROM1 (a)  -> (  1 , 1, 3*defaultSize  , 4*defaultSize) 
-        | ROM1 (a) -> (   1 , 1, 3*defaultSize  , 4*defaultSize) 
-        | RAM1 (a) | AsyncRAM1 a -> ( 3 , 1, 3*defaultSize  , 4*defaultSize) 
-        | NbitsXor (n) -> (  2 , 1, 3*defaultSize  , 4*defaultSize) 
-        | NbitsAdder (n) -> (  3 , 2, 3*defaultSize  , 4*defaultSize) 
+        | BusSelection (a, b) -> (  1 , 1, blockSize,  2*blockSize) 
+        | BusCompare (a, b) -> ( 1 , 1, blockSize ,  2*blockSize) 
+        | DFF -> (  1 , 1, 3*blockSize  , 3*blockSize) 
+        | DFFE -> ( 2  , 1, 3*blockSize  , 3*blockSize) 
+        | Register (a) -> ( 1 , 1, 3*blockSize  , 4*blockSize )
+        | RegisterE (a) -> ( 2 , 1, 3*blockSize  , 4*blockSize) 
+        | AsyncROM1 (a)  -> (  1 , 1, 3*blockSize  , 4*blockSize) 
+        | ROM1 (a) -> (   1 , 1, 3*blockSize  , 4*blockSize) 
+        | RAM1 (a) | AsyncRAM1 a -> ( 3 , 1, 3*blockSize  , 4*blockSize) 
+        | NbitsXor (n) -> (  2 , 1, 3*blockSize  , 4*blockSize) 
+        | NbitsAdder (n) -> (  3 , 2, 3*blockSize  , 4*blockSize) 
         | Custom x -> 
-            let h = defaultSize + defaultSize * (List.max [List.length x.InputLabels; List.length x.OutputLabels])
+            let h = blockSize + blockSize * (List.max [List.length x.InputLabels; List.length x.OutputLabels])
             let maxInLength, maxOutLength = customToLength x.InputLabels, customToLength x.OutputLabels
             let maxW = maxInLength + maxOutLength + label.Length
-            let scaledW = roundToN defaultSize (maxW * defaultSize / 5) //Divide by 5 is just abitrary as otherwise the symbols would be too wide 
-            let w = max scaledW (defaultSize * 4) //Ensures a minimum width if the labels are very small
+            let scaledW = roundToN blockSize (maxW * blockSize / 5) //Divide by 5 is just abitrary as otherwise the symbols would be too wide 
+            let w = max scaledW (blockSize * 4) //Ensures a minimum width if the labels are very small
             ( List.length x.InputLabels, List.length x.OutputLabels, h ,  w)
                 
-    makeComponent args label
-   
+    makeComponent' args label
+
+
+/// converts PortOrientation into PortOrder
+let findPortOrder (input : Map<string,Edge>) : Map<Edge,list<string>> =
+    let listOfOrientations = Map.toList input
+    let grouped = List.groupBy (fun x -> snd x) listOfOrientations
+    let removeEdgeFromTuple (side : Edge * list<string*Edge>) : Edge * list<string> =
+        fst side , List.map (fun x -> fst x) (snd side)
+    List.map removeEdgeFromTuple grouped
+    |> Map.ofList
+
+/// assigns default orientation for now (input left : output right) will add mux etc
+let defaultPortOrientation (comp : Component) : Map<string,Edge> = 
+    let assignEdge (side:Edge) (port:Port) =
+        (port.Id,side)
+
+    let decideEdges : Map<string,Edge> = 
+        List.map (assignEdge Left) comp.InputPorts @ List.map (assignEdge Right) comp.OutputPorts
+        |> Map.ofList             
+
+    let portOrientationMap = 
+        match comp.Type with
+        | Mux2 -> decideEdges
+        | Custom x -> decideEdges
+        | _ -> decideEdges
+
+    portOrientationMap
+
 // Function to generate a new symbol
 let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
     let id = JSHelpers.uuid ()
-    let comp = makeComp pos comptype id label
+    let comp = makeComponent pos comptype id label
+    let orientation = defaultPortOrientation comp
     {
         Pos = { X = pos.X - float comp.W / 2.0; Y = pos.Y - float comp.H / 2.0 }
         ShowInputPorts = false
@@ -267,9 +296,13 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
         Opacity = 1.0
         Moving = false
         STransform = {Rotation = Degree0; flipped = false}
-        PortOrientation = Map.empty
-        PortOrder = Map.empty //stores the order of ports on each edge
+        PortOrientation = orientation
+        PortOrder = findPortOrder orientation //stores the order of ports on each edge
     }
+
+let rotateSymbol (symb:Symbol) direction:Rotation = //Symbol = 
+    failwithf "gi"
+
 
 // Function to add ports to port model     
 let addToPortModel (model: Model) (sym: Symbol) =
@@ -458,6 +491,7 @@ let componentSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputP
     |> List.append (createBiColorPolygon points colour olColour opacity strokeWidth)
 
 //----------------------------View Function for Symbols----------------------------//
+
 type private RenderSymbolProps =
     {
         Symbol : Symbol 
@@ -478,20 +512,23 @@ let private renderSymbol =
         , equalsButFunctions
         )
     
-/// View function for symbol layer of SVG
-let MapsIntoLists map =
-    let listMoving = 
-        Map.filter (fun _ sym -> not sym.Moving) map
-        |> Map.toList
-        |> List.map snd
-    let listNotMoving =
-        Map.filter (fun _ sym -> sym.Moving) map
-        |> Map.toList
-        |> List.map snd
-    listMoving @ listNotMoving
+
 
 
 let view (model : Model) (dispatch : Msg -> unit) = 
+    
+    /// View function for symbol layer of SVG
+    let MapsIntoLists map =
+        let listMoving = 
+            Map.filter (fun _ sym -> not sym.Moving) map
+            |> Map.toList
+            |> List.map snd
+        let listNotMoving =
+            Map.filter (fun _ sym -> sym.Moving) map
+            |> Map.toList
+            |> List.map snd
+        listMoving @ listNotMoving
+
     let start = TimeHelpers.getTimeMs()
     model.Symbols
     |> MapsIntoLists
@@ -722,7 +759,7 @@ let pasteSymbols (symModel: Model) (newBasePos: XYPos) : (Model * ComponentId li
             compType
             |> generateLabel { symModel with Symbols = currSymbolModel.Symbols}
 
-        let newComp = makeComp newPos compType newId newLabel
+        let newComp = makeComponent newPos compType newId newLabel
         let newSymbol =
             { oldSymbol with
                 Id = ComponentId newId
@@ -1082,7 +1119,7 @@ let inline createSymbol prevSymbols comp =
         let xyPos = {X = float comp.X; Y = float comp.Y}
         let (h,w) =
             if comp.H = -1 && comp.W = -1 then
-                let comp' = makeComp xyPos comp.Type comp.Id comp.Label
+                let comp' = makeComponent xyPos comp.Type comp.Id comp.Label
                 comp'.H,comp'.W
             else
                 comp.H, comp.W
