@@ -1180,6 +1180,7 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
                      | true ->
                          if not (Array.contains segB.HostId wiresWithNoJumpsA) then
                              let x, y1, y2 = abs segStart.X, abs segStart.Y, abs segEnd.Y
+                             let yhi, ylow = max y1 y2, min y1 y2
                              if x < xhi - 5. && x > xlo + 5. && y < yhi - 5. && y > ylo + 5. then 
                                  jumps <- (x, segB.Id) :: jumps
                      | _ -> ())
