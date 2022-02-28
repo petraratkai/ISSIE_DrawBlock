@@ -17,47 +17,50 @@ open System.Text.RegularExpressions
 let blockSize = 30 
 
 /// ---------- SYMBOL TYPES ---------- ///
-type Rotation = | Degree0 | Degree90 | Degree180 | Degree270 with
-    member this.rotateLeft() =
-        match this with
+type Rotation = | Degree0 | Degree90 | Degree180 | Degree270 
+    with
+    member self.rotateLeft =
+        match self with
         | Degree0 -> Degree270
         | Degree90 -> Degree0
         | Degree180 -> Degree90
         | Degree270 -> Degree180
 
-    member this.rotateRight() =
-        match this with
+    member self.rotateRight =
+        match self with
         | Degree0 -> Degree90
         | Degree90 -> Degree180
         | Degree180 -> Degree270
         | Degree270 -> Degree0
 
-    
 
-type STransform = {Rotation: Rotation; flipped: bool} with
-    member this.rotateLeft() =
-        this.Rotation.rotateLeft()
-    
-    member this.rotateRight() =
-        this.Rotation.rotateRight()
 
-type Edge = | Top | Bottom | Left | Right with
-    member this.rotateLeft() = 
-        match this with
+type STransform = {Rotation: Rotation; flipped: bool} 
+    with
+    member this.rotateLeft =
+        {Rotation = this.Rotation.rotateLeft; flipped = this.flipped}
+    
+    member this.rotateRight =
+        {Rotation = this.Rotation.rotateRight; flipped = this.flipped}
+
+type Edge = | Top | Bottom | Left | Right 
+    with
+    member self.rotateLeft = 
+        match self with
         | Top -> Left
         | Left -> Bottom
         | Bottom -> Right
         | Right -> Top
 
-    member this.rotateRight() = 
-        match this with
+    member self.rotateRight = 
+        match self with
         | Top -> Right
         | Left -> Top
         | Bottom -> Left
         | Right -> Bottom
 
-    member this.flip() = 
-        match this with
+    member self.flip = 
+        match self with
         | Top -> Bottom
         | Left -> Right
         | Bottom -> Top
@@ -81,7 +84,7 @@ type Symbol =
         PortOrientation: Map<string, Edge>
         PortOrder: Map<Edge, string list> //stores the order of ports on each edge
         //APortOffsetsMap: Map<string, XYPos>
-    }
+    }        
 
 type Model = {
     Symbols: Map<ComponentId, Symbol>
@@ -337,14 +340,26 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
         PortOrder = findPortOrder orientation //stores the order of ports on each edge
     }
 
-let rotateSymbol (symb:Symbol) direction = //Symbol = 
-    let rotateRight =
-        symb.STransform.Rotation 
-    let rotateLeft = 
+let rotateSymbol (symb:Symbol) direction : Symbol = //Symbol = 
+    let rotatedPortOrientation = 
+        match direction with
+        | Left -> Map.map (fun k (v:Edge) -> v.rotateLeft) symb.PortOrientation
+        | Right -> Map.map (fun k (v:Edge) -> v.rotateRight) symb.PortOrientation
+        | _ -> failwithf "can only rotate left or right"
+        
+    let rotatedPortOrder = findPortOrder rotatedPortOrientation
 
-    match direction with
-    | Left -> rotateRight
-    | Right -> rotateLeft
+    let newSTransform =
+        match direction with
+        | Left -> symb.STransform.rotateLeft
+        | Right -> symb.STransform.rotateRight
+        | _ -> failwithf "can only implement left or right"
+        
+        
+    {symb with STransform = newSTransform; PortOrientation = rotatedPortOrientation; PortOrder = rotatedPortOrder}
+
+
+    
 
 // Function to add ports to port model     
 let addToPortModel (model: Model) (sym: Symbol) =
