@@ -865,10 +865,6 @@ let getSafeDistanceForMove (seg: Segment) (seg0:Segment) (seg6:Segment) (distanc
         
     | _ -> 
         distance
-        |> reduceDistance prevMaxDistance
-        |> reduceDistance nextMaxDistance
-
-
         
 /// Adjust wire so that two adjacent horizontal segments that are in opposite directions
 /// get eliminated
@@ -935,23 +931,22 @@ let moveSegment (seg:Segment) (distance:float) (model:Model) =
                 wire.Segments[.. index-2] @ [newPrevSeg; newSeg; newNextSeg] @ wire.Segments[index+2 ..]
                 |> removeRedundantSegments
 
-            {wire with Segments = newSegments}
+            {wire with Segments = newSegments})
 
 /// Initialisatiton with no wires
 let init () =
-    let symbolModel,_ = Symbol.init()
-    {
+    let symbols,_ = Symbol.init()
+    {   
         WX = Map.empty;
         FromVerticalToHorizontalSegmentIntersections = Map.empty;
         FromHorizontalToVerticalSegmentIntersections = Map.empty;
-        Symbol = symbolModel; 
+        Symbol = symbols; 
         CopiedWX = Map.empty; 
         SelectedSegment = SegmentId(""); 
         LastMousePos = {X = 0.0; Y = 0.0};
         ErrorWires = []
         Notifications = None
     } , Cmd.none
-
 
 ///Returns the wires connected to a list of components given by componentIds
 let getConnectedWires (wModel : Model) (compIds : list<ComponentId>) =
