@@ -115,9 +115,20 @@ let switchOrientation =
     | Horizontal -> Vertical
     | Vertical -> Horizontal
 
+/// Returns an XYPos shifted by length in an X or Y direction defined by orientation.
+let addLengthToPos (position: XYPos) orientation length =
+    match orientation with
+    | Horizontal -> { position with X = position.X + length }
+    | Vertical -> { position with Y = position.Y + length }
+
+/// Returns the opposite orientation of the input orientation. (i.e. Horizontal becomes Vertical and vice-versa)
+let switchOrientation =
+    function
+    | Horizontal -> Vertical
+    | Vertical -> Horizontal
 
 /// <summary> Applies a function which requires the segment start and end positions to the segments in a wire, 
-/// threading an accumulator argument through the computation. Essentially a List.fold applied to the list of segments of a wire. </summary>
+/// threading an accumulator argument through the computation. Essentially a List.fold applied to the list of segments of a wire, but with access to each segment's absolute positions. </summary>
 /// <remarks> This is used in cases where absolute segment positions are required. 
 /// These positions are computed on the fly and passed to the folder function. </remarks>
 /// <param name="folder"> The function to update the state given the segment start and end positions, current state and segment itself.</param>
@@ -129,10 +140,8 @@ let foldOverSegs folder state wire =
     let initOrientation = wire.InitialOrientation
     ((state, initPos, initOrientation), wire.Segments)
     ||> List.fold (fun (currState, currPos, currOrientation) seg -> 
-        let (nextPos, nextOrientation) = 
-            match currOrientation with
-            | Horizontal -> { currPos with X = currPos.X + seg.Length }, Vertical
-            | Vertical -> { currPos with Y = currPos.Y + seg.Length }, Horizontal
+        let nextPos = addLengthToPos currPos currOrientation seg.Length
+        let nextOrientation = switchOrientation currOrientation
         let nextState = folder currPos nextPos currState seg
         (nextState, nextPos, nextOrientation))
     |> (fun (state, _, _) -> state)
