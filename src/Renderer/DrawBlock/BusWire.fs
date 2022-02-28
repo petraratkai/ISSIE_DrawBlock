@@ -203,10 +203,9 @@ let formatXY (xy: XYPos) = sprintf $"{(xy.X,xy.Y)}"
 /// Given a segment start and end position, finds the orientation of the segment. 
 /// Returns None if the segment is neither horizontal nor vertical
 let getSegmentOrientation (segStart: XYPos) (segEnd: XYPos) =
-    let fpError = 0.000001
-    if segStart.X - segEnd.X < fpError then
+    if abs (segStart.X - segEnd.X) < XYPos.epsilon then
         Vertical
-    else if segStart.Y - segStart.Y < fpError then
+    else if abs (segStart.Y - segStart.Y) < XYPos.epsilon then
         Horizontal
     else
         failwithf "ERROR: Diagonal wire" // Should never happen
@@ -952,68 +951,48 @@ let getSafeDistanceForMove (segments: Segment list) (index: int) (distance: floa
         segList
         |> List.takeWhile (fun seg -> seg.Index % 2 = portIndex % 2 || seg.Length = 0)
 
-    let findBindingIndex boundSegList =
+    let findInputBindingIndex boundSegList =
         boundSegList
         |> List.length
+
+    let findOutputBindingIndex boundSegList =
+        boundSegList
+        |> findInputBindingIndex
+        |> (-) (segments.Length - 1)
 
     let findDistanceFromPort boundSegList =
         (0., boundSegList)
         ||> List.fold (fun dist seg -> dist + seg.Length) // Since the segments in perpendicular direction are 0 we can just sum up all the segments as if they are in the same direction
    
-    let reduceDistance bindingSegs distance = 
+    let reduceDistance bindingSegs findBindingIndex distance = 
         if findBindingIndex bindingSegs <> index then 
             distance
         else
-            findDistanceFromPort bindingSegs |> (fun dist -> printfn $"Bounded distance {dist}"; dist)
+            findDistanceFromPort bindingSegs
             |> (fun dist -> 
                     if sign dist = -1 then 
                         max distance (dist + Wire.stickLength/2.)
                     else 
                         min distance (dist - Wire.stickLength/2.))
-    printfn $"All segments, target: {index}"
-    List.map logSegment segments |> ignore
+
     let bindingInputSegs = 
-        printfn "Binding input segments"
         segments
         |> findBindingSegments 0
-        |> List.map logSegment
+        |> List.map (fun seg -> { seg with Length = -seg.Length})
 
     let bindingOutputSegs =
-        printfn "Binding output segments"
         List.rev segments
         |> findBindingSegments (segments.Length - 1)
-        |> List.map logSegment
 
-    printfn $"Start distance {distance}"
     distance
-    |> reduceDistance bindingInputSegs
-    |> reduceDistance bindingOutputSegs
- (*          
-/// TODO: REIMPLEMENT THIS, Bound distances so that you cant get too close to segment edges (sticklength / 2)
-/// This version ensures all wires are of a minimum length
-let getSafeDistanceForMove (segments: Segment list) (index: int) (distance: float) =
-    let reduceDistance maxDistance =
-        if sign maxDistance = -1 then
-            max maxDistance
-        else 
-            min maxDistance
-    
-    if index <= 0 || index >= segments.Length - 1 then
-        0. // We cannot move the first or last segment in a wire
-    else
-        let prev = segments[index - 1]
-        let next = segments[index + 1]
-        let prevMaxDistance = (-prev.Length + (float (sign prev.Length) * Wire.stickLength))
-        let nextMaxDistance = (next.Length - (float (sign next.Length) * Wire.stickLength))
-        distance
-        |> reduceDistance prevMaxDistance
-        |> reduceDistance nextMaxDistance
-*)
+    |> reduceDistance bindingInputSegs findInputBindingIndex
+    |> reduceDistance bindingOutputSegs findOutputBindingIndex
 
 /// Returns a wire containing the updated list of segments after a segment is moved by 
 /// a specified distance. The moved segment is tagged as manual so that it is no longer auto-routed.
 /// Throws an error if the segment being moved is out of range.
 let moveSegment (model:Model) (seg:Segment) (distance:float) = 
+    printfn $"Distance = {distance}"
     let wire = model.Wires[seg.HostId]
     let segments = wire.Segments
     let idx = seg.Index
@@ -1676,6 +1655,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                     match getSegmentOrientation segStart segEnd with
                     | Horizontal -> mMsg.Pos.Y - segStart.Y
                     | Vertical -> mMsg.Pos.X - segStart.X
+                    |> (fun res -> printfn $"Segment startpos {segStart}, endpos {segEnd}, orientation {getSegmentOrientation segStart segEnd}, mousepos {mMsg.Pos}, distance {res}"; res)
 
                 let newWire = moveSegment model seg distanceToMove 
                 let newWX = Map.add seg.HostId newWire model.Wires
