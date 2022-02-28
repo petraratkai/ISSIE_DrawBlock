@@ -236,6 +236,8 @@ let initPortOrientation (comp: Component) =
         movePortToBottom res 1
     | RegisterE _ ->
         movePortToBottom res 1
+    | Demux2 ->
+        movePortToBottom res 1
     | _ -> res
 
 // helper function to initialise each type of component
@@ -360,10 +362,11 @@ let getPortBaseOffset (sym: Symbol) (side: Edge): XYPos=
 /// Returns true if an edge has the select port of a mux
 let isMuxSel (sym:Symbol) (side:Edge): bool =
     match (sym.Component.Type, sym.STransform.Rotation, side) with
-    | (Mux2, Degree0, Bottom )-> true
-    | (Mux2,Degree90, Right) -> true
-    | (Mux2, Degree180, Top) -> true
-    | (Mux2, Degree270, Left)-> true
+    | (Mux2, Degree0, Bottom ) | (Demux2, Degree0, Bottom )-> true
+    | (Mux2,Degree90, Right) | (Demux2,Degree90, Right)-> true
+    | (Mux2, Degree180, Top) | (Demux2, Degree180, Top) -> true
+    | (Mux2, Degree270, Left) | (Demux2, Degree270, Left)-> true
+
     | _ -> false
 ///based on a symbol and an edge, if the port is a mux select, return an extra offset required for the port (because of the weird shape of the mux)
 let getMuxSelOffset (sym: Symbol) (side: Edge): XYPos =
@@ -385,12 +388,13 @@ let getPortPos (sym: Symbol) (port: Port) : XYPos =
     let gap = getPortPosEdgeGap sym.Component.Type 
     let baseOffset = getPortBaseOffset sym side  //offset of the side component is on
     let baseOffset' = baseOffset + getMuxSelOffset sym side
+    let h,w = getHAndW sym
     match side with
     | Left | Right ->
-        let yOffset = (float(sym.Component.H))* (( index + gap )/( float( ports.Length ) + 2.0*gap - 1.0))
+        let yOffset = (float(h))* (( index + gap )/( float( ports.Length ) + 2.0*gap - 1.0))
         baseOffset' + {X = 0.0; Y = yOffset }
     | _ -> 
-        let xOffset = (float(sym.Component.W))* ((index + gap)/(float (ports.Length) + 2.0*gap - 1.0))
+        let xOffset = (float(w))* ((index + gap)/(float (ports.Length) + 2.0*gap - 1.0))
         baseOffset' + {X = xOffset; Y = 0.0 }
 
 let getPortPosModel (model: Model) (port:Port) =
@@ -498,12 +502,26 @@ let compSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:
         | Viewer _ -> (sprintf "%f,%i %i,%i %f,%i %i,%i %i,%i" (float(w)*(0.2)) 0 0 halfH (float(w)*(0.2)) h w h w 0)
         | MergeWires -> (sprintf "%i,%f %i,%f " halfW ((1.0/6.0)*float(h)) halfW ((5.0/6.0)*float(h)))
         | SplitWire _ ->  (sprintf "%i,%f %i,%f " halfW ((1.0/6.0)*float(h)) halfW ((5.0/6.0)*float(h)))
-        | Demux2 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
-        | Mux2 -> (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
+        | Demux2 -> 
+            match symbol.STransform. Rotation with
+            | Degree0 | Degree180 ->
+                (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
+            | Degree90 ->
+                (sprintf "%i,%i %i,%i %f,%i %f,%i" 0 0 w 0  (float(w)*0.8) h (float(w)*0.2)  h)
+            | Degree270 ->
+                (sprintf "%f,%i %f,%i %i,%i %i,%i" (float(w)*0.2) 0 (float(w)*0.8) 0 w h 0 h)
+        | Mux2 -> 
+            match symbol.STransform.Rotation with 
+            | Degree0 | Degree180 -> 
+                (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
+            | Degree90 ->
+                (sprintf "%f,%i %f,%i  %i,%i %i,%i" (float(w)*0.2) 0 (float(w)*0.8) 0 w h 0 h )
+            | Degree270 ->
+                (sprintf "%i,%i %i,%i  %f,%i %f,%i" 0 0 w 0 (float(w)*0.8) h (float(w)*0.2 ) h)
         // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
         | BusSelection _ |BusCompare _ -> (sprintf "%i,%i %i,%i %f,%i %f,%f %i,%f %i,%f %f,%f %f,%i ")0 0 0 h (0.6*float(w)) h (0.8*float(w)) (0.7*float(h)) w (0.7*float(h)) w (0.3*float(h)) (0.8*float(w)) (0.3*float(h)) (0.6*float(w)) 0
-        | _ -> (sprintf "%i,%i %i,%i %i,%i %i,%i" 0 (comp.H) comp.W (comp.H) comp.W 0 0 0)
+        | _ -> (sprintf "%i,%i %i,%i %i,%i %i,%i" 0 h w h w 0 0 0)
     let additions =       // Helper function to add certain characteristics on specific symbols (inverter, enables, clocks)
         match comp.Type with
         | Constant1 (_,_,txt) -> (addHorizontalLine halfW w (float(halfH)) opacity @ addText (float (halfW)-5.0) (float(h)-8.0) txt "middle" "normal" "12px") 
@@ -1189,56 +1207,58 @@ let rotateAngleRight (rotation: Rotation) : Rotation =
 
 let rotateSymbolLeft (sym: Symbol) : Symbol =
     // update comp w h
-    let h,w = getHAndW sym
-    let newXY = sym.Pos + { X = (float)w/2.0 - (float) h/2.0 ;Y = (float) h/2.0 - (float)w/2.0 }
+    match sym.Component.Type with
+    | Custom _-> sym
+    | _ ->
+        let h,w = getHAndW sym
+        let newXY = sym.Pos + { X = (float)w/2.0 - (float) h/2.0 ;Y = (float) h/2.0 - (float)w/2.0 }
 
-    //need to update portOrientation and portOrder
-    let newPortOrientation = 
-        sym.PortOrientation |> Map.map (fun id side -> rotateSideLeft side)
+        //need to update portOrientation and portOrder
+        let newPortOrientation = 
+            sym.PortOrientation |> Map.map (fun id side -> rotateSideLeft side)
 
-    let rotatePortListLeft currPortOrder side =
-        printfn $"{sym.PortOrder}"
-        printfn $"{side}"
-        printfn $"{Map.keys sym.PortOrder |> List.ofSeq |> List.head |> (fun side -> side = Top)}"
-        currPortOrder |> Map.add (rotateSideLeft side ) sym.PortOrder[side]
+        let rotatePortListLeft currPortOrder side =
+            currPortOrder |> Map.add (rotateSideLeft side ) sym.PortOrder[side]
 
-    let newPortOrder = 
-        (Map.empty, [Top; Left; Bottom; Right]) ||> List.fold rotatePortListLeft
+        let newPortOrder = 
+            (Map.empty, [Top; Left; Bottom; Right]) ||> List.fold rotatePortListLeft
 
-    let newSTransform = 
-        {sym.STransform with Rotation = rotateAngleLeft sym.STransform.Rotation}
+        let newSTransform = 
+            {sym.STransform with Rotation = rotateAngleLeft sym.STransform.Rotation}
 
-    { sym with 
-        Pos = newXY;
-        PortOrientation = newPortOrientation;
-        PortOrder = newPortOrder;
-        STransform =newSTransform;  
-    }
+        { sym with 
+            Pos = newXY;
+            PortOrientation = newPortOrientation;
+            PortOrder = newPortOrder;
+            STransform =newSTransform;  
+        }
 
 let rotateSymbolRight (sym: Symbol) : Symbol =
-    // update comp w h
-    let h,w = getHAndW sym
-    let newXY = sym.Pos + { X = (float)w/2.0 - (float) h/2.0 ;Y = (float) h/2.0 - (float)w/2.0 }
+    match sym.Component.Type with
+    | Custom _-> sym
+    | _ ->
+        let h,w = getHAndW sym
+        let newXY = sym.Pos + { X = (float)w/2.0 - (float) h/2.0 ;Y = (float) h/2.0 - (float)w/2.0 }
 
-    //need to update portOrientation and portOrder
-    let newPortOrientation = 
-        sym.PortOrientation |> Map.map (fun id side -> rotateSideRight side)
+        //need to update portOrientation and portOrder
+        let newPortOrientation = 
+            sym.PortOrientation |> Map.map (fun id side -> rotateSideRight side)
 
-    let rotatePortListRight currPortOrder side =
-        currPortOrder |> Map.add (rotateSideRight side ) sym.PortOrder[side]
+        let rotatePortListRight currPortOrder side =
+            currPortOrder |> Map.add (rotateSideRight side ) sym.PortOrder[side]
 
-    let newPortOrder = 
-        (Map.empty, [Top; Left; Bottom; Right]) ||> List.fold rotatePortListRight
+        let newPortOrder = 
+            (Map.empty, [Top; Left; Bottom; Right]) ||> List.fold rotatePortListRight
 
-    let newSTransform = 
-        {sym.STransform with Rotation = rotateAngleRight sym.STransform.Rotation}
+        let newSTransform = 
+            {sym.STransform with Rotation = rotateAngleRight sym.STransform.Rotation}
 
-    { sym with 
-        Pos = newXY;
-        PortOrientation = newPortOrientation;
-        PortOrder = newPortOrder;
-        STransform =newSTransform;  
-    }
+        { sym with 
+            Pos = newXY;
+            PortOrientation = newPortOrientation;
+            PortOrder = newPortOrder;
+            STransform =newSTransform;  
+        }
 
 /// update function which displays symbols
 let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
