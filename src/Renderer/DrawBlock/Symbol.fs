@@ -795,6 +795,37 @@ let generateLabel (model: Model) (compType: ComponentType) : string =
     | IOLabel -> prefix
     | _ -> prefix + (generateLabelNumber listSymbols compType)
 
+let initCopiedPorts (oldSymbol:Symbol) (newComp: Component) =
+    let inPortIds = List.map (fun (p:Port) -> p.Id)  newComp.InputPorts
+    let outPortIds = List.map (fun (p:Port) -> p.Id) newComp.OutputPorts
+    let oldInPortIds =  
+        List.map (fun (p:Port) -> p.Id) oldSymbol.Component.InputPorts
+    let oldOutPortIds =
+        List.map (fun (p:Port) -> p.Id) oldSymbol.Component.OutputPorts
+    let equivPortIds = 
+        List.zip oldInPortIds inPortIds @ List.zip oldOutPortIds outPortIds
+        |> Map.ofList
+    let portOrientation = 
+        (Map.empty,oldSymbol.PortOrientation)
+        ||> Map.fold 
+            (fun currMap oldPortId edge -> Map.add equivPortIds[oldPortId] edge currMap)
+
+    let emptyPortOrder = 
+        (Map.empty, [Top; Bottom; Left; Right])
+        ||> List.fold (fun currMap side -> Map.add side [] currMap)
+    let portOrder =
+        (emptyPortOrder, oldSymbol.PortOrder)
+        ||> Map.fold 
+            (fun currMap side oldList 
+                -> 
+                    let newList =
+                        ([], oldList)
+                        ||> List.fold 
+                            (fun currList oldPortId ->
+                                currList @ [equivPortIds[oldPortId]])
+                    Map.add side newList currMap)
+    portOrientation, portOrder
+
 /// Interface function to paste symbols. Is a function instead of a message because we want an output.
 /// Currently drag-and-drop.
 /// Pastes a list of symbols into the model and returns the new model and the id of the pasted modules.
@@ -808,13 +839,17 @@ let pasteSymbols (symModel: Model) (newBasePos: XYPos) : (Model * ComponentId li
             |> generateLabel { symModel with Symbols = currSymbolModel.Symbols}
 
         let newComp = makeComp newPos compType newId newLabel
+        let portOrientation, portOrder = initCopiedPorts oldSymbol newComp
         let newSymbol =
             { oldSymbol with
                 Id = ComponentId newId
                 Component = newComp
                 Pos = newPos
                 ShowInputPorts = false
-                ShowOutputPorts = false }
+                ShowOutputPorts = false
+                PortOrientation = portOrientation
+                PortOrder = portOrder
+            }
              
         let newSymbolMap = currSymbolModel.Symbols.Add (ComponentId newId, newSymbol)
         let newPorts = addToPortModel currSymbolModel newSymbol
