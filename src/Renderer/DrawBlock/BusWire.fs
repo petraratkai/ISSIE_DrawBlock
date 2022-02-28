@@ -140,42 +140,42 @@ let foldOverSegs folder state wire =
 //-------------------------Debugging functions---------------------------------//
 
 /// Formats a SegmentId for logging purposes.
-(* let formatSegmentId (Id: SegmentId) =
-    Id
+let formatSegmentId (id: SegmentId) =
+    id
     |> (fun (SegmentId str) -> str)
-    |> (fun str -> str[0..2]) *)
+    |> (fun str -> str[0..2])
 
 /// Formats a WireId for logging purposes
-(* let formatWireId (Id: ConnectionId) =
-    Id
+let formatWireId (id: ConnectionId) =
+    id
     |> (fun (ConnectionId str) -> str)
-    |> (fun str -> str[0..2]) *)
+    |> (fun str -> str[0..2])
 
 /// Logs the given SegmentId and returns it unchanged. Used for debugging.
-(* let logSegmentId (Id:SegmentId) =
-    printfn $"{formatSegmentId Id}"; Id *)
+let logSegmentId (id:SegmentId) =
+    printfn $"{formatSegmentId id}"; id 
 
 /// Logs the given Segment and returns it unchanged. Used for debugging.
-(* let logSegment (seg:Segment) =
-    printfn $"|{seg.Index}:{formatSegmentId seg.Id}|"; seg *)
+let logSegment (seg:Segment) =
+    printfn $"|{seg.Index}:{formatSegmentId seg.Id}|"; seg
 
 /// Logs the given ConnectionId and returns it unchanged. Used for debugging.
-(* let logConnectionId (Id:ConnectionId) =
-        Id
+let logConnectionId (id:ConnectionId) =
+        id
         |> (fun (ConnectionId str) -> str)
-        |> (fun str -> printfn $"{str[0..2]}"; Id) *)
+        |> (fun str -> printfn $"{str[0..2]}"; id) 
 
 /// Formats an intersection map for logging purposes.
-(* let formatIntersectionMap (m:Map<SegmentId, (ConnectionId * SegmentId) list>) =
+let formatIntersectionMap (m:Map<SegmentId, (ConnectionId * SegmentId) list>) =
     m
     |> Map.toList
     |> List.map (fun (segId, lst) ->
         List.map (snd >> formatSegmentId) lst
         |> (fun segs -> sprintf $"""<{formatSegmentId segId}->[{String.concat ";" segs}]"""))
-        |> String.concat ";\n" *)
+        |> String.concat ";\n" 
 
 /// Logs the intersection maps of a given model and returns it unchanged. Used for debugging
-(* let logIntersectionMaps (model:Model) =
+let logIntersectionMaps (model:Model) =
     let intersections =
         let formatSegmentIntersections segments =
             segments
@@ -195,7 +195,7 @@ let foldOverSegs folder state wire =
     printfn $"Intersections"
     printfn $"{intersections}"
     printfn "---- --------------"
-    model *)
+    model
 
 /// Formats an XYPos for logging purposes.
 let formatXY (xy: XYPos) = sprintf $"{(xy.X,xy.Y)}"
@@ -241,7 +241,9 @@ let getSegmentOrientation (segStart: XYPos) (segEnd: XYPos) =
 
 //-------------------------------Implementation code----------------------------//
 
-
+//---------------------------------------------------------------------------------//
+//--------------------TL319 CODE SECTION STARTS-------------------------------------//
+//---------------------------------------------------------------------------------//
 
 /// Wire to Connection
 let segmentsToVertices (segList:Segment list) (wire:Wire) = 
@@ -266,148 +268,148 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
         | true -> 
             match portOrientation with
             | Symbol.Top  ->  [{X = xStart; Y = yStart};
-                    {X = xStart+1.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+1.0; Y = yStart}; //Length 0 vertical
+                    {X = xStart+5.0; Y = yStart}; //Stick horizontal
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
                     {X = xEnd; Y = yStart};
-                    {X = xEnd; Y = yEnd-1.0}; // Stick vertical
-                    {X = xEnd; Y = yEnd-1.0};// Length 0 horizontal
+                    {X = xEnd; Y = yEnd-5.0}; // Stick vertical
+                    {X = xEnd; Y = yEnd-5.0};// Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
             | Symbol.Right ->  [{X = xStart; Y = yStart};
-                    {X = xStart+1.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+1.0; Y = yStart}; //Length 0 vertical
-                    {X = xEnd+10.; Y = yStart};
-                    {X = xEnd+10.; Y = yEnd};
-                    {X = xEnd+1.; Y = yEnd}; //Stick horizontal
-                    {X = xEnd+1.; Y = yEnd}; //Length 0 vertical
+                    {X = xStart+5.0; Y = yStart}; //Stick horizontal
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
+                    {X = xEnd+20.; Y = yStart};
+                    {X = xEnd+20.; Y = yEnd};
+                    {X = xEnd+5.; Y = yEnd}; //Stick horizontal
+                    {X = xEnd+5.; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}]
             | Symbol.Bottom->  [{X = xStart; Y = yStart};
-                    {X = xStart+1.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+1.0; Y = yStart}; //Length 0 vertical
-                    {X = xEnd-10.; Y = yStart};
-                    {X = xEnd-10.; Y = yEnd+10.};
-                    {X = xEnd; Y = yEnd+10.};
-                    {X = xEnd; Y = yEnd+1.}; //Stick vertical
-                    {X = xEnd; Y = yEnd+1.}; //Length 0 horizontal
+                    {X = xStart+5.0; Y = yStart}; //Stick horizontal
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
+                    {X = xEnd-20.; Y = yStart};
+                    {X = xEnd-20.; Y = yEnd+20.};
+                    {X = xEnd; Y = yEnd+20.};
+                    {X = xEnd; Y = yEnd+5.}; //Stick vertical
+                    {X = xEnd; Y = yEnd+5.}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
             | Symbol.Left ->  [{X = xStart; Y = yStart};
-                    {X = xStart+1.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+1.0; Y = yStart}; //Length 0 vertical
-                    {X = xEnd-10.; Y = yStart};
-                    {X = xEnd-10.; Y = yEnd};
-                    {X = xEnd-1.; Y = yEnd}; //Stick vertical
-                    {X = xEnd-1.; Y = yEnd}; //Length 0 horizontal
+                    {X = xStart+5.0; Y = yStart}; //Stick horizontal
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
+                    {X = xEnd-20.; Y = yStart};
+                    {X = xEnd-20.; Y = yEnd};
+                    {X = xEnd-5.; Y = yEnd}; //Stick vertical
+                    {X = xEnd-5.; Y = yEnd}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
         | false -> 
             match portOrientation with
             | Symbol.Bottom ->  [{X = xStart; Y = yStart};
-                    {X = xStart+1.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+1.0; Y = yStart}; //Length 0 vertical
+                    {X = xStart+5.0; Y = yStart}; //Stick horizontal
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
                     {X = xEnd; Y = yStart};
-                    {X = xEnd; Y = yEnd+1.}; //Stick vertical
-                    {X = xEnd; Y = yEnd+1.}; //Length 0 hortizontal
-                    {X = xEnd; Y = yEnd}]
-            | Symbol.Left ->  [{X = xStart; Y = yStart};
-                    {X = xStart+1.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+1.0; Y = yStart}; //Length 0 vertical
-                    {X = xEnd+10.; Y = yStart};
-                    {X = xEnd+10.; Y = yEnd};
-                    {X = xEnd+1.; Y = yEnd}; //Stick horizontal
-                    {X = xEnd+1.; Y = yEnd}; //Length 0 vertical
-                    {X = xEnd; Y = yEnd}]
-            | Symbol.Top ->  [{X = xStart; Y = yStart};
-                    {X = xStart+1.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+1.0; Y = yStart}; //Length 0 vertical
-                    {X = xEnd-10.; Y = yStart};
-                    {X = xEnd-10.; Y = yEnd-10.};
-                    {X = xEnd; Y = yEnd-10.};
-                    {X = xEnd; Y = yEnd-1.}; //Stick vertical
-                    {X = xEnd; Y = yEnd-1.}; //Length 0 horizontal
+                    {X = xEnd; Y = yEnd+5.}; //Stick vertical
+                    {X = xEnd; Y = yEnd+5.}; //Length 0 hortizontal
                     {X = xEnd; Y = yEnd}]
             | Symbol.Right ->  [{X = xStart; Y = yStart};
-                    {X = xStart+1.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+1.0; Y = yStart}; //Length 0 vertical
-                    {X = xEnd-10.; Y = yStart};
-                    {X = xEnd-10.; Y = yEnd};
-                    {X = xEnd-1.; Y = yEnd}; //Stick horizontal
-                    {X = xEnd-1.; Y = yEnd}; //Length 0 vertical
+                    {X = xStart+5.0; Y = yStart}; //Stick horizontal
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
+                    {X = xEnd+20.; Y = yStart};
+                    {X = xEnd+20.; Y = yEnd};
+                    {X = xEnd+5.; Y = yEnd}; //Stick horizontal
+                    {X = xEnd+5.; Y = yEnd}; //Length 0 vertical
+                    {X = xEnd; Y = yEnd}]
+            | Symbol.Top ->  [{X = xStart; Y = yStart};
+                    {X = xStart+5.0; Y = yStart}; //Stick horizontal
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
+                    {X = xEnd-20.; Y = yStart};
+                    {X = xEnd-20.; Y = yEnd-20.};
+                    {X = xEnd; Y = yEnd-20.};
+                    {X = xEnd; Y = yEnd-5.}; //Stick vertical
+                    {X = xEnd; Y = yEnd-5.}; //Length 0 horizontal
+                    {X = xEnd; Y = yEnd}]
+            | Symbol.Left ->  [{X = xStart; Y = yStart};
+                    {X = xStart+5.0; Y = yStart}; //Stick horizontal
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
+                    {X = xEnd-20.; Y = yStart};
+                    {X = xEnd-20.; Y = yEnd};
+                    {X = xEnd-5.; Y = yEnd}; //Stick horizontal
+                    {X = xEnd-5.; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}]
     | false-> 
         match yStart - yEnd < 0 with
         | true ->
             match portOrientation with
             | Symbol.Bottom ->  [{X = xStart; Y = yStart};
-                    {X = xStart+1.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+1.0; Y = yStart}; //Length 0 vertical
-                    {X = xStart+10.; Y = yStart};
-                    {X = xStart+10.; Y = yEnd+10.};
-                    {X = xEnd; Y = yEnd+10.};
-                    {X = xEnd; Y = yEnd+1.}; //Stick vertical
-                    {X = xEnd; Y = yEnd+1.}; //Length 0 horizontal
+                    {X = xStart+5.0; Y = yStart}; //Stick horizontal
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
+                    {X = xStart+20.; Y = yStart};
+                    {X = xStart+20.; Y = yEnd+20.};
+                    {X = xEnd; Y = yEnd+20.};
+                    {X = xEnd; Y = yEnd+5.}; //Stick vertical
+                    {X = xEnd; Y = yEnd+5.}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
-            | Symbol.Right ->  [{X = xEnd; Y = yStart};
-                    {X = xStart+1.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+1.0; Y = yStart}; //Length 0 vertical
-                    {X = xStart+10.; Y = yStart};
-                    {X = xStart+10.; Y = yEnd};
-                    {X = xEnd+1.; Y = yEnd}; //Stick horizontal
-                    {X = xEnd+1.; Y = yEnd}; //Length 0 vertical
+            | Symbol.Right ->  [{X = xStart; Y = yStart};
+                    {X = xStart+5.0; Y = yStart}; //Stick horizontal
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
+                    {X = xStart+20.; Y = yStart};
+                    {X = xStart+20.; Y = yEnd};
+                    {X = xEnd+5.; Y = yEnd}; //Stick horizontal
+                    {X = xEnd+5.; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}]
             | Symbol.Top ->  [{X = xStart; Y = yStart};
-                    {X = xStart+1.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+1.0; Y = yStart}; //Length 0 vertical
-                    {X = xStart+10.; Y = yStart};
-                    {X = xStart+10.; Y = yEnd-10.};
-                    {X = xEnd; Y = yEnd-10.};
-                    {X = xEnd; Y = yEnd-1.}; //Stick vertical
-                    {X = xEnd; Y = yEnd-1.}; //Length 0 horizontal
+                    {X = xStart+5.0; Y = yStart}; //Stick horizontal
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
+                    {X = xStart+20.; Y = yStart};
+                    {X = xStart+20.; Y = yEnd-20.};
+                    {X = xEnd; Y = yEnd-20.};
+                    {X = xEnd; Y = yEnd-5.}; //Stick vertical
+                    {X = xEnd; Y = yEnd-5.}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
             | Symbol.Left ->  [{X = xStart; Y = yStart};
-                    {X = xStart+1.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+1.0; Y = yStart}; //Length 0 vertical
-                    {X = xStart+10.; Y = yStart};
-                    {X = xStart+10.; Y = yEnd-10.};
-                    {X = xEnd-10.; Y = yEnd-10.};
-                    {X = xEnd-10.; Y = yEnd};
-                    {X = xEnd-1.; Y = yEnd}; //Stick horizontal
-                    {X = xEnd-1.; Y = yEnd}; //Length 0 vertical
+                    {X = xStart+5.0; Y = yStart}; //Stick horizontal
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
+                    {X = xStart+20.; Y = yStart};
+                    {X = xStart+20.; Y = yEnd-20.};
+                    {X = xEnd-20.; Y = yEnd-20.};
+                    {X = xEnd-20.; Y = yEnd};
+                    {X = xEnd-5.; Y = yEnd}; //Stick horizontal
+                    {X = xEnd-5.; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}]
         | false ->
             match portOrientation with
             | Symbol.Top ->  [{X = xStart; Y = yStart};
-                    {X = xStart+1.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+1.0; Y = yStart}; //Length 0 vertical
-                    {X = xStart+10.; Y = yStart};
-                    {X = xStart+10.; Y = yEnd-10.};
-                    {X = xEnd; Y = yEnd-10.};
-                    {X = xEnd; Y = yEnd-1.};//Stick vertical
-                    {X = xEnd; Y = yEnd-1.}; //Length 0 horizontal
+                    {X = xStart+5.0; Y = yStart}; //Stick horizontal
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
+                    {X = xStart+20.; Y = yStart};
+                    {X = xStart+20.; Y = yEnd-20.};
+                    {X = xEnd; Y = yEnd-20.};
+                    {X = xEnd; Y = yEnd-5.};//Stick vertical
+                    {X = xEnd; Y = yEnd-5.}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
             | Symbol.Right ->  [{X = xStart; Y = yStart};
-                    {X = xStart+1.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+1.0; Y = yStart}; //Length 0 vertical
-                    {X = xStart+10.; Y = yStart};
-                    {X = xStart+10.; Y = yEnd};
-                    {X = xEnd+1.; Y = yEnd}; //Stick horizontal
-                    {X = xEnd+1.; Y = yEnd}; //Lenght 0 vertical
+                    {X = xStart+5.0; Y = yStart}; //Stick horizontal
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
+                    {X = xStart+20.; Y = yStart};
+                    {X = xStart+20.; Y = yEnd};
+                    {X = xEnd+5.; Y = yEnd}; //Stick horizontal
+                    {X = xEnd+5.; Y = yEnd}; //Lenght 0 vertical
                     {X = xEnd; Y = yEnd}]
             | Symbol.Bottom ->  [{X = xStart; Y = yStart};
-                    {X = xStart+1.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+1.0; Y = yStart}; //Length 0 vertical
-                    {X = xStart+10.; Y = yStart};
-                    {X = xStart+10.; Y = yEnd+10.};
-                    {X = xEnd; Y = yEnd+10.};
-                    {X = xEnd; Y = yEnd+1.};//Stick vertical
-                    {X = xEnd; Y = yEnd+1.}; //Length 0 horizontal
+                    {X = xStart+5.0; Y = yStart}; //Stick horizontal
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
+                    {X = xStart+20.; Y = yStart};
+                    {X = xStart+20.; Y = yEnd+20.};
+                    {X = xEnd; Y = yEnd+20.};
+                    {X = xEnd; Y = yEnd+5.};//Stick vertical
+                    {X = xEnd; Y = yEnd+5.}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}]
             | Symbol.Left ->  [{X = xStart; Y = yStart};
-                    {X = xStart+1.0; Y = yStart}; //Stick horizontal
-                    {X = xStart+1.0; Y = yStart}; //Length 0 vertical
-                    {X = xStart+10.; Y = yStart};
-                    {X = xStart+10.; Y = yEnd+10.};
-                    {X = xEnd-10.; Y = yEnd+10.};
-                    {X = xEnd-10.; Y = yEnd};
-                    {X = xEnd-1.; Y = yEnd}; //Stick horizontal
-                    {X = xEnd-1.; Y = yEnd}; //Length 0 vertical
+                    {X = xStart+5.0; Y = yStart}; //Stick horizontal
+                    {X = xStart+5.0; Y = yStart}; //Length 0 vertical
+                    {X = xStart+20.; Y = yStart};
+                    {X = xStart+20.; Y = yEnd+20.};
+                    {X = xEnd-20.; Y = yEnd+20.};
+                    {X = xEnd-20.; Y = yEnd};
+                    {X = xEnd-5.; Y = yEnd}; //Stick horizontal
+                    {X = xEnd-5.; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}]
 
 let inferDirectionfromVertices (xyVerticesList: XYPos list) =
@@ -613,7 +615,7 @@ let renderSegment (vertexPair : VertexPair) (colour : string) (width : string) :
         
         let renderSingleSegmentJump (intersectionCoordinate : XYPos) : list<ReactElement> =
             let x, y = intersectionCoordinate.X, intersectionCoordinate.Y
-
+            failwithf "HI"
             let startingPoint = {X = x - segmentJumpHorizontalSize/2.0; Y = y}
             let startingControlPoint = {X = x - segmentJumpHorizontalSize/2.0; Y = y - segmentJumpVerticalSize}
             let endingControlPoint = {X = x + segmentJumpHorizontalSize/2.0; Y = y - segmentJumpVerticalSize}
@@ -843,6 +845,9 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
     g [] [(g [] wires); symbols]
     |> TimeHelpers.instrumentInterval "WireView" start
 
+//---------------------------------------------------------------------------------//
+//--------------------TL319 CODE SECTION ENDS-------------------------------------//
+//---------------------------------------------------------------------------------//
 
 //---------------------------------------------------------------------------------//
 //--------------------STS219 CODE SECTION STARTS-------------------------------------//
