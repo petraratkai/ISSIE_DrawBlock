@@ -1130,7 +1130,7 @@ let highlightConnectionsFromWaves (model: Model) (dispatch: Msg -> Unit) =
         let selectedIds =  Array.collect selectedConnectionIds waves
         let wrongColorIds =
             selectedIds
-            |> Array.map (fun cid -> Map.tryFind cid model.Sheet.Wire.Wires)
+            |> Array.map (fun cid -> Map.tryFind cid model.Sheet.Wire.WX)
             |> Array.filter ((<>) None)
             |> Array.map Option.get
             |> Array.filter (fun wire -> wire.Color <> HighLightColor.Blue)
