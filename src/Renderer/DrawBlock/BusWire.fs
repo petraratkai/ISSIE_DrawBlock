@@ -1814,7 +1814,7 @@ let pasteWires (wModel : Model) (newCompIds : list<ComponentId>) : (Model * list
             | Some (newInputPort, newOutputPort) ->
 
                 let portOnePos, portTwoPos = Symbol.getTwoPortLocations wModel.Symbol (InputPortId newInputPort) (OutputPortId newOutputPort)
-                let segmentList = makeInitialSegmentsList newId (portOnePos, portTwoPos)
+                let segmentList = makeInitialSegmentsList newId portOnePos portTwoPos (Symbol.getOutputPortOrientation wModel.Symbol (OutputPortId newOutputPort))
                 [
                     {
                         oldWire with
@@ -1822,6 +1822,8 @@ let pasteWires (wModel : Model) (newCompIds : list<ComponentId>) : (Model * list
                             InputPort = InputPortId newInputPort;
                             OutputPort = OutputPortId newOutputPort;
                             Segments = segmentList;
+                            StartPos = portOnePos;
+                            EndPos = portTwoPos
                     }
                 ]
             | None -> []
