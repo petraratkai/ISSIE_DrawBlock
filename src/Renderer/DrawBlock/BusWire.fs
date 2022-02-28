@@ -438,9 +438,10 @@ let xyVerticesToSegments connId (xyVerticesList: XYPos list) =
                 IntersectCoordinateList = [];
                 Mode = Auto
                 Draggable =
-                    match i with
-                    | 0  -> false
-                    | _ -> true
+                    if i = 0 || i = xyVerticesList.Length - 2 then
+                        false
+                    else
+                        true
             })
 
 /// Convert a (possibly legacy) issie Connection stored as a list of vertices to Wire
