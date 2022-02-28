@@ -11,3 +11,4 @@ changed drawing helpers to use XYPos where applicale
 
 27/02/2022
 changed portpos functions to work take symbol inputs instead
+refactored addText, addClock to use XYPos
