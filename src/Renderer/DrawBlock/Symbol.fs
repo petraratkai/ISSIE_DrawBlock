@@ -550,20 +550,28 @@ let getTopLeft (symbol:Symbol) (centre:XYPos) (orientation:Rotation) =
     let height = symbol.Component.H
     match symboltype with
     | Demux2 -> match orientation with
-              | Degree90 -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
-                                             Y=centre.Y+0.5*float(width)}
+                | Degree90 -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
+                                               Y=centre.Y+0.5*float(width)}
 
-              | Degree180 -> {symbol.Pos with X=centre.X-0.5*float(width);
-                                              Y=centre.Y+0.5*float(height)}
+                | Degree180 -> {symbol.Pos with X=centre.X-0.5*float(width);
+                                                Y=centre.Y+0.5*float(height)}
 
-              | Degree270 -> {symbol.Pos with X=centre.X-0.3*float(height); 
-                                              Y=centre.Y+float(width/2)}
-              | Degree0 -> {symbol.Pos with Y=symbol.Pos.Y-0.2*float(height)}
+                | Degree270 -> {symbol.Pos with X=centre.X-0.3*float(height); 
+                                                Y=centre.Y+float(width/2)}
+                | Degree0 -> {symbol.Pos with Y=symbol.Pos.Y-0.2*float(height)}
+
     | Mux2 -> match orientation with
-               | Degree90 -> {symbol.Pos with X=centre.X-0.3*float(height); Y=centre.Y+float(width/2)}
+               | Degree90 -> {symbol.Pos with X=centre.X-0.3*float(height); 
+                                              Y=centre.Y+float(width/2)}
+
                | Degree180 -> {symbol.Pos with Y=symbol.Pos.Y-0.2*float(height)}
-               | Degree270 -> {symbol.Pos with X=centre.X-0.5*float(height) ; Y=centre.Y+0.5*float(width)}
-               | _ -> {symbol.Pos with X=symbol.Pos.X ; Y=symbol.Pos.Y}
+
+               | Degree270 -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
+                                               Y=centre.Y+0.5*float(width)}
+
+               | _ -> {symbol.Pos with X=symbol.Pos.X ; 
+                                       Y=symbol.Pos.Y}
+
     | _ -> {X=centre.X-float(symbol.Component.H/2); 
             Y=centre.Y+float(symbol.Component.W/2)}
 
@@ -600,20 +608,25 @@ let rotateSymbolRight (symbol:Symbol) (rotateby:Rotation) =
                      | Degree90 -> {symbol.STransform with Rotation=Degree270}
                      | Degree180 -> {symbol.STransform with Rotation=Degree180}
                      | Degree270 -> {symbol.STransform with Rotation=Degree90}
+                     | _ -> symbol.STransform
+
         | Degree90 -> match rotateby with
                       | Degree90 -> {symbol.STransform with Rotation=Degree0}
                       | Degree180 -> {symbol.STransform with Rotation=Degree270}
                       | Degree270 -> {symbol.STransform with Rotation=Degree180}
+                      | _ -> symbol.STransform
 
         | Degree180 -> match rotateby with
                        | Degree90 -> {symbol.STransform with Rotation=Degree90}
                        | Degree180 -> {symbol.STransform with Rotation=Degree0}
                        | Degree270 -> {symbol.STransform with Rotation=Degree270}
+                       | _ -> symbol.STransform
 
         | Degree270 -> match rotateby with
                        | Degree90 -> {symbol.STransform with Rotation=Degree180}
                        | Degree180 -> {symbol.STransform with Rotation=Degree90}
                        | Degree270 -> {symbol.STransform with Rotation=Degree0}
+                       | _ -> symbol.STransform
 
     ///Updates the edges based on the final orientation
     let rotateSide (edge:Edge) = 
@@ -678,20 +691,24 @@ let rotateSymbolLeft (symbol:Symbol) (rotate:Rotation) =
                      | Degree90 -> {symbol.STransform with Rotation=Degree90}
                      | Degree180 -> {symbol.STransform with Rotation=Degree180}
                      | Degree270 -> {symbol.STransform with Rotation=Degree270}
+                     | _ -> symbol.STransform
         | Degree90 -> match rotate with
                       | Degree90 -> {symbol.STransform with Rotation=Degree180}
                       | Degree180 -> {symbol.STransform with Rotation=Degree270}
                       | Degree270 -> {symbol.STransform with Rotation=Degree0}
+                      | _ -> symbol.STransform
 
         | Degree180 -> match rotate with
                        | Degree90 -> {symbol.STransform with Rotation=Degree270}
                        | Degree180 -> {symbol.STransform with Rotation=Degree0}
                        | Degree270 -> {symbol.STransform with Rotation=Degree90}
+                       | _ -> symbol.STransform
 
         | Degree270 -> match rotate with
                        | Degree90 -> {symbol.STransform with Rotation=Degree0}
                        | Degree180 -> {symbol.STransform with Rotation=Degree90}
                        | Degree270 -> {symbol.STransform with Rotation=Degree180}
+                       | _ -> symbol.STransform
 
     ///Updates the edges based on the final orientation
     let rotateSide (edge:Edge) = 
@@ -781,14 +798,14 @@ let compSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
                     | Degree270 -> 
                         (sprintf "%i,%i %f,%i %f,%i %i,%i" 0 0 (0.2*float(width)) height (0.8*float(width)) height width 0 )
         | Mux2 -> match orientation with
-                 | Degree0 -> 
-                    (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 width (0.2*float(height)) width (0.8*float(height)) 0 height ) 
-                 | Degree90 -> 
-                    (sprintf "%i,%i %i,%i  %f,%i %f,%i" 0 0 width 0 (0.8*float(width)) height (0.2*float(width)) height) 
-                 | Degree180 -> 
-                    (sprintf "%i,%f %i,%i  %i,%i %i,%f" 0 (0.2*float(height)) width 0 width height 0 (0.8*float(height))) 
-                 | Degree270 -> 
-                    (sprintf "%f,%i %f,%i  %i,%i %i,%i" (0.2*float(width)) 0 (0.8*float(width)) 0 width height 0 height)  
+                  | Degree0 -> 
+                     (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 width (0.2*float(height)) width (0.8*float(height)) 0 height ) 
+                  | Degree90 -> 
+                     (sprintf "%i,%i %i,%i  %f,%i %f,%i" 0 0 width 0 (0.8*float(width)) height (0.2*float(width)) height) 
+                  | Degree180 -> 
+                     (sprintf "%i,%f %i,%i  %i,%i %i,%f" 0 (0.2*float(height)) width 0 width height 0 (0.8*float(height))) 
+                  | Degree270 -> 
+                     (sprintf "%f,%i %f,%i  %i,%i %i,%i" (0.2*float(width)) 0 (0.8*float(width)) 0 width height 0 height)  
         // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
         | BusSelection _ |BusCompare _ -> (sprintf "%i,%i %i,%i %f,%i %f,%f %i,%f %i,%f %f,%f %f,%i ")0 0 0 height (0.6*float(width)) height (0.8*float(width)) (0.7*float(height)) width (0.7*float(height)) width (0.3*float(height)) (0.8*float(width)) (0.3*float(height)) (0.6*float(width)) 0
