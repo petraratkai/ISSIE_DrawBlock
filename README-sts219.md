@@ -99,9 +99,14 @@ This was improved as follows:
 **BoundingBox**
 The main issue with this type is what its `X` and `Y` fields represent. Is it the center of the box, the top left, or something else entirely. There is no documentation on the type itself, and quite literally no-one seemed to know definitively (our advisor, TC, etc.). From it's usage in the code, it was determined that these fields represent an `XYPos` of the top left corner of the boundingbox. I therefore switched these `X` and `Y` fields for a single `TopLeft: XYPos` field, which should avoid any future confusion.
 
+**Wires (Segment list)**
+There were 2 types of segment lists considered in the existing Issie functionality ('3'-seg and '5'-seg) to route between different IO configurations. A lot of their functionality was hard coded in using this assumed 7-segment length, which is bad as it makes it more difficult to include new cases for alternate port orientations. In both cases, the wires have small 'nubs' at both ports. This allows all the visible segments in the 3-segment wire to be dragged:
+![]( sts219/dragged3seg.png)
+
 **Unused functions**
 There were a significant amount of functions, some quite complex, that were never called anywhere in the code (see below):
-![]( sts219/)
+![]( sts219/unused.png)
+Those with debugging utility were moved into the debugging section at the top of the code, functional ones were removed.
 
 ### Analysis of how/why code works
 
@@ -115,7 +120,10 @@ interview.
 * A good way to show code works is to explain how it differs from existing working code and how existing
 functionality is preserved.
 
-The code functionality was ch
+**moveSegment**
+This function allows individual segments of a wire in Issie to be dragged in a direction perpendicular to its orientation. It's original call tree is below:
+![]( sts219/moveSegment.png)
+`getSafeDistanceForMove` is meant to prevent users from dragging wire segments perpendicular to the port orientation too close to the port.
 
 # Extensions
 

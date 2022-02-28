@@ -115,18 +115,6 @@ let switchOrientation =
     | Horizontal -> Vertical
     | Vertical -> Horizontal
 
-/// Returns an XYPos shifted by length in an X or Y direction defined by orientation.
-let addLengthToPos (position: XYPos) orientation length =
-    match orientation with
-    | Horizontal -> { position with X = position.X + length }
-    | Vertical -> { position with Y = position.Y + length }
-
-/// Returns the opposite orientation of the input orientation. (i.e. Horizontal becomes Vertical and vice-versa)
-let switchOrientation =
-    function
-    | Horizontal -> Vertical
-    | Vertical -> Horizontal
-
 /// <summary> Applies a function which requires the segment start and end positions to the segments in a wire, 
 /// threading an accumulator argument through the computation. Essentially a List.fold applied to the list of segments of a wire, but with access to each segment's absolute positions. </summary>
 /// <remarks> This is used in cases where absolute segment positions are required. 
