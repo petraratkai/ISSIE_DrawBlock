@@ -87,53 +87,6 @@ let posAdd (a:XYPos) (b:XYPos) =
 
 let posOf x y = {X=x;Y=y}
 
-//Makes a map of strings for port
-let portMap list (edge: Edge)= 
-    let emptymap: Map<string,Edge> = Map.empty
-    let rec loop inL map = 
-        match inL with
-        | [] -> map
-        | hd :: tl -> let acc = Map.add hd edge map
-                      loop tl acc
-    loop list emptymap
-
-let concatMap map1 map2 = 
-    let list1 = Map.toList map1
-    let list2 = Map.toList map2
-
-    Map.ofList (List.append list1 list2)
-
-let getId (port:Port) = 
-    port.Id
-
-let getEdge (rotation: Rotation) = 
-    match rotation with
-    | Degree0 -> Left,Right
-    | Degree90 -> Top, Bottom
-    | Degree180 -> Right,Left
-    | Degree270 -> Bottom, Top
-
-let getCentre (symbol:Symbol) = 
-    match symbol.Component.Type with 
-    | Mux2 -> match symbol.STransform.Rotation with
-              | Degree0 | Degree270 -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; 
-                                        Y=symbol.Pos.Y - float(symbol.Component.H/2)}  
-              | Degree90 -> {X=symbol.Pos.X+0.3*float(symbol.Component.W); 
-                             Y=symbol.Pos.Y - float(symbol.Component.H/2)}
-              | Degree180 -> {X=symbol.Pos.X + float(symbol.Component.W/2);
-                              Y=symbol.Pos.Y-0.3*float(symbol.Component.H)}
-    | Demux2 -> match symbol.STransform.Rotation with
-                | Degree90 | Degree180 -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; 
-                                           Y=symbol.Pos.Y - float(symbol.Component.H/2)}  
-                | Degree0 -> {X=symbol.Pos.X + float(symbol.Component.W/2);
-                              Y=symbol.Pos.Y-0.3*float(symbol.Component.H)}
-                | Degree270 -> {X=symbol.Pos.X+0.3*float(symbol.Component.W); 
-                                Y=symbol.Pos.Y - float(symbol.Component.H/2)}
-    | _ -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; Y=symbol.Pos.Y - float(symbol.Component.H/2)}
-
-let getTopLeft (symbol:Symbol) (centre:XYPos) = 
-    {X=centre.X-float(symbol.Component.H/2); Y=centre.Y+float(symbol.Component.W/2)}
-
 //Calculates the offset of a port from the centre depending on the edge
 let centreOffset (centre:XYPos) (edge:Edge) (commonpos:float) pos = 
 
@@ -311,6 +264,25 @@ let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) :
                 
     makeComponent args label
    
+//Makes a map of strings for port
+let portMap list (edge: Edge)= 
+    let emptymap: Map<string,Edge> = Map.empty
+    let rec loop inL map = 
+        match inL with
+        | [] -> map
+        | hd :: tl -> let acc = Map.add hd edge map
+                      loop tl acc
+    loop list emptymap
+
+let concatMap map1 map2 = 
+    let list1 = Map.toList map1
+    let list2 = Map.toList map2
+
+    Map.ofList (List.append list1 list2)
+
+let getId (port:Port) = 
+    port.Id
+
 // Function to generate a new symbol
 let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
     let id = JSHelpers.uuid ()
@@ -501,6 +473,24 @@ let getTopLeft (symbol:Symbol) (centre:XYPos) (orientation:Rotation) =
                | _ -> {symbol.Pos with X=symbol.Pos.X ; Y=symbol.Pos.Y}
     | _ -> {X=centre.X-float(symbol.Component.H/2); 
             Y=centre.Y+float(symbol.Component.W/2)}
+
+let getCentre (symbol:Symbol) = 
+    match symbol.Component.Type with 
+    | Mux2 -> match symbol.STransform.Rotation with
+              | Degree0 | Degree270 -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; 
+                                        Y=symbol.Pos.Y - float(symbol.Component.H/2)}  
+              | Degree90 -> {X=symbol.Pos.X+0.3*float(symbol.Component.W); 
+                             Y=symbol.Pos.Y - float(symbol.Component.H/2)}
+              | Degree180 -> {X=symbol.Pos.X + float(symbol.Component.W/2);
+                              Y=symbol.Pos.Y-0.3*float(symbol.Component.H)}
+    | Demux2 -> match symbol.STransform.Rotation with
+                | Degree90 | Degree180 -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; 
+                                           Y=symbol.Pos.Y - float(symbol.Component.H/2)}  
+                | Degree0 -> {X=symbol.Pos.X + float(symbol.Component.W/2);
+                              Y=symbol.Pos.Y-0.3*float(symbol.Component.H)}
+                | Degree270 -> {X=symbol.Pos.X+0.3*float(symbol.Component.W); 
+                                Y=symbol.Pos.Y - float(symbol.Component.H/2)}
+    | _ -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; Y=symbol.Pos.Y - float(symbol.Component.H/2)}
 
 ///Symbol Rotation Right
 let rotateRight (symbol:Symbol) (rotateby:Rotation) = 
