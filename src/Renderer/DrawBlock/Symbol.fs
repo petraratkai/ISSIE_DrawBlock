@@ -79,6 +79,7 @@ type Msg =
     | WriteMemoryType of ComponentId * ComponentType
     | RotateLeft of compList : ComponentId list * rotateby: Rotation
     | RotateRight of compList: ComponentId list * rotateby: Rotation
+    | Flip of compList: ComponentId list
 
 //---------------------------------helper types and functions----------------//
 
@@ -714,7 +715,7 @@ let rotateSymbolLeft (symbol:Symbol) (rotateby:Rotation) =
                  PortOrder=updatePortOrder}                         
 
 ///Flip symbol horizontaly
-let flipHorizontal (symbol:Symbol) : Symbol = 
+let flipSymbolHorizontal (symbol:Symbol) : Symbol = 
     let orientation = symbol.STransform.Rotation
 
     let flipSide (edge: Edge) = 
@@ -1614,6 +1615,14 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
             compList |> List.map (fun id-> rotateSymbolRight model.Symbols[id] rotateby)
         let newSymbolMap = 
             (model.Symbols, rotatedSymbols) 
+            ||> List.fold (fun currSymMap sym -> currSymMap |> Map.add sym.Id sym)
+        { model with Symbols = newSymbolMap }, Cmd.none
+
+    | Flip compList ->
+        let flippedSymbols = 
+            compList |> List.map (fun id-> flipSymbolHorizontal model.Symbols[id])
+        let newSymbolMap = 
+            (model.Symbols, flippedSymbols) 
             ||> List.fold (fun currSymMap sym -> currSymMap |> Map.add sym.Id sym)
         { model with Symbols = newSymbolMap }, Cmd.none
         
