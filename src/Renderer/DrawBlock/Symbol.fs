@@ -112,7 +112,9 @@ let bustitle wob lsb =
 let prefix compType = 
     match compType with
     | Not | And | Or | Xor | Nand | Nor | Xnor -> "G"
-    | Mux2 -> "MUX"
+    | Mux2 -> "MUX2"
+    | Mux4 -> "Mux4"
+    | Mux8 -> "Mux8"
     | Demux2 -> "DM"
     | NbitsAdder _ -> "A"
     | NbitsXor _ -> "XOR"
@@ -166,11 +168,12 @@ let portDecName (comp:Component) = //(input port names, output port names)
     | DFF -> (["D"],["Q"])
     | DFFE -> (["D";"EN"],["Q"])
     | Mux2 -> (["0"; "1";"SEL"],["OUT"])   
+    | Mux4 -> (["0"; "1"; "2"; "3" ;"SEL"],["OUT"])
+    | Mux8 -> (["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7";"SEL"],["OUT"])
     | Demux2 -> (["IN" ; "SEL"],["0"; "1"])
     | NbitsXor _ -> (["P"; "Q"], ["Out"])
     | Custom x -> (List.map fst x.InputLabels), (List.map fst x.OutputLabels)
     |_ -> ([],[])
-   // |Mux4 -> (["0"; "1"; "2"; "3" ;"SEL"],["OUT"])
    // |Demux4 -> (["IN"; "SEL"],["0"; "1";"2"; "3";])
    // |Demux8 -> (["IN"; "SEL"],["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7"])
    // |Mux8 -> (["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7";"SEL"],["OUT"])
@@ -204,55 +207,10 @@ let customToLength (lst : (string * int) list) =
     if List.isEmpty labelList then 0 //if a component has no inputs or outputs list max will fail
     else List.max labelList
 
-
-let initPortOrientation (comp: Component) =
-    
-    let movePortToBottom (res: Map<Edge, string list>*Map<string, Edge>) index =
-        let leftPorts = (fst res)[Left]
-        let portId = leftPorts |> List.item index //get id of sel
-
-        let newBottomPorts = [portId]
-        let newLeftPorts = (fst res)[Left] |> List.removeAt index
-        let newPortOrder =
-            fst res
-            |> Map.add Bottom newBottomPorts
-            |> Map.add Left newLeftPorts
-        let newPortOrientation =
-            snd res |> Map.add portId Bottom
-        newPortOrder, newPortOrientation
-
-    let addPortToMaps (edge: Edge) ((portOrder:Map<Edge, string list>), portOrientation) (port: Port) =
-        let portOrder' = portOrder |> Map.add edge (portOrder[edge] @ [port.Id])
-        portOrder', (portOrientation |> Map.add port.Id edge)
-    let defaultportOrder = 
-        (Map.empty, [Left; Right; Top; Bottom])
-        ||> List.fold (fun currMap edge -> Map.add edge [] currMap)
-
-    let inputMaps =
-        ((defaultportOrder, Map.empty), comp.InputPorts)
-        ||> List.fold (addPortToMaps Left)
-
-    let res = 
-        (inputMaps, comp.OutputPorts)
-        ||> List.fold (addPortToMaps Right)
-    match comp.Type with //need to put some ports to different edges
-    | Mux2 -> //need to remove select port from left and move to right
-        movePortToBottom res 2
-    | NbitsAdder _ -> 
-        movePortToBottom res 0
-    | DFFE ->
-        movePortToBottom res 1
-    | RegisterE _ ->
-        movePortToBottom res 1
-    | Demux2 ->
-        movePortToBottom res 1
-    | _ -> res
-
 // helper function to initialise each type of component
 let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) : Component =
 
     // function that helps avoid dublicate code by initialising parameters that are the same for all component types and takes as argument the others
-    //let portOrientation, portOrder = initPortOrientation comp
     let makeComponent (n, nout, h, w) label : Component=  
         {
             Id = id 
@@ -283,8 +241,8 @@ let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) :
         | MergeWires -> ( 2 , 1, 2*GridSize ,  2*GridSize) 
         | SplitWire (a) ->(  1 , 2 , 2*GridSize ,  2*GridSize) 
         | Mux2 -> ( 3  , 1, 3*GridSize ,  2*GridSize) 
-        // EXTENSION:    | Mux4 -> ( 5  , 1, 5*GridSize ,  2*GridSize)   
-        // EXTENSION:    | Mux8 -> ( 9  , 1, 7*GridSize ,  2*GridSize) 
+        | Mux4 -> ( 5  , 1, 5*GridSize ,  2*GridSize)   
+        | Mux8 -> ( 9  , 1, 7*GridSize ,  2*GridSize) 
         | Demux2 ->( 2  , 2, 3*GridSize ,  2*GridSize) 
         // EXTENSION:   | Demux4 -> ( 2  , 4, 150 ,  50) 
         // EXTENSION:    | Demux8 -> ( 2  , 8, 200 ,  50) 
@@ -332,7 +290,7 @@ let getId (port:Port) =
 let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
     let id = JSHelpers.uuid ()
     let comp = makeComp pos comptype id label
-    let inputportlength = comp.InputPorts.Length
+    let controlindex = comp.InputPorts.Length
 
     let getOrientationOrderMap (controlinput:Port) (inputportlist: Port list) = 
         let inputportsid = List.map getId inputportlist  // Create a list of all the input port ids
@@ -346,11 +304,11 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
         orientation, portorder
 
     let portmaps = match comptype with 
-                      | Mux2 | DFFE | RegisterE _ -> let controlinput = comp.InputPorts[inputportlength]
-                                                     let nocontrollist =  comp.InputPorts
-                                                                          |> List.removeAt inputportlength
+                      | Mux2 | Mux4 | Mux8 | DFFE | RegisterE _ -> let controlinput = comp.InputPorts[controlindex]
+                                                                   let nocontrollist =  comp.InputPorts
+                                                                                        |> List.removeAt controlindex
 
-                                                     getOrientationOrderMap controlinput nocontrollist
+                                                                   getOrientationOrderMap controlinput nocontrollist
 
                       | NbitsAdder _ -> let controlinput = comp.InputPorts[0]
                                         let nocontrollist = comp.InputPorts
@@ -369,6 +327,8 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
 
                              orientation, portorder
 
+    let portorientationmap = fst portmaps    
+    let portordermap = snd portmaps
 
     { 
       Pos = { X = pos.X - float comp.W / 2.0; Y = pos.Y - float comp.H / 2.0 }
@@ -382,8 +342,8 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
       Opacity = 1.0
       Moving = false
       STransform = {Rotation=Degree0; flipped=false}
-      PortOrientation = fst portmaps
-      PortOrder = snd portmaps
+      PortOrientation = portorientationmap
+      PortOrder = portordermap
     }
 
 // Function to add ports to port model     
@@ -560,17 +520,17 @@ let getTopLeft (symbol:Symbol) (centre:XYPos) (orientation:Rotation) =
                                                 Y=centre.Y+float(width/2)}
                 | Degree0 -> {symbol.Pos with Y=symbol.Pos.Y-0.2*float(height)}
 
-    | Mux2 -> match orientation with
-               | Degree90 -> {symbol.Pos with X=centre.X-0.3*float(height); 
-                                              Y=centre.Y+float(width/2)}
+    | Mux2 | Mux4 | Mux8 -> match orientation with
+                            | Degree90 -> {symbol.Pos with X=centre.X-0.3*float(height); 
+                                                           Y=centre.Y+float(width/2)}
 
-               | Degree180 -> {symbol.Pos with Y=symbol.Pos.Y-0.2*float(height)}
+                            | Degree180 -> {symbol.Pos with Y=symbol.Pos.Y-0.2*float(height)}
 
-               | Degree270 -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
-                                               Y=centre.Y+0.5*float(width)}
+                            | Degree270 -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
+                                                            Y=centre.Y+0.5*float(width)}
 
-               | _ -> {symbol.Pos with X=symbol.Pos.X ; 
-                                       Y=symbol.Pos.Y}
+                            | _ -> {symbol.Pos with X=symbol.Pos.X ; 
+                                                    Y=symbol.Pos.Y}
 
     | _ -> {X=centre.X-float(symbol.Component.H/2); 
             Y=centre.Y+float(symbol.Component.W/2)}
@@ -592,6 +552,7 @@ let getCentre (symbol:Symbol) =
                 | Degree270 -> {X=symbol.Pos.X+0.3*float(symbol.Component.W); 
                                 Y=symbol.Pos.Y - float(symbol.Component.H/2)}
     | _ -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; Y=symbol.Pos.Y - float(symbol.Component.H/2)}
+
 
 ///Symbol Rotation Right
 let rotateSymbolRight (symbol:Symbol) (rotateby:Rotation) = 
@@ -630,7 +591,7 @@ let rotateSymbolRight (symbol:Symbol) (rotateby:Rotation) =
 
     ///Updates the edges based on the final orientation
     let rotateSide (edge:Edge) = 
-        match updateOrientation.Rotation with
+        match rotateby with
         | Degree90 -> match edge with 
                       | Top -> Right
                       | Left -> Top
@@ -654,7 +615,6 @@ let rotateSymbolRight (symbol:Symbol) (rotateby:Rotation) =
                | Bottom -> Bottom
                | Right -> Right
 
-
     ///Update port orientation
     let updatePortOrientation = 
         symbol.PortOrientation
@@ -667,17 +627,17 @@ let rotateSymbolRight (symbol:Symbol) (rotateby:Rotation) =
         |> Map.map (fun portlist edge -> rotateSide edge) 
         |> inverseMap
         
-    let newXYpos =  getTopLeft symbol centre updateOrientation.Rotation
-    let newcomp = {symbol.Component with H=width; W=height}
+    let rotatedXYpos =  getTopLeft symbol centre updateOrientation.Rotation
+    let rotatedcomp = {symbol.Component with H=width; W=height}
 
-    {symbol with Pos=newXYpos
-                 Component=newcomp
+    {symbol with Pos=rotatedXYpos
+                 Component=rotatedcomp
                  STransform=updateOrientation; 
                  PortOrientation=updatePortOrientation; 
                  PortOrder=updatePortOrder}                 
 
 ///Symbol Rotation Left
-let rotateSymbolLeft (symbol:Symbol) (rotate:Rotation) = 
+let rotateSymbolLeft (symbol:Symbol) (rotateby:Rotation) = 
     let currentorientation = symbol.STransform.Rotation
     let centre = getCentre symbol
     let comptype = symbol.Component.Type
@@ -687,24 +647,24 @@ let rotateSymbolLeft (symbol:Symbol) (rotate:Rotation) =
     ///Update orientation of symbol to give final orientation
     let updateOrientation =
         match currentorientation with 
-        | Degree0 -> match rotate with
+        | Degree0 -> match rotateby with
                      | Degree90 -> {symbol.STransform with Rotation=Degree90}
                      | Degree180 -> {symbol.STransform with Rotation=Degree180}
                      | Degree270 -> {symbol.STransform with Rotation=Degree270}
                      | _ -> symbol.STransform
-        | Degree90 -> match rotate with
+        | Degree90 -> match rotateby with
                       | Degree90 -> {symbol.STransform with Rotation=Degree180}
                       | Degree180 -> {symbol.STransform with Rotation=Degree270}
                       | Degree270 -> {symbol.STransform with Rotation=Degree0}
                       | _ -> symbol.STransform
 
-        | Degree180 -> match rotate with
+        | Degree180 -> match rotateby with
                        | Degree90 -> {symbol.STransform with Rotation=Degree270}
                        | Degree180 -> {symbol.STransform with Rotation=Degree0}
                        | Degree270 -> {symbol.STransform with Rotation=Degree90}
                        | _ -> symbol.STransform
 
-        | Degree270 -> match rotate with
+        | Degree270 -> match rotateby with
                        | Degree90 -> {symbol.STransform with Rotation=Degree0}
                        | Degree180 -> {symbol.STransform with Rotation=Degree90}
                        | Degree270 -> {symbol.STransform with Rotation=Degree180}
@@ -712,7 +672,7 @@ let rotateSymbolLeft (symbol:Symbol) (rotate:Rotation) =
 
     ///Updates the edges based on the final orientation
     let rotateSide (edge:Edge) = 
-        match updateOrientation.Rotation with
+        match rotateby with
         | Degree90 -> match edge with 
                       | Top -> Left
                       | Left -> Bottom
@@ -749,11 +709,11 @@ let rotateSymbolLeft (symbol:Symbol) (rotate:Rotation) =
         |> Map.map (fun portlist edge -> rotateSide edge) 
         |> inverseMap
 
-    let newXYpos =  getTopLeft symbol centre updateOrientation.Rotation
-    let newcomp = {symbol.Component with H=width; W=height}
+    let rotatedXYpos =  getTopLeft symbol centre updateOrientation.Rotation
+    let rotatedcomp = {symbol.Component with H=width; W=height}
 
-    {symbol with Pos=newXYpos
-                 Component=newcomp
+    {symbol with Pos=rotatedXYpos
+                 Component=rotatedcomp
                  STransform=updateOrientation; 
                  PortOrientation=updatePortOrientation; 
                  PortOrder=updatePortOrder}                         
@@ -797,16 +757,15 @@ let compSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
                         (sprintf "%i,%i %i,%i %i,%f %i,%f" 0 0 0 height width (0.8*float(height)) width (0.2*float(height)))
                     | Degree270 -> 
                         (sprintf "%i,%i %f,%i %f,%i %i,%i" 0 0 (0.2*float(width)) height (0.8*float(width)) height width 0 )
-        | Mux2 -> match orientation with
-                  | Degree0 -> 
-                     (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 width (0.2*float(height)) width (0.8*float(height)) 0 height ) 
-                  | Degree90 -> 
-                     (sprintf "%i,%i %i,%i  %f,%i %f,%i" 0 0 width 0 (0.8*float(width)) height (0.2*float(width)) height) 
-                  | Degree180 -> 
-                     (sprintf "%i,%f %i,%i  %i,%i %i,%f" 0 (0.2*float(height)) width 0 width height 0 (0.8*float(height))) 
-                  | Degree270 -> 
-                     (sprintf "%f,%i %f,%i  %i,%i %i,%i" (0.2*float(width)) 0 (0.8*float(width)) 0 width height 0 height)  
-        // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
+        | Mux2 | Mux4 | Mux8 -> match orientation with
+                                | Degree0 -> 
+                                    (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 width (0.2*float(height)) width (0.8*float(height)) 0 height ) 
+                                | Degree90 -> 
+                                    (sprintf "%i,%i %i,%i  %f,%i %f,%i" 0 0 width 0 (0.8*float(width)) height (0.2*float(width)) height) 
+                                | Degree180 -> 
+                                    (sprintf "%i,%f %i,%i  %i,%i %i,%f" 0 (0.2*float(height)) width 0 width height 0 (0.8*float(height))) 
+                                | Degree270 -> 
+                                    (sprintf "%f,%i %f,%i  %i,%i %i,%i" (0.2*float(width)) 0 (0.8*float(width)) 0 width height 0 height)  
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
         | BusSelection _ |BusCompare _ -> (sprintf "%i,%i %i,%i %f,%i %f,%f %i,%f %i,%f %f,%f %f,%i ")0 0 0 height (0.6*float(width)) height (0.8*float(width)) (0.7*float(height)) width (0.7*float(height)) width (0.3*float(height)) (0.8*float(width)) (0.3*float(height)) (0.6*float(width)) 0
         | _ -> (sprintf "%i,%i %i,%i %i,%i %i,%i" 0 height width height width 0 0 0)
@@ -1389,6 +1348,49 @@ let inline colorSymbols (model: Model) compList colour =
         ||> List.fold changeSymColour
 
     { model with Symbols = newSymbols }
+
+let initPortOrientation (comp: Component) =
+    
+    let movePortToBottom (res: Map<Edge, string list>*Map<string, Edge>) index =
+        let leftPorts = (fst res)[Left]
+        let portId = leftPorts |> List.item index //get id of sel
+
+        let newBottomPorts = [portId]
+        let newLeftPorts = (fst res)[Left] |> List.removeAt index
+        let newPortOrder =
+            fst res
+            |> Map.add Bottom newBottomPorts
+            |> Map.add Left newLeftPorts
+        let newPortOrientation =
+            snd res |> Map.add portId Bottom
+        newPortOrder, newPortOrientation
+
+    let addPortToMaps (edge: Edge) ((portOrder:Map<Edge, string list>), portOrientation) (port: Port) =
+        let portOrder' = portOrder |> Map.add edge (portOrder[edge] @ [port.Id])
+        portOrder', (portOrientation |> Map.add port.Id edge)
+    let defaultportOrder = 
+        (Map.empty, [Left; Right; Top; Bottom])
+        ||> List.fold (fun currMap edge -> Map.add edge [] currMap)
+
+    let inputMaps =
+        ((defaultportOrder, Map.empty), comp.InputPorts)
+        ||> List.fold (addPortToMaps Left)
+
+    let res = 
+        (inputMaps, comp.OutputPorts)
+        ||> List.fold (addPortToMaps Right)
+    match comp.Type with //need to put some ports to different edges
+    | Mux2 -> //need to remove select port from left and move to right
+        movePortToBottom res 2
+    | NbitsAdder _ -> 
+        movePortToBottom res 0
+    | DFFE ->
+        movePortToBottom res 1
+    | RegisterE _ ->
+        movePortToBottom res 1
+    | Demux2 ->
+        movePortToBottom res 1
+    | _ -> res
 
 /// Given a map of current symbols and a component, initialises a symbol containing the component and returns the updated symbol map containing the new symbol
 let inline createSymbol prevSymbols comp =
