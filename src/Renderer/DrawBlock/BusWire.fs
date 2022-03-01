@@ -197,6 +197,15 @@ let logIntersectionMaps (model:Model) =
 /// Formats an XYPos for logging purposes.
 let formatXY (xy: XYPos) = sprintf $"{(xy.X,xy.Y)}"
 
+/// Logs the given wire and returns it unchanged. Used for debugging.
+let logWire wire =
+    let formatSegments startPos endPos state seg = 
+        let entry = sprintf $"|{seg.Index}:{formatSegmentId seg.Id}| Start: {formatXY startPos}, End: {formatXY endPos}"
+        String.concat "\n" [state; entry]
+    let start = sprintf $"Wire: {formatWireId wire.Id}"
+    printfn $"{foldOverSegs formatSegments start wire}"
+    wire
+
 /// Given a segment start and end position, finds the orientation of the segment. 
 /// Returns None if the segment is neither horizontal nor vertical
 let getSegmentOrientation (segStart: XYPos) (segEnd: XYPos) =
@@ -973,27 +982,22 @@ let getSafeDistanceForMove (segments: Segment list) (index: int) (distance: floa
         if findBindingIndex bindingSegs <> index then 
             distance
         else
-            findDistanceFromPort bindingSegs |> (fun dist -> printfn $"Bounded distance {dist}"; dist)
+            findDistanceFromPort bindingSegs
             |> (fun dist -> 
                     if sign dist = -1 then 
                         max distance (dist + Wire.stickLength/2.)
                     else 
                         min distance (dist - Wire.stickLength/2.))
-    printfn $"All segments, target: {index}"
-    List.map logSegment segments |> ignore
+
     let bindingInputSegs = 
-        printfn "Binding input segments"
         segments
         |> findBindingSegments 0
         |> List.map (fun seg -> { seg with Length = -seg.Length})
 
     let bindingOutputSegs =
-        printfn "Binding output segments"
         List.rev segments
         |> findBindingSegments (segments.Length - 1)
-        |> List.map logSegment
 
-    printfn $"Start distance {distance}"
     distance
     |> reduceDistance bindingInputSegs findInputBindingIndex
     |> reduceDistance bindingOutputSegs findOutputBindingIndex
@@ -1115,7 +1119,7 @@ let rotate90Edge (edge: Symbol.Edge) =
     | Symbol.Bottom -> Symbol.Right
     | Symbol.Right -> Symbol.Top
 
-/// Returns a port rotated 90 degrees anticlockwise
+/// Returns a port rotated 90 degrees anticlockwise about the origin
 let rotate90Port (port: PortInfo) =
     let newEdge = rotate90Edge port.Edge
 
@@ -1125,7 +1129,7 @@ let rotate90Port (port: PortInfo) =
 
     genPortInfo newEdge newPos
 
-/// Returns a function to rotate a segment list 90 degrees anticlockwise,
+/// Returns a function to rotate a segment list 90 degrees anticlockwise (actually maybe clockwise? doesn't matter lol),
 /// depending on its initial orientation
 let rotateSegments90 initialOrientation =
     let horizontal i =
@@ -1183,10 +1187,9 @@ let autorouteWire (model: Model) (wire: Wire) : Wire =
     
     let normalisedStart, normalisedEnd =
         rotateStartDest Symbol.Right (startPort, destPort)
-    printfn $"Start = {startPort}\nNormalised start = {normalisedStart}\n,Dest = {destPort}\nnormalised dest = {normalisedEnd}"
+
     let initialSegments =
         makeInitialSegmentsList wire.Id normalisedStart.Position normalisedEnd.Position normalisedEnd.Edge
-        |> List.map logSegment
 
     let segments =
         {| edge = Symbol.Right
@@ -1283,14 +1286,12 @@ let getSegmentEnd (wire: Wire) (target: int) =
         | None -> failwithf $"Couldn't find index {target} in wire"
         | Some pos -> pos)        
 
-
-
 /// Scales a segment length for partial autorouting
 let scale fixedPoint newStart oldStart length =
     if newStart = fixedPoint then 
         length 
     else 
-        fixedPoint + (length * (newStart - fixedPoint) / (oldStart - fixedPoint))
+        (length * (newStart - fixedPoint) / (oldStart - fixedPoint))
 
 /// Given a segment list, returns the first manual segment index
 let getManualIndex segList =
@@ -1305,6 +1306,8 @@ let partialAutoRoute (wire: Wire) (newPortPos: XYPos) =
     let segs = wire.Segments
     let portPos = wire.StartPos
     let manualIndex = getManualIndex segs
+    printfn "Initial wire"
+    logWire wire |> ignore
     
     let getStartPos portPos =
         manualIndex
@@ -1328,6 +1331,7 @@ let partialAutoRoute (wire: Wire) (newPortPos: XYPos) =
     /// Scales the lengths of the segment list to the segment at index
     let scaleSegmentsToIndex index =
         let fixedPoint = getSegmentEnd wire index
+        printfn $"Manual index: {index} | Fixed point: {formatXY fixedPoint}"
         let scaleXOrY xOrY = scale (xOrY fixedPoint) (xOrY newStartPos) (xOrY startPos) 
         let scaleX = scaleXOrY toX
         let scaleY = scaleXOrY toY
@@ -1346,10 +1350,12 @@ let partialAutoRoute (wire: Wire) (newPortPos: XYPos) =
             )
         | _ -> None
 
+    printfn "Updated wire"
     manualIndex
     |> Option.bind eligibleForPartialRouting
     |> Option.bind scaleSegmentsToIndex
-    |> Option.map (fun segs -> { wire with Segments = segs })
+    |> Option.map (fun segs -> { wire with Segments = segs; StartPos = newPortPos })
+    |> Option.map logWire
 
 /// Moves a wire by the XY amounts specified by displacement
 let moveWire (wire: Wire) (displacement: XYPos) =
