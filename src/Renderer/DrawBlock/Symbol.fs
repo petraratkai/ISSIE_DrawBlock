@@ -709,6 +709,34 @@ let rotateSymbolLeft (symbol:Symbol) (rotateby:Rotation) =
                  PortOrientation=updatePortOrientation; 
                  PortOrder=updatePortOrder}                         
 
+let flipHorizontal (symbol:Symbol) : Symbol = 
+    let orientation = symbol.STransform.Rotation
+
+    let flipSide (edge: Edge) = 
+        match edge with
+        | Top -> Top
+        | Bottom -> Bottom
+        | Left -> Right
+        | Right -> Left
+
+    let updatePortOrientation = 
+        symbol.PortOrientation
+        |> Map.map (fun portid edge -> flipSide edge)
+
+    //Update port order
+    let updatePortOrder = 
+        symbol.PortOrder
+        |> inverseMap
+        |> Map.map (fun portlist edge -> flipSide edge) 
+        |> inverseMap
+
+    let updateOrientation = {flipped=not symbol.STransform.flipped;
+                     Rotation=symbol.STransform.Rotation}
+
+    {symbol with STransform=updateOrientation; 
+                 PortOrientation=updatePortOrientation; 
+                 PortOrder=updatePortOrder} 
+
 /// --------------------------------------- SYMBOL DRAWING ------------------------------------------------------ ///   
 
 let compSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float)= 
