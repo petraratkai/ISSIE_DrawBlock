@@ -1028,7 +1028,7 @@ let moveSegment (model:Model) (seg:Segment) (distance:float) =
     {wire with Segments = newSegments}
 
 /// Initialises an empty Wire Model
-let init () = // Doesn't seem that harmful, revisit if we change the model type
+let init () = 
     let symbols,_ = Symbol.init()
     {   
         Wires = Map.empty;
@@ -1054,7 +1054,6 @@ let getFilteredIdList condition wireLst =
     wireLst
     |> List.filter condition
     |> List.map (fun wire -> wire.Id)
-    //|> List.distinct // TODO: Figure out if this is needed - I don't think it is
 
 ///Returns the wires in the model connected to a list of components given by componentIds
 let getConnectedWires (model: Model) (compIds: list<ComponentId>) =
@@ -1074,7 +1073,9 @@ let getConnectedWireIds model compIds =
     getConnectedWires model compIds
     |> getFilteredIdList (fun _ -> true)
 
-/// Returns a tuple of: wires connected to inputs ONLY, wires connected to outputs ONLY, wires connected to both inputs and outputs
+/// Given a model and a list of component Ids, returns a tuple of: 
+/// wires connected to input ports, wires connected to output ports, 
+/// wires connected to both input and output ports
 let filterWiresByCompMoved (model: Model) (compIds: list<ComponentId>) =
     let wireList = getWireList model
 
@@ -1316,9 +1317,6 @@ let partitionSegments segs manualIdx =
 /// and returns Some wire with the new segments.
 let partialAutoRoute (wire: Wire) (newPortPos: XYPos) = 
     let segs = wire.Segments
-    printfn "Initial wire"
-    logWire wire |> ignore
-    
     let newWire = { wire with StartPos = newPortPos }
 
     let eligibleForPartialRouting manualIdx =
@@ -1326,7 +1324,6 @@ let partialAutoRoute (wire: Wire) (newPortPos: XYPos) =
         let newStartPos = getPartialRouteStart newWire manualIdx
         let fixedPoint = getAbsoluteSegmentPos wire manualIdx |> snd
         let relativeToFixed = relativePosition fixedPoint
-        printfn $"Fixed point: {formatXY fixedPoint}\nChange in portPos: {formatXY (posDiff newPortPos wire.StartPos)}\nDiff: {formatXY (posDiff newStartPos oldStartPos)}"
         if relativeToFixed newStartPos = relativeToFixed oldStartPos then
             Some (manualIdx, posDiff newStartPos oldStartPos)
         else
@@ -1334,29 +1331,19 @@ let partialAutoRoute (wire: Wire) (newPortPos: XYPos) =
     
     let updateSegments (manualIdx, diff) =
         let start, changed, remaining = partitionSegments segs manualIdx
-        printfn "Start segs:"
-        start |> List.map logSegment |> ignore
-        printfn "Changed segs:"
-        changed |> List.map logSegment |> ignore
-        printfn "Remaining segs:"
-        remaining |> List.map logSegment |> ignore
-        printfn "Updated changed segs:"
         let changed' = 
             changed
             |> List.map (fun seg -> 
                 let (startPos, endPos) = getAbsoluteSegmentPos wire seg.Index
                 { seg with Length = seg.Length - getLengthDiff diff startPos endPos })
-            |> List.map logSegment
 
         start @ changed' @ remaining
         
-    printfn "Updated wire"
     segs
     |> getManualIndex
     |> Option.bind eligibleForPartialRouting
     |> Option.map updateSegments
     |> Option.map (fun segs -> { wire with Segments = segs; StartPos = newPortPos })
-    |> Option.map logWire
 
 /// Moves a wire by the XY amounts specified by displacement
 let moveWire (wire: Wire) (displacement: XYPos) =
