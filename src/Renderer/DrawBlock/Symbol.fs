@@ -115,7 +115,9 @@ let prefix compType =
     | Mux2 -> "MUX2"
     | Mux4 -> "Mux4"
     | Mux8 -> "Mux8"
-    | Demux2 -> "DM"
+    | Demux2 -> "DM2"
+    | Demux4 -> "DM4"
+    | Demux8 -> "DM8"
     | NbitsAdder _ -> "A"
     | NbitsXor _ -> "XOR"
     | DFF | DFFE -> "FF"
@@ -171,12 +173,13 @@ let portDecName (comp:Component) = //(input port names, output port names)
     | Mux4 -> (["0"; "1"; "2"; "3" ;"SEL"],["OUT"])
     | Mux8 -> (["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7";"SEL"],["OUT"])
     | Demux2 -> (["IN" ; "SEL"],["0"; "1"])
+    | Demux4 -> (["IN"; "SEL"],["0"; "1";"2"; "3";])
+    | Demux8 -> (["IN"; "SEL"],["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7"])
     | NbitsXor _ -> (["P"; "Q"], ["Out"])
     | Custom x -> (List.map fst x.InputLabels), (List.map fst x.OutputLabels)
     |_ -> ([],[])
    // |Demux4 -> (["IN"; "SEL"],["0"; "1";"2"; "3";])
    // |Demux8 -> (["IN"; "SEL"],["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7"])
-   // |Mux8 -> (["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7";"SEL"],["OUT"])
    // |_ -> ([],[])
    // EXTENSION: Extra Components made that are not currently in Issie. Can be extended later by using this code as it is .
 
@@ -244,8 +247,8 @@ let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) :
         | Mux4 -> ( 5  , 1, 5*GridSize ,  2*GridSize)   
         | Mux8 -> ( 9  , 1, 7*GridSize ,  2*GridSize) 
         | Demux2 ->( 2  , 2, 3*GridSize ,  2*GridSize) 
-        // EXTENSION:   | Demux4 -> ( 2  , 4, 150 ,  50) 
-        // EXTENSION:    | Demux8 -> ( 2  , 8, 200 ,  50) 
+        | Demux4 -> ( 2  , 4, 150 ,  50) 
+        | Demux8 -> ( 2  , 8, 200 ,  50) 
         | BusSelection (a, b) -> (  1 , 1, GridSize,  2*GridSize) 
         | BusCompare (a, b) -> ( 1 , 1, GridSize ,  2*GridSize) 
         | DFF -> (  1 , 1, 3*GridSize  , 3*GridSize) 
@@ -304,11 +307,11 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
         orientation, portorder
 
     let portmaps = match comptype with 
-                      | Mux2 | Mux4 | Mux8 | DFFE | RegisterE _ -> let controlinput = comp.InputPorts[controlindex]
-                                                                   let nocontrollist =  comp.InputPorts
-                                                                                        |> List.removeAt controlindex
+                   | Mux2 | Mux4 | Mux8 | Demux2 | Demux4 | Demux8 | DFFE | RegisterE _ -> let controlinput = comp.InputPorts[controlindex]
+                                                                                           let nocontrollist =  comp.InputPorts
+                                                                                                                |> List.removeAt controlindex
 
-                                                                   getOrientationOrderMap controlinput nocontrollist
+                                                                                           getOrientationOrderMap controlinput nocontrollist
 
                       | NbitsAdder _ -> let controlinput = comp.InputPorts[0]
                                         let nocontrollist = comp.InputPorts
@@ -509,16 +512,16 @@ let getTopLeft (symbol:Symbol) (centre:XYPos) (orientation:Rotation) =
     let width = symbol.Component.W
     let height = symbol.Component.H
     match symboltype with
-    | Demux2 -> match orientation with
-                | Degree90 -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
-                                               Y=centre.Y+0.5*float(width)}
+    | Demux2 | Demux4 | Demux8 -> match orientation with
+                                  | Degree90 -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
+                                                                 Y=centre.Y+0.5*float(width)}
 
-                | Degree180 -> {symbol.Pos with X=centre.X-0.5*float(width);
-                                                Y=centre.Y+0.5*float(height)}
+                                  | Degree180 -> {symbol.Pos with X=centre.X-0.5*float(width);
+                                                                  Y=centre.Y+0.5*float(height)}
 
-                | Degree270 -> {symbol.Pos with X=centre.X-0.3*float(height); 
-                                                Y=centre.Y+float(width/2)}
-                | Degree0 -> {symbol.Pos with Y=symbol.Pos.Y-0.2*float(height)}
+                                  | Degree270 -> {symbol.Pos with X=centre.X-0.3*float(height); 
+                                                                  Y=centre.Y+float(width/2)}
+                                  | Degree0 -> {symbol.Pos with Y=symbol.Pos.Y-0.2*float(height)}
 
     | Mux2 | Mux4 | Mux8 -> match orientation with
                             | Degree90 -> {symbol.Pos with X=centre.X-0.3*float(height); 
@@ -537,20 +540,20 @@ let getTopLeft (symbol:Symbol) (centre:XYPos) (orientation:Rotation) =
 
 let getCentre (symbol:Symbol) = 
     match symbol.Component.Type with 
-    | Mux2 -> match symbol.STransform.Rotation with
-              | Degree0 | Degree270 -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; 
-                                        Y=symbol.Pos.Y - float(symbol.Component.H/2)}  
-              | Degree90 -> {X=symbol.Pos.X+0.3*float(symbol.Component.W); 
-                             Y=symbol.Pos.Y - float(symbol.Component.H/2)}
-              | Degree180 -> {X=symbol.Pos.X + float(symbol.Component.W/2);
-                              Y=symbol.Pos.Y-0.3*float(symbol.Component.H)}
-    | Demux2 -> match symbol.STransform.Rotation with
-                | Degree90 | Degree180 -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; 
-                                           Y=symbol.Pos.Y - float(symbol.Component.H/2)}  
-                | Degree0 -> {X=symbol.Pos.X + float(symbol.Component.W/2);
-                              Y=symbol.Pos.Y-0.3*float(symbol.Component.H)}
-                | Degree270 -> {X=symbol.Pos.X+0.3*float(symbol.Component.W); 
-                                Y=symbol.Pos.Y - float(symbol.Component.H/2)}
+    | Mux2 | Mux4 | Mux8  -> match symbol.STransform.Rotation with
+                             | Degree0 | Degree270 -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; 
+                                                       Y=symbol.Pos.Y - float(symbol.Component.H/2)}  
+                             | Degree90 -> {X=symbol.Pos.X+0.3*float(symbol.Component.W); 
+                                            Y=symbol.Pos.Y - float(symbol.Component.H/2)}
+                             | Degree180 -> {X=symbol.Pos.X + float(symbol.Component.W/2);
+                                             Y=symbol.Pos.Y-0.3*float(symbol.Component.H)}
+    | Demux2 | Demux4 | Demux8 -> match symbol.STransform.Rotation with
+                                  | Degree90 | Degree180 -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; 
+                                                             Y=symbol.Pos.Y - float(symbol.Component.H/2)}  
+                                  | Degree0 -> {X=symbol.Pos.X + float(symbol.Component.W/2);
+                                                Y=symbol.Pos.Y-0.3*float(symbol.Component.H)}
+                                  | Degree270 -> {X=symbol.Pos.X+0.3*float(symbol.Component.W); 
+                                                  Y=symbol.Pos.Y - float(symbol.Component.H/2)}
     | _ -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; Y=symbol.Pos.Y - float(symbol.Component.H/2)}
 
 
@@ -748,15 +751,15 @@ let compSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
         | Viewer _ -> (sprintf "%f,%i %i,%i %f,%i %i,%i %i,%i" (float(width)*(0.2)) 0 0 halfheight (float(width)*(0.2)) height width height width 0)
         | MergeWires -> (sprintf "%i,%f %i,%f " halfwidth ((1.0/6.0)*float(height)) halfwidth ((5.0/6.0)*float(height)))
         | SplitWire _ ->  (sprintf "%i,%f %i,%f " halfwidth ((1.0/6.0)*float(height)) halfwidth ((5.0/6.0)*float(height)))
-        | Demux2 -> match orientation with
-                    | Degree0 -> 
-                        (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (0.2*float(height)) 0 (0.8*float(height)) width height width 0) 
-                    | Degree90 -> 
-                        (sprintf "%f,%i %i,%i %i,%i %f,%i" (0.2*float(width)) 0 0 height width height (0.8*float(width)) 0)
-                    | Degree180 -> 
-                        (sprintf "%i,%i %i,%i %i,%f %i,%f" 0 0 0 height width (0.8*float(height)) width (0.2*float(height)))
-                    | Degree270 -> 
-                        (sprintf "%i,%i %f,%i %f,%i %i,%i" 0 0 (0.2*float(width)) height (0.8*float(width)) height width 0 )
+        | Demux2 | Demux4 | Demux8 -> match orientation with
+                                      | Degree0 -> 
+                                        (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (0.2*float(height)) 0 (0.8*float(height)) width height width 0) 
+                                      | Degree90 -> 
+                                        (sprintf "%f,%i %i,%i %i,%i %f,%i" (0.2*float(width)) 0 0 height width height (0.8*float(width)) 0)
+                                      | Degree180 -> 
+                                        (sprintf "%i,%i %i,%i %i,%f %i,%f" 0 0 0 height width (0.8*float(height)) width (0.2*float(height)))
+                                      | Degree270 -> 
+                                        (sprintf "%i,%i %f,%i %f,%i %i,%i" 0 0 (0.2*float(width)) height (0.8*float(width)) height width 0 )
         | Mux2 | Mux4 | Mux8 -> match orientation with
                                 | Degree0 -> 
                                     (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 width (0.2*float(height)) width (0.8*float(height)) 0 height ) 
