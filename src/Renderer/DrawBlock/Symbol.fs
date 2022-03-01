@@ -12,22 +12,36 @@ open System.Text.RegularExpressions
 
 
 /// --------- STATIC VARIABLES --------- ///
+
 let GridSize = 30 
 
 /// ---------- SYMBOL TYPES ---------- ///
+
+/// Represents the rotation of a symbol in degrees, Degree0 is the default symbol rotation.
+/// Angle is anticlockwise
 type Rotation = | Degree0 | Degree90 | Degree180 | Degree270
 
+/// Stores the rotation and the flip of the symbol, flipped false by default
 type STransform = {Rotation: Rotation; flipped: bool}
 
+/// Represents the sides of a component
 type Edge = | Top | Bottom | Left | Right
 
+/// Wraps around the input and output port id types
 type PortId = | InputId of InputPortId | OutputId of OutputPortId
 
+/// Represents a symbol, that contains a component and all the other information needed to render
 type Symbol =
     {
+        /// Coordinates of the symbol's top left corner
         Pos: XYPos
+        
+        /// Width of the input port 0
         InWidth0: int option
+
+        /// Width of the output port 1
         InWidth1: int option
+
         Id : ComponentId       
         Component : Component                 
         Colour: string
@@ -36,25 +50,36 @@ type Symbol =
         Opacity: float
         Moving: bool
         STransform: STransform
+
+        /// Maps the port ids to which side of the component the port is on
         PortOrientation: Map<string, Edge>
-        PortOrder: Map<Edge, string list> //stores the order of ports on each edge
-        //APortOffsetsMap: Map<string, XYPos>
+
+        /// Maps the sides of the symbol to a list of portIds representing the order of the ports on the specific side
+        PortOrder: Map<Edge, string list>
+
     }
 
+/// Represents all the symbols and ports on the sheet
 type Model = {
     Symbols: Map<ComponentId, Symbol>
+
+    /// All the symbols currently on the clipboard
     CopiedSymbols: Map<ComponentId, Symbol>
-    Ports: Map<string, Port>                            // string since it's for both input and output ports
 
-    InputPortsConnected:  Set<InputPortId>              // we can use a set since we only care if an input port 
-                                                        // is connected or not (if so it is included) in the set 
+    /// Contains all the input and output ports in the model (currently rendered)
+    Ports: Map<string, Port>
 
-    OutputPortsConnected: Map<OutputPortId, int>        // map of output port id to number of wires connected to that port
+    /// Contains all the inputports that have a wire connected to them.
+    /// If a port is in the set, it is connected, otherwise it is not
+    InputPortsConnected:  Set<InputPortId>
+
+    /// Represents the number of wires connected to each output port in the model
+    OutputPortsConnected: Map<OutputPortId, int>
     }
 
 //----------------------------Message Type-----------------------------------//
 
-
+/// The different messages coming from sheet, normally represent events
 type Msg =
     | MouseMsg of MouseT
     | AddSymbol of pos:XYPos * compType:ComponentType * lbl: string
@@ -80,15 +105,6 @@ type Msg =
     | RotateRight of compList: ComponentId list
     | Flip of compList: ComponentId list
 
-//---------------------------------helper types and functions----------------//
-
-let posDiff (a:XYPos) (b:XYPos) =
-    {X=a.X-b.X; Y=a.Y-b.Y}
-
-let posAdd (a:XYPos) (b:XYPos) =
-    {X=a.X+b.X; Y=a.Y+b.Y}
-
-let posOf x y = {X=x;Y=y}
 
 
 // ----- helper functions for titles ----- //
@@ -196,6 +212,9 @@ let customToLength (lst : (string * int) list) =
     if List.isEmpty labelList then 0 //if a component has no inputs or outputs list max will fail
     else List.max labelList
 
+//---------------------------------------------------------------------------------//
+//--------------------PR2518 CODE SECTION STARTS-------------------------------------//
+//---------------------------------------------------------------------------------//
 
 let initPortOrientation (comp: Component) =
     
@@ -239,6 +258,10 @@ let initPortOrientation (comp: Component) =
     | Demux2 ->
         movePortToBottom res 1
     | _ -> res
+
+//---------------------------------------------------------------------------------//
+//--------------------PR2518 CODE SECTION ENDS-------------------------------------//
+//---------------------------------------------------------------------------------//
 
 // helper function to initialise each type of component
 let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) : Component =
@@ -339,6 +362,10 @@ let inline getPortPosEdgeGap (ct: ComponentType) =
     | MergeWires | SplitWire _  -> 0.25
     | _ -> 1.0
 
+//---------------------------------------------------------------------------------//
+//--------------------PR2518 CODE SECTION STARTS-------------------------------------//
+//---------------------------------------------------------------------------------//
+
 ///Given a symbol and a Port, it returns the orientation of the port
 let getSymbolPortOrientation (sym: Symbol) (port: Port): Edge =
     let portId = port.Id
@@ -369,7 +396,7 @@ let isMuxSel (sym:Symbol) (side:Edge): bool =
         | _ -> false
 
 
-///based on a symbol and an edge, if the port is a mux select, return an extra offset required for the port (because of the weird shape of the mux)
+/// Based on a symbol and an edge, if the port is a mux select, return an extra offset required for the port (because of the weird shape of the mux)
 let getMuxSelOffset (sym: Symbol) (side: Edge): XYPos =
     if isMuxSel sym side then
         match side with 
@@ -407,6 +434,9 @@ let getPortPos (sym: Symbol) (port: Port) : XYPos =
 let getPortPosModel (model: Model) (port:Port) =
     getPortPos (Map.find (ComponentId port.HostId) model.Symbols) port
 
+//---------------------------------------------------------------------------------//
+//--------------------PR2518 CODE SECTION ENDS-------------------------------------//
+//---------------------------------------------------------------------------------//
 
 //-----------------------------------------DRAWING HELPERS ---------------------------------------------------
 // Text adding function with many parameters (such as bold, position and text)
@@ -483,6 +513,7 @@ let addHorizontalColorLine posX1 posX2 posY opacity (color:string) = // TODO: Li
 
 
 /// --------------------------------------- SYMBOL DRAWING ------------------------------------------------------ ///   
+
 let compSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float)= 
     let h,w = getHAndW symbol
     let halfW = comp.W/2
@@ -644,8 +675,13 @@ let view (model : Model) (dispatch : Msg -> unit) =
     |> ofList
     |> TimeHelpers.instrumentInterval "SymbolView" start
 
+//---------------------------------------------------------------------------------//
+//--------------------PR2518 CODE SECTION STARTS-------------------------------------//
+//---------------------------------------------------------------------------------//
+
 //------------------------GET BOUNDING BOXES FUNCS--------------------------------used by sheet.
-/// Returns the bounding box of a symbol. It is defined by the height and the width as well as the x,y position of the symbol. TODO: handle rotation -> should be good
+/// Returns the bounding box of a symbol. It is defined by the height and the width as well as the x,y position of the symbol.
+/// Works with rotation.
 let getSymbolBoundingBox (sym:Symbol): BoundingBox =
     let h,w = //might need to redo, bounding box should be top left, and maybe we should just return h and w as they are
         match sym.STransform.Rotation with
@@ -671,17 +707,13 @@ let getSymbolPos (symbolModel: Model) compId = //makes sense or should we have g
     let symbol = Map.find compId symbolModel.Symbols
     symbol.Pos
 
-///Returns the port object associated with a given portId
-let getPort (symModel: Model) (portId: string) =
-    symModel.Ports[portId]
-
 /// Interface function to get componentIds of the copied symbols
 let getCopiedSymbols (symModel: Model) : (ComponentId list) =
     symModel.CopiedSymbols
     |> Map.toList
     |> List.map fst
 
-/// returns the string of a PortId
+/// Returns the string of a PortId
 let getPortIdStr (portId: PortId) = 
     match portId with
     | InputId (InputPortId id) -> id
@@ -723,27 +755,27 @@ let getTwoPortLocations (model: Model) (inputPortId: InputPortId ) (outputPortId
     (getInputPortLocation model inputPortId, getOutputPortLocation model outputPortId)
 
 ///Returns the input port positions of the specified symbols in model
-///only called in getPortLocations, might need more refactoring
 let getInputPortsLocationMap (model: Model) (symbols: Symbol list)  = 
     let getSymbolInputPortsLoc sym =
-        sym.Component.InputPorts |> List.map (fun port -> (InputPortId port.Id, (getPortPos sym port) + (sym.Pos)))
+        sym.Component.InputPorts 
+        |> List.map (fun port -> (InputPortId port.Id, (getPortPos sym port) + (sym.Pos)))
         
     symbols
     |> List.collect getSymbolInputPortsLoc
     |> Map.ofList
 
 /// Returns the output port positions of the specified symbols in model
-/// only called in getPortLocations might need more refactoring
 let getOutputPortsLocationMap (model: Model) (symbols: Symbol list)  =
     let getSymbolOutputPortsLoc sym =
-        sym.Component.OutputPorts |> List.map (fun port -> (OutputPortId port.Id, (getPortPos sym port) + (sym.Pos)))
+        sym.Component.OutputPorts 
+        |> List.map (fun port -> (OutputPortId port.Id, (getPortPos sym port) + (sym.Pos)))
         
     symbols
     |> List.collect getSymbolOutputPortsLoc
     |> Map.ofList
 
 
-///Returns all the port locations of the given components   
+/// Returns all the port locations of the given components   
 let getPortLocations (model: Model) (symbolIds: ComponentId list) = 
     let symbols = 
         model.Symbols 
@@ -758,14 +790,14 @@ let getPortLocations (model: Model) (symbolIds: ComponentId list) =
  
 //--------------------- GENERATING LABEL FUNCTIONS-------------------------------
 
-///Returns the number of the component label (i.e. the number 1 from IN1 or ADDER16.1)
+/// Returns the number of the component label (i.e. the number 1 from IN1 or ADDER16.1)
 let getLabelNumber (str : string) = 
     let index = Regex.Match(str, @"\d+$")
     match index with
     | null -> 0
     | _ -> int index.Value
 
-/// generates the label number for compType (i.e. the number 1 in IN1 or ADDER16.1)
+/// Generates the label number for compType (i.e. the number 1 in IN1 or ADDER16.1) in a string format
 let generateLabelNumber listSymbols compType =
     let samePrefix (target: ComponentType) (symbol: Symbol) : bool =
         let compType = symbol.Component.Type
@@ -785,7 +817,7 @@ let generateLabelNumber listSymbols compType =
             |> (+) 1
         |> string
 
-///Generates the label for a component type
+/// Generates the label for a component type
 let generateLabel (model: Model) (compType: ComponentType) : string =
     let listSymbols = List.map snd (Map.toList model.Symbols) 
     let prefix = prefix compType
@@ -793,6 +825,7 @@ let generateLabel (model: Model) (compType: ComponentType) : string =
     | IOLabel -> prefix
     | _ -> prefix + (generateLabelNumber listSymbols compType)
 
+/// Initialises and returns the new portOrientation and portOrder of a pasted symbol as a tuple
 let initCopiedPorts (oldSymbol:Symbol) (newComp: Component) =
     let inPortIds = List.map (fun (p:Port) -> p.Id)  newComp.InputPorts
     let outPortIds = List.map (fun (p:Port) -> p.Id) newComp.OutputPorts
@@ -870,7 +903,8 @@ let pasteSymbols (symModel: Model) (newBasePos: XYPos) : (Model * ComponentId li
 let getPortHostId (model: Model) portId =
    model.Ports[portId].HostId
 
-/// Tries to find the target in copiedIds, and tries to return the item at the same index in pastedIds
+/// Tries to find the target in copiedIds, and tries to return the item at the same index in pastedIds.
+/// Returns Some if there is exactly one element in copiedIds matching the target AND if there is an element in pastedIds at that same index, None otherwise.
 let tryGetPastedEl copiedIds pastedIds target =
     // try to look for a symbol in copiedIds, get the index and return pastedIds[index]
     let indexedTarget = 
@@ -934,7 +968,7 @@ let addSymbol (model: Model) pos compType lbl =
     let newSymModel = Map.add newSym.Id newSym model.Symbols
     { model with Symbols = newSymModel; Ports = newPorts }, newSym.Id
 
-/// Helper function to change the number of bits expected in a port of each component type, could return the model instead no?
+/// Helper function to change the number of bits expected in a port of each component type.
 let changeNumberOfBitsf (symModel:Model) (compId:ComponentId) (newBits : int) =
     let symbol = Map.find compId symModel.Symbols
 
@@ -981,9 +1015,8 @@ let changeConstantf (symModel:Model) (compId:ComponentId) (constantVal:int64) (c
     printfn "Changing symbol to: %A" newcompotype
     {symbol with Component = newcompo}
 
-//Helper functions for the upadte function
+//---------------------Helper functions for the upadte function------------------------------//
 
-/// initialises the port positions of a component that are needed in Symbol
 
 /// Given a model and a list of component ids deletes the specified components from the model and returns the updated model
 let inline deleteSymbols (model: Model) compIds =
@@ -1011,7 +1044,7 @@ let inline showAllInputPorts (model: Model) =
 
     { model with Symbols = newSymbols }
 
-/// Given a model it shows all output ports and hides all input ports, then returns the updated model |  MAKE INLINE
+/// Given a model it shows all output ports and hides all input ports, then returns the updated model
 let inline showAllOutputPorts (model: Model) =
     let showSymbolOutPorts _ sym = 
         {sym with ShowInputPorts = false; ShowOutputPorts = true}
@@ -1033,6 +1066,7 @@ let inline deleteAllPorts (model: Model) =
 
     { model with Symbols = updatedSymbols}
 
+/// Given a model it shows all the specified components' ports and hides all the other ones
 let inline showPorts (model: Model) compList =
     let hideSymbolPorts _ sym =
         {sym with ShowInputPorts = false; ShowOutputPorts = false}
@@ -1081,7 +1115,7 @@ let inline moveSymbols (model:Model) (compList: ComponentId list) (offset: XYPos
 
     { model with Symbols = newSymbols }
 
-///given a model and a component id list, sets the color of the sepcified symbols to red and every other symbol's color to light gray
+/// Given a model and a component id list, sets the color of the sepcified symbols to red and every other symbol's color to gray
 let inline symbolsHaveError model compList =
     let resetSymbols = 
         model.Symbols
@@ -1095,7 +1129,7 @@ let inline symbolsHaveError model compList =
         ||> List.fold setSymColorToRed 
     { model with Symbols = newSymbols }
 
-/// Given a model and a component id list, it updates the specified symbols' colour to light green, and every other symbols' colour to lightgray with max opacity.
+/// Given a model and a component id list, it updates the specified symbols' colour to green with max opacity, and every other symbols' colour to gray
 let inline selectSymbols model compList =
     let resetSymbols = 
         model.Symbols
@@ -1144,7 +1178,7 @@ let inline changeLabel (model: Model) sId newLabel=
     let newSym = {oldSym with Component = newComp}
     { model with Symbols = Map.add sId newSym model.Symbols }
 
-/// Given a model, a component id list and a color, updates the color of the specified symbols and returns the updates model.
+/// Given a model, a component id list and a color, updates the color of the specified symbols and returns the updated model.
 let inline colorSymbols (model: Model) compList colour =
     let changeSymColour (prevSymbols: Map<ComponentId, Symbol>) (sId: ComponentId) =
         let newSymbol = {prevSymbols[sId] with Colour = string colour}
@@ -1260,6 +1294,7 @@ let rotateAngleRight (rotation: Rotation) : Rotation =
     | Degree180 -> Degree90
     | Degree270 -> Degree180
 
+/// Takes a symbol in and returns the same symbol rotated left
 let rotateSymbolLeft (sym: Symbol) : Symbol =
     // update comp w h
     match sym.Component.Type with
@@ -1288,6 +1323,7 @@ let rotateSymbolLeft (sym: Symbol) : Symbol =
             STransform =newSTransform;  
         }
 
+/// Takes in a symbol and returns the same symbol rotated right
 let rotateSymbolRight (sym: Symbol) : Symbol =
     match sym.Component.Type with
     | Custom _-> sym
@@ -1314,7 +1350,7 @@ let rotateSymbolRight (sym: Symbol) : Symbol =
             PortOrder = newPortOrder;
             STransform =newSTransform;  
         }
-
+/// Flips an angle horizontally
 let flipAngleHorizontal (rotation: Rotation): Rotation =
     match rotation with
     | Degree90 | Degree270 -> 
@@ -1323,7 +1359,7 @@ let flipAngleHorizontal (rotation: Rotation): Rotation =
         |> rotateAngleRight
     | _ -> rotation
 
-
+/// Flips a side horizontally
 let flipSideHorizontal (edge: Edge) : Edge =
     match edge with
     | Left | Right ->
@@ -1332,6 +1368,7 @@ let flipSideHorizontal (edge: Edge) : Edge =
         |> rotateSideRight
     | _ -> edge
 
+/// Takes in a symbol and returns the same symbol flipped
 let flipSymbolHorizontal (sym:Symbol) : Symbol =
     match sym.Component.Type with
     | Custom _ -> sym
@@ -1356,8 +1393,7 @@ let flipSymbolHorizontal (sym:Symbol) : Symbol =
             STransform = newSTransform
         }
         
-
-/// update function which displays symbols
+/// Update function which displays symbols
 let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
     match msg with
     | DeleteSymbols compIds ->
@@ -1467,3 +1503,7 @@ let extractComponents (symModel: Model) : Component list =
     symModel.Symbols
     |> Map.toList
     |> List.map (fun (key, _) -> extractComponent symModel key)
+
+//---------------------------------------------------------------------------------//
+//--------------------PR2518 CODE SECTION ENDS-------------------------------------//
+//---------------------------------------------------------------------------------//
