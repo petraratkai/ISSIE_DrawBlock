@@ -544,6 +544,10 @@ let getCentre (symbol:Symbol) =
                                                   Y=symbol.Pos.Y - float(symbol.Component.H/2)}
     | _ -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; Y=symbol.Pos.Y - float(symbol.Component.H/2)}
 
+let rec reverseList lst =
+    match lst with
+    | [] -> []
+    | hd::tl -> reverseList tl @ [hd]
 
 ///Symbol Rotation Right
 let rotateSymbolRight (symbol:Symbol) (rotateby:Rotation) = 
@@ -709,6 +713,7 @@ let rotateSymbolLeft (symbol:Symbol) (rotateby:Rotation) =
                  PortOrientation=updatePortOrientation; 
                  PortOrder=updatePortOrder}                         
 
+///Flip symbol horizontaly
 let flipHorizontal (symbol:Symbol) : Symbol = 
     let orientation = symbol.STransform.Rotation
 
@@ -723,19 +728,60 @@ let flipHorizontal (symbol:Symbol) : Symbol =
         symbol.PortOrientation
         |> Map.map (fun portid edge -> flipSide edge)
 
+    let reversePortList (edge:Edge) (portList: string List) = 
+        match edge with
+        | Top | Bottom -> reverseList portList
+        | _ -> portList
+
     //Update port order
     let updatePortOrder = 
         symbol.PortOrder
         |> inverseMap
-        |> Map.map (fun portlist edge -> flipSide edge) 
+        |> Map.map (fun portList edge -> flipSide edge) 
         |> inverseMap
+        |> Map.map reversePortList
 
     let updateOrientation = {flipped=not symbol.STransform.flipped;
-                     Rotation=symbol.STransform.Rotation}
+                             Rotation=symbol.STransform.Rotation}
 
     {symbol with STransform=updateOrientation; 
                  PortOrientation=updatePortOrientation; 
                  PortOrder=updatePortOrder} 
+
+///Flip symbol vertically
+let flipVertical (symbol: Symbol) : Symbol = 
+    let orientation = symbol.STransform.Rotation
+
+    let flipSide(edge:Edge) = 
+        match edge with
+        | Top -> Bottom
+        | Bottom -> Top
+        | Left -> Left
+        | Right -> Right
+
+    let updatePortOrientation = 
+        symbol.PortOrientation
+        |> Map.map (fun portid edge -> flipSide edge)
+
+    let reversePortList (edge:Edge) (portList: string List) = 
+        match edge with
+        | Left | Right -> reverseList portList
+        | _ -> portList
+
+    //Update port order
+    let updatePortOrder = 
+        symbol.PortOrder
+        |> inverseMap
+        |> Map.map (fun portList edge -> flipSide edge) 
+        |> inverseMap
+        |> Map.map reversePortList
+
+    let updateOrientation = {flipped=not symbol.STransform.flipped;
+                             Rotation=symbol.STransform.Rotation}
+
+    {symbol with STransform=updateOrientation; 
+                 PortOrientation=updatePortOrientation; 
+                 PortOrder=updatePortOrder}
 
 /// --------------------------------------- SYMBOL DRAWING ------------------------------------------------------ ///   
 
