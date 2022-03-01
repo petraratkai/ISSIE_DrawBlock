@@ -79,6 +79,7 @@ type Msg =
     | WriteMemoryType of ComponentId * ComponentType
     | RotateLeft of compList : ComponentId list * rotateby: Rotation
     | RotateRight of compList: ComponentId list * rotateby: Rotation
+    | Flip of compList: ComponentId list
 
 //---------------------------------helper types and functions----------------//
 
@@ -588,6 +589,10 @@ let getCentre (symbol:Symbol) =
                                                   Y=symbol.Pos.Y - float(symbol.Component.H/2)}
     | _ -> {X=symbol.Pos.X + float(symbol.Component.W/2) ; Y=symbol.Pos.Y - float(symbol.Component.H/2)}
 
+let rec reverseList lst =
+    match lst with
+    | [] -> []
+    | hd::tl -> reverseList tl @ [hd]
 
 ///Symbol Rotation Right
 let rotateSymbolRight (symbol:Symbol) (rotateby:Rotation) = 
@@ -759,11 +764,47 @@ let rotateSymbolLeft (symbol:Symbol) (rotateby:Rotation) =
                  PortOrientation=updatePortOrientation; 
                  PortOrder=updatePortOrder}                         
 
+///Flip symbol horizontaly
+let flipSymbolHorizontal (symbol:Symbol) : Symbol = 
+    let orientation = symbol.STransform.Rotation
+
+    let flipSide (edge: Edge) = 
+        match edge with
+        | Top -> Top
+        | Bottom -> Bottom
+        | Left -> Right
+        | Right -> Left
+
+    let updatePortOrientation = 
+        symbol.PortOrientation
+        |> Map.map (fun portid edge -> flipSide edge)
+
+    let reversePortList (edge:Edge) (portList: string List) = 
+        match edge with
+        | Top | Bottom -> reverseList portList
+        | _ -> portList
+
+    //Update port order
+    let updatePortOrder = 
+        symbol.PortOrder
+        |> inverseMap
+        |> Map.map (fun portList edge -> flipSide edge) 
+        |> inverseMap
+        |> Map.map reversePortList
+
+    let updateOrientation = {flipped=not symbol.STransform.flipped;
+                             Rotation=symbol.STransform.Rotation}
+
+    {symbol with STransform=updateOrientation; 
+                 PortOrientation=updatePortOrientation; 
+                 PortOrder=updatePortOrder} 
+
 /// --------------------------------------- SYMBOL DRAWING ------------------------------------------------------ ///   
 
 let compSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float)= 
     let comp = symbol.Component
     let orientation = symbol.STransform.Rotation
+    let isFlipped = symbol.STransform.flipped
     let height = comp.H
     let width = comp.W
     let halfwidth = comp.W/2
@@ -789,24 +830,48 @@ let compSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
         | Viewer _ -> (sprintf "%f,%i %i,%i %f,%i %i,%i %i,%i" (float(width)*(0.2)) 0 0 halfheight (float(width)*(0.2)) height width height width 0)
         | MergeWires -> (sprintf "%i,%f %i,%f " halfwidth ((1.0/6.0)*float(height)) halfwidth ((5.0/6.0)*float(height)))
         | SplitWire _ ->  (sprintf "%i,%f %i,%f " halfwidth ((1.0/6.0)*float(height)) halfwidth ((5.0/6.0)*float(height)))
-        | Demux2 | Demux4 | Demux8 -> match orientation with
-                                      | Degree0 -> 
-                                        (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (0.2*float(height)) 0 (0.8*float(height)) width height width 0) 
-                                      | Degree90 -> 
-                                        (sprintf "%f,%i %i,%i %i,%i %f,%i" (0.2*float(width)) 0 0 height width height (0.8*float(width)) 0)
-                                      | Degree180 -> 
-                                        (sprintf "%i,%i %i,%i %i,%f %i,%f" 0 0 0 height width (0.8*float(height)) width (0.2*float(height)))
-                                      | Degree270 -> 
-                                        (sprintf "%i,%i %f,%i %f,%i %i,%i" 0 0 (0.2*float(width)) height (0.8*float(width)) height width 0 )
-        | Mux2 | Mux4 | Mux8 -> match orientation with
-                                | Degree0 -> 
-                                    (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 width (0.2*float(height)) width (0.8*float(height)) 0 height ) 
-                                | Degree90 -> 
-                                    (sprintf "%i,%i %i,%i  %f,%i %f,%i" 0 0 width 0 (0.8*float(width)) height (0.2*float(width)) height) 
-                                | Degree180 -> 
-                                    (sprintf "%i,%f %i,%i  %i,%i %i,%f" 0 (0.2*float(height)) width 0 width height 0 (0.8*float(height))) 
-                                | Degree270 -> 
-                                    (sprintf "%f,%i %f,%i  %i,%i %i,%i" (0.2*float(width)) 0 (0.8*float(width)) 0 width height 0 height)  
+        | Demux2 | Demux4 | Demux8 -> match isFlipped with
+                                      | false -> match orientation with 
+                                                 | Degree0 -> 
+                                                     (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (0.2*float(height)) 0 (0.8*float(height)) width height width 0) 
+                                                 | Degree90 -> 
+                                                     (sprintf "%f,%i %i,%i %i,%i %f,%i" (0.2*float(width)) 0 0 height width height (0.8*float(width)) 0)
+                                                 | Degree180 -> 
+                                                     (sprintf "%i,%i %i,%i %i,%f %i,%f" 0 0 0 height width (0.8*float(height)) width (0.2*float(height)))
+                                                 | Degree270 -> 
+                                                     (sprintf "%i,%i %f,%i %f,%i %i,%i" 0 0 (0.2*float(width)) height (0.8*float(width)) height width 0 )
+                                      | true -> match orientation with 
+                                                | Degree0 -> 
+                                                    (sprintf "%i,%i %i,%i %i,%f %i,%f" 0 0 0 height width (0.8*float(height)) width (0.2*float(height)))
+                                                | Degree90 -> 
+                                                    (sprintf "%f,%i %i,%i %i,%i %f,%i" (0.2*float(width)) 0 0 height width height (0.8*float(width)) 0)
+                                                | Degree180 -> 
+                                                    (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (0.2*float(height)) 0 (0.8*float(height)) width height width 0) 
+                                                | Degree270 -> 
+                                                    (sprintf "%i,%i %f,%i %f,%i %i,%i" 0 0 (0.2*float(width)) height (0.8*float(width)) height width 0 )                                
+        
+        | Mux2 | Mux4 | Mux8 -> match isFlipped with 
+                                | false -> match orientation with
+                                           | Degree0 -> 
+                                               (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 width (0.2*float(height)) width (0.8*float(height)) 0 height ) 
+                                           | Degree90 -> 
+                                               (sprintf "%i,%i %i,%i  %f,%i %f,%i" 0 0 width 0 (0.8*float(width)) height (0.2*float(width)) height) 
+                                           | Degree180 -> 
+                                               (sprintf "%i,%f %i,%i  %i,%i %i,%f" 0 (0.2*float(height)) width 0 width height 0 (0.8*float(height))) 
+                                           | Degree270 -> 
+                                               (sprintf "%f,%i %f,%i  %i,%i %i,%i" (0.2*float(width)) 0 (0.8*float(width)) 0 width height 0 height) 
+                                
+                                | true -> match orientation with
+                                          | Degree0 -> 
+                                              (sprintf "%i,%f %i,%i  %i,%i %i,%f" 0 (0.2*float(height)) width 0 width height 0 (0.8*float(height))) 
+                                          | Degree90 -> 
+                                              (sprintf "%i,%i %i,%i  %f,%i %f,%i" 0 0 width 0 (0.8*float(width)) height (0.2*float(width)) height) 
+                                          | Degree180 -> 
+                                              (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 width (0.2*float(height)) width (0.8*float(height)) 0 height ) 
+                                          | Degree270 -> 
+                                              (sprintf "%f,%i %f,%i  %i,%i %i,%i" (0.2*float(width)) 0 (0.8*float(width)) 0 width height 0 height)
+                                              
+        
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
         | BusSelection _ |BusCompare _ -> (sprintf "%i,%i %i,%i %f,%i %f,%f %i,%f %i,%f %f,%f %f,%i ")0 0 0 height (0.6*float(width)) height (0.8*float(width)) (0.7*float(height)) width (0.7*float(height)) width (0.3*float(height)) (0.8*float(width)) (0.3*float(height)) (0.6*float(width)) 0
         | _ -> (sprintf "%i,%i %i,%i %i,%i %i,%i" 0 height width height width 0 0 0)
@@ -1619,6 +1684,14 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
             compList |> List.map (fun id-> rotateSymbolRight model.Symbols[id] rotateby)
         let newSymbolMap = 
             (model.Symbols, rotatedSymbols) 
+            ||> List.fold (fun currSymMap sym -> currSymMap |> Map.add sym.Id sym)
+        { model with Symbols = newSymbolMap }, Cmd.none
+
+    | Flip compList ->
+        let flippedSymbols = 
+            compList |> List.map (fun id-> flipSymbolHorizontal model.Symbols[id])
+        let newSymbolMap = 
+            (model.Symbols, flippedSymbols) 
             ||> List.fold (fun currSymMap sym -> currSymMap |> Map.add sym.Id sym)
         { model with Symbols = newSymbolMap }, Cmd.none
         
