@@ -101,7 +101,7 @@ type Msg =
     | ResetModel // For Issie Integration
     | LoadConnections of list<Connection> // For Issie Integration
     | UpdateWireType of WireType
-    | Rotate of list<ComonentId>
+    | Rotate of list<ComponentId>
 
 
 /// <summary> Applies a function which requires the segment start and end positions to the segments in a wire, 
@@ -1149,13 +1149,14 @@ let updateWire (model : Model) (wire : Wire) (inOut : bool) =
 //---------------------------------------------------------------------------------//
 
 let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
-    let mutable neWX = model.Wires
+    let mutable newWX: Map<ConnectionId, Wire> = model.Wires
     // Arrays are faster to check than lists
     let wiresWithNoJumpsA = List.toArray wiresWithNoJumps
     let changeJumps wid index jumps =
         let jumps = List.sortDescending jumps
         let changeSegment segs =
-            List.mapi (fun i x -> if i <> index then x else { x with JumpCoordinateList = jumps }) segs
+            List.mapi (fun i x -> if i <> index then x else { x with IntersectCoordinateList = jumps }) segs
+           
 
         newWX <- Map.add wid { newWX[wid] with Segments = changeSegment newWX[wid].Segments } newWX
 
@@ -1199,10 +1200,11 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
                     | newJumps, oldJ ->
                         let newJ = List.sort newJumps
                        // oldJ is already sorted (we only ever write newJ back to model)
-                        if newJ <> oldJ then changeJumps h.HostId h.Index newJumps else ()
+                        if newJ <> oldJ then changeJumps seg.HostId seg.Index newJumps else ()
             foldOverSegs findJumpsForSegment () wire
 
     { model with Wires = newWX }
+    
 
 
 let updateWireSegmentJumps (wireList: list<ConnectionId>) (wModel: Model) : Model =
@@ -1510,6 +1512,18 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
             | Modern -> model.Wires |> Map.map (fun id w -> {w with WireType = Modern})
 
         { model with Wires = updateStyle }, Cmd.none
+
+    | Rotate (componentIds: ComponentId list) ->
+        let updatedWireEntries = 
+            componentIds
+            |> getConnectedWires model
+            |> List.map (autorouteWire model)
+            |> List.map (fun wire -> wire.Id, wire)
+            |> Map.ofList
+        
+        let updatedWires = Map.fold (fun merged id wire -> Map.add id wire merged) model.Wires updatedWireEntries
+
+        { model with Wires = updatedWires }, Cmd.none
 
     //| Rotate (componentIds: ComponentId list)
        // -> {model with Wires = updateWires}, Cmd.None
