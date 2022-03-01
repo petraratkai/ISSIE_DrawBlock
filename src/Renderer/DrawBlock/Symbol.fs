@@ -90,14 +90,6 @@ let posAdd (a:XYPos) (b:XYPos) =
 
 let posOf x y = {X=x;Y=y}
 
-//Calculates the offset of a port from the centre depending on the edge
-let centreOffset (centre:XYPos) (edge:Edge) (commonpos:float) pos = 
-
-    match edge with
-    | Left | Right -> {X=float(commonpos - centre.X) ; Y=float(pos-centre.Y)}
-
-    | Top | Bottom -> {X=float(pos-centre.X) ; Y=float(commonpos - centre.Y)}
-
 // ----- helper functions for titles ----- //
 
 ///Insert titles compatible with greater than 1 buswidth
@@ -178,9 +170,6 @@ let portDecName (comp:Component) = //(input port names, output port names)
     | NbitsXor _ -> (["P"; "Q"], ["Out"])
     | Custom x -> (List.map fst x.InputLabels), (List.map fst x.OutputLabels)
     |_ -> ([],[])
-   // |Demux4 -> (["IN"; "SEL"],["0"; "1";"2"; "3";])
-   // |Demux8 -> (["IN"; "SEL"],["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7"])
-   // |_ -> ([],[])
    // EXTENSION: Extra Components made that are not currently in Issie. Can be extended later by using this code as it is .
 
 /// Genererates a list of ports:
@@ -213,23 +202,9 @@ let customToLength (lst : (string * int) list) =
 // helper function to initialise each type of component
 let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) : Component =
 
-    // function that helps avoid dublicate code by initialising parameters that are the same for all component types and takes as argument the others
-    let makeComponent (n, nout, h, w) label : Component=  
-        {
-            Id = id 
-            Type = comptype 
-            Label = label 
-            InputPorts = portLists n id PortType.Input 
-            OutputPorts  = portLists nout id PortType.Output 
-            X  = int (pos.X - float w / 2.0) 
-            Y = int (pos.Y - float h / 2.0) 
-            H = h 
-            W = w
-        }
-    
     // match statement for each component type. the output is a 4-tuple that is used as an input to makecomponent (see below)
     // 4-tuple of the form ( number of input ports, number of output ports, Height, Width)
-    let args = 
+    let arguments = 
         match comptype with
         | ROM _ | RAM _ | AsyncROM _ -> 
             failwithf "What? Legacy RAM component types should never occur"
@@ -267,8 +242,21 @@ let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) :
             let scaledW = roundToN GridSize (maxW * GridSize / 5) //Divide by 5 is just abitrary as otherwise the symbols would be too wide 
             let w = max scaledW (GridSize * 4) //Ensures a minimum width if the labels are very small
             ( List.length x.InputLabels, List.length x.OutputLabels, h ,  w)
-                
-    makeComponent args label
+
+    
+    let inputPortNumber, outputPortNumber, height, weight = arguments
+    
+    {
+         Id = id 
+         Type = comptype 
+         Label = label 
+         InputPorts = portLists inputPortNumber id PortType.Input 
+         OutputPorts  = portLists outputPortNumber id PortType.Output 
+         X  = int (pos.X - float weight / 2.0) 
+         Y = int (pos.Y - float height / 2.0) 
+         H = height
+         W = weight
+    }
    
 //Makes a map of strings for port
 let portMap list (edge: Edge)= 

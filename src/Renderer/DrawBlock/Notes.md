@@ -12,3 +12,11 @@ In this function, I created a function called getOrientationOrderMap which takes
 updated orientation map by creating a map with the inputportids and Left edge and the outputports and Right edge. I concatenate these maps together and add another entry into the map
 with the control port and Bottom edge. For the portordermap, I created a map mapping Left to inputportids, Right to outputportids and Bottom to the control port id. The output symbol is
 changed to initially have an STransform of {Rotation=Degree0; flipped=false} while the pororder and portorientation are updated respectively. 
+
+Refactor:
+
+makeComp 
+
+-Renamed makeComp to makeComponent
+-Renamed args to argument to make it more specific what it represents
+-Removed makeComponent function in makeComp as it is unecessary and instead made more readable variables to put into output component.
