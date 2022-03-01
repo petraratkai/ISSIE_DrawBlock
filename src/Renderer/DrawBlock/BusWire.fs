@@ -1052,7 +1052,7 @@ let getFilteredIdList condition wireLst =
     |> List.map (fun wire -> wire.Id)
     //|> List.distinct // TODO: Figure out if this is needed - I don't think it is
 
-///Returns the IDs of the wires in the model connected to a list of components given by componentIds
+///Returns the wires in the model connected to a list of components given by componentIds
 let getConnectedWires (model: Model) (compIds: list<ComponentId>) =
     let containsPorts wire =
         let inputPorts, outputPorts =
@@ -1063,7 +1063,12 @@ let getConnectedWires (model: Model) (compIds: list<ComponentId>) =
 
     model
     |> getWireList
-    |> getFilteredIdList containsPorts
+    |> List.filter containsPorts
+
+/// Returns the IDs of the wires in the model connected to a list of components given by compIds
+let getConnectedWireIds model compIds =
+    getConnectedWires model compIds
+    |> getFilteredIdList (fun _ -> true)
 
 /// Returns a tuple of: wires connected to inputs ONLY, wires connected to outputs ONLY, wires connected to both inputs and outputs
 let filterWiresByCompMoved (model: Model) (compIds: list<ComponentId>) =
@@ -1773,12 +1778,16 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
         { model with Wires = updateStyle }, Cmd.none
 
     | Rotate (componentIds: ComponentId list) ->
-        printfn $"Rotating!"
-        model, Cmd.none
-    (* Basically, go through all the componentIds, and call autrouting on all their wires
-    | Rotate (componentIds: ComponentId list) -> 
+        let updatedWireEntries = 
+            componentIds
+            |> getConnectedWires model
+            |> List.map (autorouteWire model)
+            |> List.map (fun wire -> wire.Id, wire)
+            |> Map.ofList
         
-        {model with Wires = updateWires}, Cmd.None*)
+        let updatedWires = Map.fold (fun merged id wire -> Map.add id wire merged) model.Wires updatedWireEntries
+
+        { model with Wires = updatedWires }, Cmd.none
 
 //---------------Other interface functions--------------------//
 
