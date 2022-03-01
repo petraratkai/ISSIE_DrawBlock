@@ -85,7 +85,7 @@ type KeyboardMsg =
     | CtrlS | CtrlC | CtrlV | CtrlZ | CtrlY | CtrlA | CtrlW | AltC | AltV | AltZ | AltShiftZ | ZoomIn | ZoomOut | DEL | ESC
 
 type RotateMsg =
-    | Right90Degree | Right180Degree | Right270Degree | Left90Degree | Left180Degree | Left270Degree
+    Left90Degree | Left180Degree | Left270Degree | Right90Degree | Right180Degree | Right270Degree
 
 type Msg =
     | Wire of BusWire.Msg
