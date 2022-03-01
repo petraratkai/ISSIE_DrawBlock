@@ -190,14 +190,14 @@ let portDecName (comp:Component) = //(input port names, output port names)
     | Decode4 -> (["Sel";"Data"],["0"; "1";"2"; "3"])
     | NbitsAdder _ -> (["Cin";"A";"B"],["Sum "; "Cout"])
     | Register _ -> (["D"],["Q"])
-    | RegisterE _ -> (["D"; "EN"],["Q"])
+    | RegisterE _ -> (["EN";"D"],["Q"])
     | ROM1 _ |AsyncROM1 _ -> (["Addr"],["Dout"])
     | RAM1 _ -> (["Addr"; "Din";"Wen" ],["Dout"])
     | AsyncRAM1 _ -> (["Addr"; "Din";"Wen" ],["Dout"])
     | DFF -> (["D"],["Q"])
-    | DFFE -> (["D";"EN"],["Q"])
-    | Mux2 -> (["0"; "1";"SEL"],["OUT"])
-    | Demux2 -> (["IN" ; "SEL"],["0"; "1"])
+    | DFFE -> (["EN";"D"],["Q"])
+    | Mux2 -> (["SEL";"0"; "1"],["OUT"])
+    | Demux2 -> (["SEL";"IN"],["0"; "1"])
     | NbitsXor _ -> (["P"; "Q"], ["Out"])
     | Custom x -> (List.map fst x.InputLabels), (List.map fst x.OutputLabels)
     |_ -> ([],[])
@@ -295,13 +295,27 @@ let makeComponent (pos: XYPos) (comptype: ComponentType) (id:string) (label:stri
     makeComponent' args label
 
 
-/// converts PortOrientation into PortOrder
-let findPortOrder (input : Map<string,Edge>) : Map<Edge,list<string>> =
+/// converts PortOrientation into PortOrder keeps port in order on edges, 
+let findPortOrder (input : Map<string,Edge>) (comp:Component) : Map<Edge,list<string>> =
     let listOfOrientations = Map.toList input
-    let grouped = List.groupBy (fun x -> snd x) listOfOrientations
+    let groupedByEdges = List.groupBy (fun x -> snd x) listOfOrientations
     let removeEdgeFromTuple (side : Edge * list<string*Edge>) : Edge * list<string> =
         fst side , List.map (fun x -> fst x) (snd side)
-    List.map removeEdgeFromTuple grouped
+    let componentPorts = comp.InputPorts @ comp.OutputPorts
+    let getPortNumber portId =
+        let port = List.tryFind (fun (x:Port) -> x.Id = portId) componentPorts
+        match port with
+        | Some x -> match x.PortNumber with
+                    | Some x -> x
+                    | None -> failwithf "port number doesnt exist"
+        | None -> failwithf "port doesnt exist"
+
+    let sortPortsByNumber (edge:Edge,idList:list<string>)  =
+        let sortedIds = List.sortBy getPortNumber idList
+        edge,sortedIds
+
+    List.map removeEdgeFromTuple groupedByEdges
+    |> List.map sortPortsByNumber
     |> Map.ofList
 
 /// assigns default orientation for now (input left : output right) will add mux etc
@@ -313,13 +327,18 @@ let defaultPortOrientation (comp : Component) : Map<string,Edge> =
         List.map (assignEdge Left) comp.InputPorts @ List.map (assignEdge Right) comp.OutputPorts
         |> Map.ofList             
 
+    let portOnBottom =
+        let inputPort0Id = 
+            let port = List.tryFind (fun x -> x.PortNumber = Some 0) comp.InputPorts
+            match port with
+            | Some x -> x.Id
+            | None -> failwithf "errorr"
+        Map.change inputPort0Id (fun x -> Some Bottom) defaultEdges
+
     let portOrientationMap = 
         match comp.Type with
-        | Mux2 -> defaultEdges
-        | DFFE -> defaultEdges
-        | Demux2 -> defaultEdges
-        | NbitsAdder width -> defaultEdges
-        | RegisterE width -> defaultEdges
+        | Mux2 | DFFE | Demux2 -> portOnBottom
+        | NbitsAdder width | RegisterE width -> portOnBottom
         | Custom x -> defaultEdges
         | _ -> defaultEdges
 
@@ -388,7 +407,7 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
         Moving = false
         STransform = {Rotation = Degree0; flipped = false}
         PortOrientation = orientation
-        PortOrder = findPortOrder orientation  
+        PortOrder = findPortOrder orientation comp
     }
     
     
@@ -419,7 +438,7 @@ let rotateSymbol (symb:Symbol) direction : Symbol = //Symbol =
         | Right -> Map.map (fun k (v:Edge) -> v.rotateRight) symb.PortOrientation
         | _ -> failwithf "can only rotate left or right"
         
-    let rotatedPortOrder = findPortOrder rotatedPortOrientation
+    let rotatedPortOrder = findPortOrder rotatedPortOrientation symb.Component
 
     let newSTransform =
         match direction with
@@ -447,7 +466,8 @@ let inline getPortPosEdgeGap (ct: ComponentType) =
     match ct with
     | MergeWires | SplitWire _  -> 0.25
     | _ -> 1.0
-    
+
+
 (*
 let getPortPos (symb: Symbol) (port:Port) = 
     let (ports, posX) =
@@ -461,10 +481,24 @@ let getPortPos (symb: Symbol) (port:Port) =
     {X = posX; Y = posY}
 *)
 
+let getPortPos (symb: Symbol) (port:Port) : XYPos =
+
+    let portSide = match (Map.tryFind port.Id symb.PortOrientation) with
+                   | Some x -> x
+                   | None -> failwithf "port doesn't exist"
+
+    let edgeGap = getPortPosEdgeGap symb.Component.ComponentType
+    let edgePortList = match (Map.tryFind portSide symb,PortOrder) with
+                           | Some x -> x
+                           | None -> failwithf "side doesn't exist"
+    let portsOnSide = List.length edgePortList
+    let index = List.findIndex (fun x -> x = port.Id) edgePortList
+
+
+
 ///Given a symbol and a Port, it returns the orientation of the port
 let getSymbolPortOrientation (sym: Symbol) (port: Port): Edge =
-    let portId = port.Id
-    sym.PortOrientation[portId]
+    sym.PortOrientation[port.Id]
 
 /// Returns the height and width of a symbol
 let getHAndW sym =
@@ -476,10 +510,10 @@ let getHAndW sym =
 let getPortBaseOffset (sym: Symbol) (side: Edge): XYPos=
     let h,w = getHAndW sym
     match side with 
-    | Right -> {X = w; Y = 0.0}
-    | Left -> {X = 0.0; Y = 0.0}
-    | Top -> {X = 0.0; Y = 0.0}
-    | Bottom -> {X = 0.0; Y = h}
+    | Right -> {X = w; Y = 0.}
+    | Left -> {X = 0.; Y = 0.}
+    | Top -> {X = 0.; Y = 0.}
+    | Bottom -> {X = 0.; Y = h}
 
 /// Returns true if an edge has the select port of a mux
 let isMuxSel (sym:Symbol) (side:Edge): bool =
@@ -526,6 +560,7 @@ let getPortPos (sym: Symbol) (port: Port) : XYPos =
         let xOffset = (float(w))* (( float( ports.Length ) - index - 1.0 + gap)/(float (ports.Length) + 2.0*gap - 1.0))
         baseOffset' + {X = xOffset; Y = 0.0 }
 
+/// Finds port position using Model and Port
 let getPortPosModel (model: Model) (port:Port) =
     getPortPos (Map.find (ComponentId port.HostId) model.Symbols) port
 
@@ -553,7 +588,7 @@ let private portText (pos: XYPos) name portType =
     let test = if portType = PortType.Output then "end" else "start"
     (addText pos' name test "normal" "12px")
 
-// Print the name of each port 
+/// Print the name of each port 
 let private drawPortsText (portList: Port List) (listOfNames: string List) (symb: Symbol) = 
     let getPortName name x = portText (getPortPos symb portList[x]) name (portList.Head.PortType)
     if listOfNames.Length < 1
@@ -562,10 +597,8 @@ let private drawPortsText (portList: Port List) (listOfNames: string List) (symb
         [0..(portList.Length-1)]
         |> List.map2 getPortName listOfNames 
         |> List.collect id
-//(fun name x -> (portText (getPortPos comp portList[x]).X (getPortPos comp portList[x]).Y name (portList.Head.PortType)))
-// old fun ^
 
-// Function to draw ports using getPortPos. The ports are equidistant     
+/// Function to draw ports using getPortPos. The ports are equidistant     
 let private drawPorts (portList: Port List) (printPorts:bool) (symb: Symbol)= 
     if (portList.Length < 1) && printPorts 
     then [0..(portList.Length-1)] |> List.collect (fun x -> (portCircles (getPortPos symb portList[x])))
@@ -602,13 +635,14 @@ let outlineColor (color:string) =
         c
 
 let addHorizontalColorLine posX1 posX2 posY opacity (color:string) = // TODO: Line instead of polygon?
-    let points = (sprintf "%i,%f %i,%f" posX1 posY posX2 posY)
-    let olColor = outlineColor color
-    [makePolygon points {defaultPolygon with Fill = "olcolor"; Stroke=olColor; StrokeWidth = "2.0"; FillOpacity = opacity}]
+    let points = sprintf $"{posX1},{posY} {posX2},{posY}"
+    let outlineColor = outlineColor color
+    [makePolygon points {defaultPolygon with Fill = "olcolor"; Stroke=outlineColor; StrokeWidth = "2.0"; FillOpacity = opacity}]
 
 /// --------------------------------------- SYMBOL DRAWING ------------------------------------------------------ ///   
 
-let componentSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float)= 
+let componentSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float)= 
+    let comp = symbol.Component
     let h,w = getHAndW symbol
     let halfW = comp.W/2
     let halfH = (comp.H)/2
@@ -620,7 +654,7 @@ let componentSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputP
             | true, _ -> sprintf $"({msb})"
             | false, _ -> sprintf $"({msb}:{lsb})"
         addHorizontalColorLine posX1 posX2 (posY*float(h)) opacity colour @
-        addText {X = float((posX1 + posX2)/2); Y = (posY*float(h)-11.0)} text "middle" "bold" "9px"
+        addText {X = float((posX1 + posX2)/2); Y = (posY*float(h)-11.)} text "middle" "bold" "9px"
 
 
 
@@ -637,7 +671,6 @@ let componentSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputP
         | Mux2 -> sprintf $"0,0,{w},{float(h)/5.},{w},{float(h)*0.8},0,{h}"
         // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
-
         (*
         | Demux2 when symbol.STransform.flipped = false -> 
             match symbol.STransform. Rotation with
@@ -672,9 +705,9 @@ let componentSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputP
             | Degree270 ->
                 (sprintf "%f,%i %f,%i %i,%i %i,%i" (float(w)*0.2) 0 (float(w)*0.8) 0 w h 0 h)
         *)
-
         // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
+
         | BusSelection _ |BusCompare _ -> sprintf $"0,0,0,{h},{0.6*float(w)},{h},{0.8*float(w)},{0.7*float(h)},{w},{0.7*float(h)},{w},{0.3*float(h)},{0.8*float(w)},{0.3*float(h)},{0.6*float(w)},0"
         | _ -> sprintf $"0,{comp.H},{comp.W},{comp.H},{comp.W},0,0,0"
         
@@ -721,8 +754,8 @@ let componentSymbol (symbol:Symbol) (comp:Component) (colour:string) (showInputP
     |> List.append (drawPorts comp.InputPorts showInputPorts symbol)
     |> List.append (drawPortsText comp.InputPorts (fst(portDecName comp)) symbol)
     |> List.append (drawPortsText comp.OutputPorts (snd(portDecName comp)) symbol)  
-    |> List.append (addText {X = (float halfW); Y = 5.0} (gateDecoderType comp) "middle" "bold" "14px") 
-    |> List.append (addText {X = (float halfW); Y = -20.0} comp.Label "middle" "normal" "16px")
+    |> List.append (addText {X = (float halfW); Y = 5.} (gateDecoderType comp) "middle" "bold" "14px") 
+    |> List.append (addText {X = (float halfW); Y = -20.} comp.Label "middle" "normal" "16px")
     |> List.append (additions)
     |> List.append (createBiColorPolygon points colour outlineColour opacity strokeWidth)
 
@@ -741,7 +774,7 @@ let private renderSymbol =
         fun (props : RenderSymbolProps) ->
             let symbol = props.Symbol
             let ({X=fX; Y=fY}:XYPos) = symbol.Pos
-            g ([ Style [ Transform(sprintf $"translate({fX}px, {fY}px)") ] ]) (componentSymbol props.Symbol props.Symbol.Component symbol.Colour symbol.ShowInputPorts symbol.ShowOutputPorts symbol.Opacity)
+            g ([ Style [ Transform(sprintf $"translate({fX}px, {fY}px)") ] ]) (componentSymbol props.Symbol symbol.Colour symbol.ShowInputPorts symbol.ShowOutputPorts symbol.Opacity)
             
         , "Symbol"
         , equalsButFunctions
@@ -749,7 +782,7 @@ let private renderSymbol =
     
 let view (model : Model) (dispatch : Msg -> unit) =    
     /// View function for symbol layer of SVG
-    let MapsIntoLists map =
+    let toListOfMovingAndNot map =
         let listMoving = 
             Map.filter (fun _ sym -> not sym.Moving) map
             |> Map.toList
@@ -762,7 +795,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
 
     let start = TimeHelpers.getTimeMs()
     model.Symbols
-    |> MapsIntoLists
+    |> toListOfMovingAndNot
     |> List.map (fun ({Id = ComponentId id} as symbol) ->
         renderSymbol
             {
@@ -1282,7 +1315,7 @@ let inline createSymbol prevSymbols comp =
                 InWidth1 = None
                 STransform = {Rotation= Degree0; flipped= false}
                 PortOrientation = orientation
-                PortOrder = findPortOrder orientation                           
+                PortOrder = findPortOrder orientation comp                        
                 //PortOrientation = portOrientation
                 //PortOrder = portOrder
             }
