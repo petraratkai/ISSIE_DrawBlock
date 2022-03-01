@@ -154,7 +154,7 @@ let logSegmentId (id:SegmentId) =
 
 /// Logs the given Segment and returns it unchanged. Used for debugging.
 let logSegment (seg:Segment) =
-    printfn $"|{seg.Index}:{formatSegmentId seg.Id}|"; seg
+    printfn $"|{seg.Index}:{formatSegmentId seg.Id}|-Length: {seg.Length}"; seg
 
 /// Logs the given ConnectionId and returns it unchanged. Used for debugging.
 let logConnectionId (id:ConnectionId) =
@@ -1115,8 +1115,8 @@ let rotate90Port (port: PortInfo) =
     let newEdge = rotate90Edge port.Edge
 
     let newPos =
-        { X = -port.Position.Y
-          Y = port.Position.X }
+        { X = port.Position.Y
+          Y = -port.Position.X }
 
     genPortInfo newEdge newPos
 
@@ -1181,6 +1181,8 @@ let autorouteWire (model: Model) (wire: Wire) : Wire =
     printfn $"Start = {startPort}\nNormalised start = {normalisedStart}\n,Dest = {destPort}\nnormalised dest = {normalisedEnd}"
     let initialSegments =
         makeInitialSegmentsList wire.Id normalisedStart.Position normalisedEnd.Position normalisedEnd.Edge
+        |> List.map logSegment
+
     let segments =
         {| edge = Symbol.Right
            segments = initialSegments |}
@@ -1523,11 +1525,8 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
         updateWires model componentIdList diff, Cmd.none
 
     | AddWire ( (inputId, outputId) : (InputPortId * OutputPortId) ) ->
-        let portOnePos, portTwoPos = Symbol.getTwoPortLocations model.Symbol inputId outputId
         let wireWidthFromSymbol = WireWidth.Configured 1
         let wireId = ConnectionId(JSHelpers.uuid())
-        let segmentList = makeInitialSegmentsList wireId portOnePos portTwoPos (Symbol.getInputPortOrientation model.Symbol inputId)
-        
         let newWire = 
             {
                 Id = wireId
@@ -1535,14 +1534,15 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                 OutputPort = outputId
                 Color = HighLightColor.DarkSlateGrey
                 Width = 1
-                Segments = segmentList
+                Segments = []
                 Type = Jump // CHANGE THIS
-                StartPos = portOnePos
-                EndPos = portTwoPos
-                InitialOrientation = Symbol.getInputPortOrientation model.Symbol inputId |> getOrientation
-                EndOrientation = Symbol.getOutputPortOrientation model.Symbol outputId |> getOrientation
+                StartPos = { X = 0; Y = 0 }
+                EndPos = { X = 0; Y = 0 }
+                InitialOrientation = Horizontal
+                EndOrientation = Horizontal
             }
-            
+            |> autorouteWire model
+        
         let wireAddedMap = Map.add newWire.Id newWire model.Wires
         let newModel = updateWireSegmentJumps [wireId] {model with Wires = wireAddedMap}
 
@@ -1817,19 +1817,17 @@ let pasteWires (wModel : Model) (newCompIds : list<ComponentId>) : (Model * list
     
             match Symbol.getEquivalentCopiedPorts wModel.Symbol oldCompIds newCompIds (oldWire.InputPort, oldWire.OutputPort) with
             | Some (newInputPort, newOutputPort) ->
-
-                let portOnePos, portTwoPos = Symbol.getTwoPortLocations wModel.Symbol (InputPortId newInputPort) (OutputPortId newOutputPort)
-                let segmentList = makeInitialSegmentsList newId portOnePos portTwoPos (Symbol.getOutputPortOrientation wModel.Symbol (OutputPortId newOutputPort))
                 [
                     {
                         oldWire with
                             Id = newId;
                             InputPort = InputPortId newInputPort;
                             OutputPort = OutputPortId newOutputPort;
-                            Segments = segmentList;
-                            StartPos = portOnePos;
-                            EndPos = portTwoPos
+                            Segments = [];
+                            StartPos = { X = 0; Y = 0 };
+                            EndPos = { X = 0; Y = 0 }
                     }
+                    |> autorouteWire wModel
                 ]
             | None -> []
         
