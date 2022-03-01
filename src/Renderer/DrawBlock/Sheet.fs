@@ -347,19 +347,27 @@ let isBBoxAllVisible (bb: BoundingBox) =
 
 /// could be made more efficient, since segments contain redundant info
 let getWireBBox (wire: BusWire.Wire) (model: Model) =
-    let updateBoundingBox segStart (segEnd: XYPos) state seg =
+    (*let updateBoundingBox segStart (segEnd: XYPos) state seg =
         let newTop = min state.TopLeft.Y segEnd.Y
         let newBottom = max (state.TopLeft.Y+state.H) segEnd.Y
         let newRight = max (state.TopLeft.X+state.W) segEnd.X
         let newLeft = min state.TopLeft.X segEnd.X
         {TopLeft={X=newTop; Y=newLeft}; W=newRight-newLeft; H=newBottom-newTop }
-    BusWire.foldOverSegs updateBoundingBox {TopLeft = wire.StartPos; W=0; H=0;} wire
+    BusWire.foldOverSegs updateBoundingBox {TopLeft = wire.StartPos; W=0; H=0;} wire*)
+    let coords = 
+        wire.Segments
+        |> List.collect (fun seg -> [seg.Start; seg.End])
+    let xCoords =  coords |> List.map (fun xy -> xy.X)
+    let yCoords =  coords |> List.map (fun xy -> xy.Y)
+    let lh,rh = List.min xCoords, List.max xCoords
+    let top,bottom = List.min yCoords, List.max yCoords
+    {TopLeft={X=lh; Y = top}; W = rh - lh; H = bottom - top}
     
 
 let isAllVisible (model: Model)(conns: ConnectionId list) (comps: ComponentId list) =
     let wVisible =
         conns
-        |> List.map (fun cid -> Map.tryFind cid model.Wire.Wires)
+        |> List.map (fun cid -> Map.tryFind cid model.Wire.WX)
         |> List.map (Option.map (fun wire -> getWireBBox wire model))
         |> List.map (Option.map isBBoxAllVisible)
         |> List.map (Option.defaultValue true)
@@ -888,7 +896,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
         | [] -> model , Cmd.none
         | prevModel :: lst -> 
             let symModel = { prevModel.Wire.Symbol with CopiedSymbols = model.Wire.Symbol.CopiedSymbols }
-            let wireModel = { prevModel.Wire with CopiedWires = model.Wire.CopiedWires ; Symbol = symModel}
+            let wireModel = { prevModel.Wire with CopiedWX = model.Wire.CopiedWX ; Symbol = symModel}
             { prevModel with Wire = wireModel ; UndoList = lst ; RedoList = model :: model.RedoList ; CurrentKeyPresses = Set.empty } , Cmd.none
     | KeyPress CtrlY -> 
         match model.RedoList with 
@@ -896,7 +904,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
         | newModel :: lst -> { newModel with UndoList = model :: model.UndoList ; RedoList = lst} , Cmd.none
     | KeyPress CtrlA -> 
         let symbols = model.Wire.Symbol.Symbols |> Map.toList |> List.map fst
-        let wires = model.Wire.Wires |> Map.toList |> List.map fst
+        let wires = model.Wire.WX |> Map.toList |> List.map fst
         { model with 
             SelectedComponents = symbols
             SelectedWires = wires
