@@ -199,6 +199,50 @@ let customToLength (lst : (string * int) list) =
     if List.isEmpty labelList then 0 //if a component has no inputs or outputs list max will fail
     else List.max labelList
 
+
+let initPortOrientation (comp: Component) =
+    
+    let movePortToBottom (res: Map<Edge, string list>*Map<string, Edge>) index =
+        let leftPorts = (fst res)[Left]
+        let portId = leftPorts |> List.item index //get id of sel
+
+        let newBottomPorts = [portId]
+        let newLeftPorts = (fst res)[Left] |> List.removeAt index
+        let newPortOrder =
+            fst res
+            |> Map.add Bottom newBottomPorts
+            |> Map.add Left newLeftPorts
+        let newPortOrientation =
+            snd res |> Map.add portId Bottom
+        newPortOrder, newPortOrientation
+
+    let addPortToMaps (edge: Edge) ((portOrder:Map<Edge, string list>), portOrientation) (port: Port) =
+        let portOrder' = portOrder |> Map.add edge (portOrder[edge] @ [port.Id])
+        portOrder', (portOrientation |> Map.add port.Id edge)
+    let defaultportOrder = 
+        (Map.empty, [Left; Right; Top; Bottom])
+        ||> List.fold (fun currMap edge -> Map.add edge [] currMap)
+
+    let inputMaps =
+        ((defaultportOrder, Map.empty), comp.InputPorts)
+        ||> List.fold (addPortToMaps Left)
+
+    let res = 
+        (inputMaps, (List.rev comp.OutputPorts))
+        ||> List.fold (addPortToMaps Right)
+    match comp.Type with //need to put some ports to different edges
+    | Mux2 -> //need to remove select port from left and move to right
+        movePortToBottom res 2
+    | NbitsAdder _ -> 
+        movePortToBottom res 0
+    | DFFE ->
+        movePortToBottom res 1
+    | RegisterE _ ->
+        movePortToBottom res 1
+    | Demux2 ->
+        movePortToBottom res 1
+    | _ -> res
+
 // helper function to initialise each type of component
 let makeComp (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) : Component =
 
@@ -1010,6 +1054,36 @@ let generateLabel (model: Model) (compType: ComponentType) : string =
     | IOLabel -> prefix
     | _ -> prefix + (generateLabelNumber listSymbols compType)
 
+let initCopiedPorts (oldSymbol:Symbol) (newComp: Component) =
+    let inPortIds = List.map (fun (p:Port) -> p.Id)  newComp.InputPorts
+    let outPortIds = List.map (fun (p:Port) -> p.Id) newComp.OutputPorts
+    let oldInPortIds =  
+        List.map (fun (p:Port) -> p.Id) oldSymbol.Component.InputPorts
+    let oldOutPortIds =
+        List.map (fun (p:Port) -> p.Id) oldSymbol.Component.OutputPorts
+    let equivPortIds = 
+        List.zip oldInPortIds inPortIds @ List.zip oldOutPortIds outPortIds
+        |> Map.ofList
+    let portOrientation = 
+        (Map.empty,oldSymbol.PortOrientation)
+        ||> Map.fold 
+            (fun currMap oldPortId edge -> Map.add equivPortIds[oldPortId] edge currMap)
+
+    let emptyPortOrder = 
+        (Map.empty, [Top; Bottom; Left; Right])
+        ||> List.fold (fun currMap side -> Map.add side [] currMap)
+    let portOrder =
+        (emptyPortOrder, oldSymbol.PortOrder)
+        ||> Map.fold 
+            (fun currMap side oldList -> 
+                let newList =
+                    ([], oldList)
+                    ||> List.fold 
+                        (fun currList oldPortId ->
+                            currList @ [equivPortIds[oldPortId]])
+                Map.add side newList currMap)
+    portOrientation, portOrder
+
 /// Interface function to paste symbols. Is a function instead of a message because we want an output.
 /// Currently drag-and-drop.
 /// Pastes a list of symbols into the model and returns the new model and the id of the pasted modules.
@@ -1023,13 +1097,17 @@ let pasteSymbols (symModel: Model) (newBasePos: XYPos) : (Model * ComponentId li
             |> generateLabel { symModel with Symbols = currSymbolModel.Symbols}
 
         let newComp = makeComp newPos compType newId newLabel
+        let portOrientation, portOrder = initCopiedPorts oldSymbol newComp
         let newSymbol =
             { oldSymbol with
                 Id = ComponentId newId
                 Component = newComp
                 Pos = newPos
                 ShowInputPorts = false
-                ShowOutputPorts = false }
+                ShowOutputPorts = false
+                PortOrientation = portOrientation
+                PortOrder = portOrder
+            }
              
         let newSymbolMap = currSymbolModel.Symbols.Add (ComponentId newId, newSymbol)
         let newPorts = addToPortModel currSymbolModel newSymbol
@@ -1169,6 +1247,186 @@ let changeConstantf (symModel:Model) (compId:ComponentId) (constantVal:int64) (c
 /// initialises the port positions of a component that are needed in Symbol
 
 
+    let movePortToBottom (res: Map<Edge, string list>*Map<string, Edge>) index =
+        let leftPorts = (fst res)[Left]
+        let portId = leftPorts |> List.item index //get id of sel
+
+        let newBottomPorts = [portId]
+        let newLeftPorts = (fst res)[Left] |> List.removeAt index
+        let newPortOrder =
+            fst res
+            |> Map.add Bottom newBottomPorts
+            |> Map.add Left newLeftPorts
+        let newPortOrientation =
+            snd res |> Map.add portId Bottom
+        newPortOrder, newPortOrientation
+
+    let addPortToMaps (edge: Edge) (portOrder, portOrientation) (port: Port) =
+        let portOrder' = portOrder |> Map.add edge (portOrder[edge] @ [port.Id])
+        portOrder', (portOrientation |> Map.add port.Id edge)
+
+    let inputMaps =
+        ((Map.empty, Map.empty), comp.InputPorts)
+        ||> List.fold (addPortToMaps Left)
+
+    let res = 
+        (inputMaps, comp.OutputPorts)
+        ||> List.fold (addPortToMaps Right)
+    match comp.Type with //need to put some ports to different edges
+    | Mux2 -> //need to remove select port from left and move to right
+        movePortToBottom res 2
+    | NbitsAdder _ -> 
+        movePortToBottom res 0
+    | DFFE ->
+        movePortToBottom res 1
+    | RegisterE _ ->
+        movePortToBottom res 1
+    | _ -> res
+
+    let movePortToBottom (res: Map<Edge, string list>*Map<string, Edge>) index =
+        let leftPorts = (fst res)[Left]
+        let portId = leftPorts |> List.item index //get id of sel
+
+        let newBottomPorts = [portId]
+        let newLeftPorts = (fst res)[Left] |> List.removeAt index
+        let newPortOrder =
+            fst res
+            |> Map.add Bottom newBottomPorts
+            |> Map.add Left newLeftPorts
+        let newPortOrientation =
+            snd res |> Map.add portId Bottom
+        newPortOrder, newPortOrientation
+
+    let addPortToMaps (edge: Edge) (portOrder, portOrientation) (port: Port) =
+        let portOrder' = portOrder |> Map.add edge (portOrder[edge] @ [port.Id])
+        portOrder', (portOrientation |> Map.add port.Id edge)
+
+    let inputMaps =
+        ((Map.empty, Map.empty), comp.InputPorts)
+        ||> List.fold (addPortToMaps Left)
+
+    let res = 
+        (inputMaps, comp.OutputPorts)
+        ||> List.fold (addPortToMaps Right)
+    match comp.Type with //need to put some ports to different edges
+    | Mux2 -> //need to remove select port from left and move to right
+        movePortToBottom res 2
+    | NbitsAdder _ -> 
+        movePortToBottom res 0
+    | DFFE ->
+        movePortToBottom res 1
+    | RegisterE _ ->
+        movePortToBottom res 1
+    | _ -> res
+
+    let movePortToBottom (res: Map<Edge, string list>*Map<string, Edge>) index =
+        let leftPorts = (fst res)[Left]
+        let portId = leftPorts |> List.item index //get id of sel
+
+        let newBottomPorts = [portId]
+        let newLeftPorts = (fst res)[Left] |> List.removeAt index
+        let newPortOrder =
+            fst res
+            |> Map.add Bottom newBottomPorts
+            |> Map.add Left newLeftPorts
+        let newPortOrientation =
+            snd res |> Map.add portId Bottom
+        newPortOrder, newPortOrientation
+
+    let addPortToMaps (edge: Edge) (portOrder, portOrientation) (port: Port) =
+        let portOrder' = portOrder |> Map.add edge (portOrder[edge] @ [port.Id])
+        portOrder', (portOrientation |> Map.add port.Id edge)
+
+    let inputMaps =
+        ((Map.empty, Map.empty), comp.InputPorts)
+        ||> List.fold (addPortToMaps Left)
+
+    let res = 
+        (inputMaps, comp.OutputPorts)
+        ||> List.fold (addPortToMaps Right)
+    match comp.Type with //need to put some ports to different edges
+    | Mux2 -> //need to remove select port from left and move to right
+        movePortToBottom res 2
+    | NbitsAdder _ -> 
+        movePortToBottom res 0
+    | DFFE ->
+        movePortToBottom res 1
+    | RegisterE _ ->
+        movePortToBottom res 1
+    | _ -> res
+
+    let movePortToBottom (res: Map<Edge, string list>*Map<string, Edge>) index =
+        let leftPorts = (fst res)[Left]
+        let portId = leftPorts |> List.item index //get id of sel
+
+        let newBottomPorts = [portId]
+        let newLeftPorts = (fst res)[Left] |> List.removeAt index
+        let newPortOrder =
+            fst res
+            |> Map.add Bottom newBottomPorts
+            |> Map.add Left newLeftPorts
+        let newPortOrientation =
+            snd res |> Map.add portId Bottom
+        newPortOrder, newPortOrientation
+
+    let addPortToMaps (edge: Edge) (portOrder, portOrientation) (port: Port) =
+        let portOrder' = portOrder |> Map.add edge (portOrder[edge] @ [port.Id])
+        portOrder', (portOrientation |> Map.add port.Id edge)
+
+    let inputMaps =
+        ((Map.empty, Map.empty), comp.InputPorts)
+        ||> List.fold (addPortToMaps Left)
+
+    let res = 
+        (inputMaps, comp.OutputPorts)
+        ||> List.fold (addPortToMaps Right)
+    match comp.Type with //need to put some ports to different edges
+    | Mux2 -> //need to remove select port from left and move to right
+        movePortToBottom res 2
+    | NbitsAdder _ -> 
+        movePortToBottom res 0
+    | DFFE ->
+        movePortToBottom res 1
+    | RegisterE _ ->
+        movePortToBottom res 1
+    | _ -> res
+
+    let movePortToBottom (res: Map<Edge, string list>*Map<string, Edge>) index =
+        let leftPorts = (fst res)[Left]
+        let portId = leftPorts |> List.item index //get id of sel
+
+        let newBottomPorts = [portId]
+        let newLeftPorts = (fst res)[Left] |> List.removeAt index
+        let newPortOrder =
+            fst res
+            |> Map.add Bottom newBottomPorts
+            |> Map.add Left newLeftPorts
+        let newPortOrientation =
+            snd res |> Map.add portId Bottom
+        newPortOrder, newPortOrientation
+
+    let addPortToMaps (edge: Edge) (portOrder, portOrientation) (port: Port) =
+        let portOrder' = portOrder |> Map.add edge (portOrder[edge] @ [port.Id])
+        portOrder', (portOrientation |> Map.add port.Id edge)
+
+    let inputMaps =
+        ((Map.empty, Map.empty), comp.InputPorts)
+        ||> List.fold (addPortToMaps Left)
+
+    let res = 
+        (inputMaps, comp.OutputPorts)
+        ||> List.fold (addPortToMaps Right)
+    match comp.Type with //need to put some ports to different edges
+    | Mux2 -> //need to remove select port from left and move to right
+        movePortToBottom res 2
+    | NbitsAdder _ -> 
+        movePortToBottom res 0
+    | DFFE ->
+        movePortToBottom res 1
+    | RegisterE _ ->
+        movePortToBottom res 1
+    | _ -> res
+
 /// Given a model and a list of component ids deletes the specified components from the model and returns the updated model
 let inline deleteSymbols (model: Model) compIds =
     let newSymbols = 
@@ -1279,84 +1537,6 @@ let inline symbolsHaveError model compList =
         ||> List.fold setSymColorToRed 
     { model with Symbols = newSymbols }
 
-/// Given a model and a component id list, it updates the specified symbols' colour to light green, and every other symbols' colour to lightgray with max opacity.
-let inline selectSymbols model compList =
-    let resetSymbols = 
-        model.Symbols
-        |> Map.map (fun _ sym -> 
-            { sym with Colour = "Lightgray"; Opacity = 1.0 }) 
-
-    let updateSymbolColour prevSymbols sId =
-        Map.add sId {resetSymbols[sId] with Colour = "lightgreen"} prevSymbols
-    
-    let newSymbols =
-        (resetSymbols, compList)
-        ||> List.fold updateSymbolColour 
-
-    { model with Symbols = newSymbols }
-
-/// Given a model, an error component list, a selected component id list, it updates the selected symbols' color to green if they are not selected, and changes the symbols with errors to red. It returns the updated model.
-let inline errorSymbols model (errorCompList,selectCompList,isDragAndDrop) =
-    let resetSymbols = 
-        model.Symbols
-        |> Map.map 
-            (fun _ sym ->  { sym with Colour = "Lightgray"; Opacity = 1.0 })
-            
-    let updateSymbolStyle prevSymbols sId =
-        if not isDragAndDrop then 
-            Map.add sId {resetSymbols[sId] with Colour = "lightgreen"} prevSymbols
-        else 
-            Map.add sId { resetSymbols[sId] with Opacity = 0.2 } prevSymbols
-
-    let selectSymbols =
-        (resetSymbols, selectCompList)
-        ||> List.fold updateSymbolStyle 
-
-    let setSymColourToRed prevSymbols sId =
-        Map.add sId {resetSymbols[sId] with Colour = "Red"} prevSymbols
-
-    let newSymbols = 
-        (selectSymbols, errorCompList)
-        ||> List.fold setSymColourToRed
-        
-    { model with Symbols = newSymbols }
-
-/// Given a model, a symbol id and a new label changes the label of the symbol to the new label and returns the updated model.
-let inline changeLabel (model: Model) sId newLabel=
-    let oldSym = model.Symbols[sId]
-    let newComp = {oldSym.Component with Label = newLabel}
-    let newSym = {oldSym with Component = newComp}
-    { model with Symbols = Map.add sId newSym model.Symbols }
-
-/// Given a model, a component id list and a color, updates the color of the specified symbols and returns the updates model.
-let inline colorSymbols (model: Model) compList colour =
-    let changeSymColour (prevSymbols: Map<ComponentId, Symbol>) (sId: ComponentId) =
-        let newSymbol = {prevSymbols[sId] with Colour = string colour}
-        prevSymbols |> Map.add sId newSymbol
-
-    let newSymbols =
-        (model.Symbols, compList)
-        ||> List.fold changeSymColour
-
-    { model with Symbols = newSymbols }
-
-let initPortOrientation (comp: Component) =
-    
-    let movePortToBottom (res: Map<Edge, string list>*Map<string, Edge>) index =
-        let leftPorts = (fst res)[Left]
-        let portId = leftPorts |> List.item index //get id of sel
-
-        let newBottomPorts = [portId]
-        let newLeftPorts = (fst res)[Left] |> List.removeAt index
-        let newPortOrder =
-            fst res
-            |> Map.add Bottom newBottomPorts
-            |> Map.add Left newLeftPorts
-        let newPortOrientation =
-            snd res |> Map.add portId Bottom
-        newPortOrder, newPortOrientation
-
-    let addPortToMaps (edge: Edge) ((portOrder:Map<Edge, string list>), portOrientation) (port: Port) =
         let portOrder' = portOrder |> Map.add edge (portOrder[edge] @ [port.Id])
         portOrder', (portOrientation |> Map.add port.Id edge)
     let defaultportOrder = 
@@ -1459,6 +1639,84 @@ let inline writeMemoryType model compId memory =
     
     { model with Symbols = newSymbols }
 
+let rotateSideLeft (side:Edge) :Edge =
+    match side with
+    | Top -> Left
+    | Left -> Bottom
+    | Bottom -> Right
+    | Right -> Top
+
+let rotateSideRight (side:Edge) :Edge =
+    match side with
+    | Top -> Right
+    | Left -> Top
+    | Bottom -> Left
+    | Right -> Bottom
+
+let rotateAngleLeft (rotation: Rotation) : Rotation =
+    match rotation with
+    | Degree0 -> Degree90
+    | Degree90 -> Degree180
+    | Degree180 -> Degree270
+    | Degree270 -> Degree0
+
+let rotateAngleRight (rotation: Rotation) : Rotation =
+    match rotation with
+    | Degree0 -> Degree270
+    | Degree90 -> Degree0
+    | Degree180 -> Degree90
+    | Degree270 -> Degree180
+
+let rotateSymbolLeft (sym: Symbol) : Symbol =
+    // update comp w h
+    let h,w = getHAndW sym
+    let newXY = sym.Pos + { X = (float)w/2.0 - (float) h/2.0 ;Y = (float) h/2.0 - (float)w/2.0 }
+
+    //need to update portOrientation and portOrder
+    let newPortOrientation = 
+        sym.PortOrientation |> Map.map (fun id side -> rotateSideLeft side)
+
+    let rotatePortListLeft currPortOrder side =
+        sym.PortOrder |> Map.add (rotateSideLeft side ) sym.PortOrder[side]
+
+    let newPortOrder = 
+        (Map.empty, [Top; Left; Bottom; Right]) ||> List.fold rotatePortListLeft
+
+    let newSTransform = 
+        {sym.STransform with Rotation = rotateAngleLeft sym.STransform.Rotation}
+
+    { sym with 
+        Pos = newXY;
+        PortOrientation = newPortOrientation;
+        PortOrder = newPortOrder;
+        STransform =newSTransform;  
+    }
+
+let rotateSymbolRight (sym: Symbol) : Symbol =
+    // update comp w h
+    let h,w = getHAndW sym
+    let newXY = sym.Pos + { X = (float)w/2.0 - (float) h/2.0 ;Y = (float) h/2.0 - (float)w/2.0 }
+
+    //need to update portOrientation and portOrder
+    let newPortOrientation = 
+        sym.PortOrientation |> Map.map (fun id side -> rotateSideRight side)
+
+    let rotatePortListRight currPortOrder side =
+        sym.PortOrder |> Map.add (rotateSideRight side ) sym.PortOrder[side]
+
+    let newPortOrder = 
+        (Map.empty, [Top; Left; Bottom; Right]) ||> List.fold rotatePortListRight
+
+    let newSTransform = 
+        {sym.STransform with Rotation = rotateAngleRight sym.STransform.Rotation}
+
+    { sym with 
+        Pos = newXY;
+        PortOrientation = newPortOrientation;
+        PortOrder = newPortOrder;
+        STransform =newSTransform;  
+    }
+
 /// update function which displays symbols
 let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
     match msg with
@@ -1550,6 +1808,14 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
             compList |> List.map (fun id-> rotateSymbolRight model.Symbols[id] rotateby)
         let newSymbolMap = 
             (model.Symbols, rotatedSymbols) 
+            ||> List.fold (fun currSymMap sym -> currSymMap |> Map.add sym.Id sym)
+        { model with Symbols = newSymbolMap }, Cmd.none
+
+    | Flip compList ->
+        let flippedSymbols = 
+            compList |> List.map (fun id-> flipSymbolHorizontal model.Symbols[id])
+        let newSymbolMap = 
+            (model.Symbols, flippedSymbols) 
             ||> List.fold (fun currSymMap sym -> currSymMap |> Map.add sym.Id sym)
         { model with Symbols = newSymbolMap }, Cmd.none
         
