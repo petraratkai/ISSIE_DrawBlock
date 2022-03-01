@@ -103,6 +103,10 @@ type Msg =
     | LoadConnections of list<Connection> // For Issie Integration
     | Rotate of list<ComponentId>
 
+//---------------------------------------------------------------------------------//
+//--------------------STS219 CODE SECTION STARTS-------------------------------------//
+//---------------------------------------------------------------------------------//
+
 /// Returns an XYPos shifted by length in an X or Y direction defined by orientation.
 let addLengthToPos (position: XYPos) orientation length =
     match orientation with
@@ -242,6 +246,10 @@ let logSegmentsInModel (model: Model) (wireSegmentIdPairs: (ConnectionId * Segme
     |> List.map  ( fun (wireId, segId) -> logSegmentInModel model wireId segId)
     |> ignore
     model
+
+//---------------------------------------------------------------------------------//
+//--------------------STS219 CODE SECTION ENDS-------------------------------------//
+//---------------------------------------------------------------------------------//
 
 //-------------------------------Implementation code----------------------------//
 
@@ -1784,7 +1792,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
 
 //---------------Other interface functions--------------------//
 
-/// Checks if a wire intersects a bounding box by checking if any of its segments intersect
+/// Checks if a wire intersects a bounding box by checking if any of its segments intersect (sts219)
 let wireIntersectsBoundingBox (wire : Wire) (bb : BoundingBox) =
     let segmentIntersectsBox segStart segEnd state seg =
         match state with
