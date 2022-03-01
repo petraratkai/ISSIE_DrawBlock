@@ -53,9 +53,11 @@ let private testXYPosComparison a  (b:XYPos) =
 
 
 type BoundingBox = {
-    X: float
-    Y: float
+    /// Top left corner of the bounding box
+    TopLeft: XYPos
+    /// Width
     W: float
+    /// Height
     H: float
 }
 
