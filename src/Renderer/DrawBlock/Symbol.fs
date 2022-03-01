@@ -465,8 +465,10 @@ let addToPortModel (model: Model) (sym: Symbol) =
 let inline getPortPosEdgeGap (ct: ComponentType) =
     match ct with
     | MergeWires | SplitWire _  -> 0.25
-    | _ -> 1.0
+    | _ -> 0.5
 
+let getComponentPos (comp:Component) =
+    {X = comp.X; Y = comp.Y}
 
 (*
 let getPortPos (symb: Symbol) (port:Port) = 
@@ -482,29 +484,58 @@ let getPortPos (symb: Symbol) (port:Port) =
 *)
 
 let getPortPos (symb: Symbol) (port:Port) : XYPos =
-
-    let portSide = match (Map.tryFind port.Id symb.PortOrientation) with
-                   | Some x -> x
-                   | None -> failwithf "port doesn't exist"
-
-    let edgeGap = getPortPosEdgeGap symb.Component.ComponentType
-    let edgePortList = match (Map.tryFind portSide symb,PortOrder) with
-                           | Some x -> x
-                           | None -> failwithf "side doesn't exist"
-    let portsOnSide = List.length edgePortList
+    let portSide = symb.PortOrientation[port.Id]
+    let edgePortList = symb.PortOrder[portSide]
+    let numberOfPortsOnSide = List.length edgePortList
     let index = List.findIndex (fun x -> x = port.Id) edgePortList
+    let portSpacing = 
+                    match symb.Component.Type with
+                    | MergeWires | SplitWire _ -> 
+                                            match portSide with
+                                            | Top | Bottom -> {X = float(symb.Component.W)/float(1+numberOfPortsOnSide); Y = 0}
+                                            | Left | Right -> {X = 0; Y = float(symb.Component.H/(1+numberOfPortsOnSide))}
+                    | _ ->       
+                        match portSide with
+                        | Top | Bottom -> {X = float(symb.Component.W)/float(1+numberOfPortsOnSide); Y = 0}
+                        | Left | Right -> {X = 0; Y = float(symb.Component.H/(1+numberOfPortsOnSide))}
+                    
+    let portCorner =
+        match portSide with
+        | Left -> {X = 0.; Y = 0.}
+        | Top -> {X = symb.Component.W; Y = 0.}
+        | Right -> {X = symb.Component.W; Y = symb.Component.H}
+        | Bottom -> {X = 0.; Y = symb.Component.H}
 
-
-
-///Given a symbol and a Port, it returns the orientation of the port
-let getSymbolPortOrientation (sym: Symbol) (port: Port): Edge =
-    sym.PortOrientation[port.Id]
-
+    match symb.Component.Type with
+    | MergeWires -> 
+                    match portSide with
+                    | Left -> portCorner + portSpacing * 2.0 * float(index) + {X = 0; Y = 10.}
+                    | Top -> portCorner - portSpacing * float(index+1)
+                    | Right -> portCorner - portSpacing * float(index+1) 
+                    | Bottom -> portCorner + portSpacing * float(index+1)
+    | SplitWire _ -> 
+                    match portSide with
+                    | Left -> portCorner + portSpacing * float(index+1)
+                    | Top -> portCorner - portSpacing * float(index+1)
+                    | Right -> portCorner - (portSpacing * float(index) * 2.0 + {X = 0; Y = 10.})
+                    | Bottom -> portCorner + portSpacing * float(index+1)
+    | _ ->
+        match portSide with
+        | Left -> portCorner + portSpacing * float(index+1)
+        | Top -> portCorner - portSpacing * float(index+1)
+        | Right -> portCorner - portSpacing * float(index+1) 
+        | Bottom -> portCorner + portSpacing * float(index+1)
+    
 /// Returns the height and width of a symbol
 let getHAndW sym =
     match sym.STransform.Rotation with
     | Degree0 | Degree180 -> sym.Component.H, sym.Component.W
     | _ -> sym.Component.W, sym.Component.H
+
+(*
+///Given a symbol and a Port, it returns the orientation of the port
+let getSymbolPortOrientation (sym: Symbol) (port: Port): Edge =
+    sym.PortOrientation[port.Id]
 
 ///Returns the x offset of a side relative to the symbol orientation
 let getPortBaseOffset (sym: Symbol) (side: Edge): XYPos=
@@ -560,6 +591,7 @@ let getPortPos (sym: Symbol) (port: Port) : XYPos =
         let xOffset = (float(w))* (( float( ports.Length ) - index - 1.0 + gap)/(float (ports.Length) + 2.0*gap - 1.0))
         baseOffset' + {X = xOffset; Y = 0.0 }
 
+*)
 /// Finds port position using Model and Port
 let getPortPosModel (model: Model) (port:Port) =
     getPortPos (Map.find (ComponentId port.HostId) model.Symbols) port
