@@ -195,7 +195,7 @@ let logIntersectionMaps (model:Model) =
     model
 
 /// Formats an XYPos for logging purposes.
-let formatXY (xy: XYPos) = sprintf $"{(xy.X,xy.Y)}"
+let formatXY (xy: XYPos) = sprintf $"{(int(xy.X),int(xy.Y))}"
 
 /// Logs the given wire and returns it unchanged. Used for debugging.
 let logWire wire =
@@ -1266,7 +1266,7 @@ let reverseWire (wire: Wire) =
         InitialOrientation = wire.EndOrientation
         EndOrientation = wire.InitialOrientation }
 
-/// Returns the end of the segment at the target index in the given wire. Throws an error if the target index isn't found
+/// Returns the tupel (startPos, endPos) of the segment at the target index in the given wire. Throws an error if the target index isn't found
 let getAbsoluteSegmentPos (wire: Wire) (target: int) =
     (None, wire)
     ||> foldOverSegs
@@ -1276,84 +1276,85 @@ let getAbsoluteSegmentPos (wire: Wire) (target: int) =
         | None -> failwithf $"Couldn't find index {target} in wire"
         | Some pos -> pos)     
 
-/// Returns the end of the segment at the target index in the given wire. Throws an error if the target index isn't found
-let getSegmentEnd (wire: Wire) (target: int) =
-    (None, wire)
-    ||> foldOverSegs
-        (fun _ endPos state seg ->
-            if seg.Index = target then Some endPos else state)
-    |> (function
-        | None -> failwithf $"Couldn't find index {target} in wire"
-        | Some pos -> pos)        
-
-/// Scales a segment length for partial autorouting
-let scale fixedPoint newStart oldStart length =
-    if newStart = fixedPoint then 
-        length 
-    else 
-        (length * (newStart - fixedPoint) / (oldStart - fixedPoint))
+/// Returns the length to change a segment represented by startPos -> endPos in the appropriate dimension of the difference vector
+let getLengthDiff difference startPos endPos =
+    match getSegmentOrientation startPos endPos with
+    | Horizontal -> toX difference
+    | Vertical -> toY difference
 
 /// Given a segment list, returns the first manual segment index
 let getManualIndex segList =
     segList
     |> List.tryFind (fun seg -> seg.Mode = Manual)
     |> Option.map (fun seg -> seg.Index)
+    |> Option.bind (fun index ->
+        if index < 1 || index >= segList.Length - 1 then
+            None
+        else
+            Some index)
+
+/// Gets the start position for partial routing.
+let getPartialRouteStart wire manualIndex =
+    wire.Segments
+    |> List.tryFind (fun seg -> seg.Index = manualIndex - 1)
+    |> Option.map (fun seg -> seg.Index)
+    |> Option.map (getAbsoluteSegmentPos wire >> fst)
+    |> Option.defaultValue wire.StartPos
+
+/// Partitions a segment list into sections 3 sections for partial autorouting
+let partitionSegments segs manualIdx =
+    let start, tmp =
+        match manualIdx with
+        | 1 -> ([], segs)
+        | _ -> List.splitAt (manualIdx - 1) segs
+
+    let changed, remaining = List.splitAt 2 tmp
+    (start, changed, remaining)
 
 /// Returns None if full autoroute is required or applies partial autorouting
 /// from the start of the wire at newPortPos to the first manually routed segment 
 /// and returns Some wire with the new segments.
 let partialAutoRoute (wire: Wire) (newPortPos: XYPos) = 
     let segs = wire.Segments
-    let portPos = wire.StartPos
-    let manualIndex = getManualIndex segs
     printfn "Initial wire"
     logWire wire |> ignore
     
-    let getStartPos portPos =
-        manualIndex
-        |> Option.map (fun idx -> 
-            if idx = 1 then 
-                portPos 
-            else 
-                (addLengthToPos portPos wire.InitialOrientation segs[0].Length))
-        |> Option.defaultValue portPos
+    let newWire = { wire with StartPos = newPortPos }
 
-    let startPos = getStartPos portPos
-    let newStartPos = getStartPos newPortPos
-
-    let eligibleForPartialRouting index =
-        let fixedPoint = getSegmentEnd wire index
+    let eligibleForPartialRouting manualIdx =
+        let oldStartPos = getPartialRouteStart wire manualIdx
+        let newStartPos = getPartialRouteStart newWire manualIdx
+        let fixedPoint = getAbsoluteSegmentPos wire manualIdx |> snd
         let relativeToFixed = relativePosition fixedPoint
-        if relativeToFixed newStartPos = relativeToFixed startPos then
-            Some index
+        printfn $"Fixed point: {formatXY fixedPoint}\nChange in portPos: {formatXY (posDiff newPortPos wire.StartPos)}\nDiff: {formatXY (posDiff newStartPos oldStartPos)}"
+        if relativeToFixed newStartPos = relativeToFixed oldStartPos then
+            Some (manualIdx, posDiff newStartPos oldStartPos)
         else
             None
-    /// Scales the lengths of the segment list to the segment at index
-    let scaleSegmentsToIndex index =
-        let fixedPoint = getSegmentEnd wire index
-        printfn $"Manual index: {index} | Fixed point: {formatXY fixedPoint}"
-        let scaleXOrY xOrY = scale (xOrY fixedPoint) (xOrY newStartPos) (xOrY startPos) 
-        let scaleX = scaleXOrY toX
-        let scaleY = scaleXOrY toY
+    
+    let updateSegments (manualIdx, diff) =
+        let start, changed, remaining = partitionSegments segs manualIdx
+        printfn "Start segs:"
+        start |> List.map logSegment |> ignore
+        printfn "Changed segs:"
+        changed |> List.map logSegment |> ignore
+        printfn "Remaining segs:"
+        remaining |> List.map logSegment |> ignore
+        printfn "Updated changed segs:"
+        let changed' = 
+            changed
+            |> List.map (fun seg -> 
+                let (startPos, endPos) = getAbsoluteSegmentPos wire seg.Index
+                { seg with Length = seg.Length - getLengthDiff diff startPos endPos })
+            |> List.map logSegment
 
-        match List.splitAt (index + 1) segs, index with
-        | ((scaledSegs), remainingSegs), 1 -> // We only scale the nub if it's the only Auto segment
-            Some(
-                transformSegments scaleX scaleY wire.InitialOrientation scaledSegs
-                @ remainingSegs
-            )
-        | ((nub :: scaledSegs), remainingSegs), _ ->
-            Some(
-                [ nub ]
-                @ transformSegments scaleX scaleY wire.InitialOrientation scaledSegs
-                @ remainingSegs
-            )
-        | _ -> None
-
+        start @ changed' @ remaining
+        
     printfn "Updated wire"
-    manualIndex
+    segs
+    |> getManualIndex
     |> Option.bind eligibleForPartialRouting
-    |> Option.bind scaleSegmentsToIndex
+    |> Option.map updateSegments
     |> Option.map (fun segs -> { wire with Segments = segs; StartPos = newPortPos })
     |> Option.map logWire
 
