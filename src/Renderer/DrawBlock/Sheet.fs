@@ -1087,6 +1087,13 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             //wireCmd (BusWire.Rotate model.SelectedComponents)
         ]
 
+    | Flip ->
+        model,
+        Cmd.batch [
+            symbolCmd (Symbol.Flip model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
+            //wireCmd (BusWire.Flip model.SelectedComponents)
+        ]
+
     // ---------------------------- Issie Messages ---------------------------- //
 
     | InitialiseCreateComponent (compType, lbl) ->

@@ -540,36 +540,118 @@ let inverseMap map =
     |> List.map (fun (k,v) -> (v,k))
     |> Map.ofList
 
-let getTopLeft (symbol:Symbol) (centre:XYPos) (orientation:Rotation) = 
+let getTopLeftRotation (symbol:Symbol) (centre:XYPos) (rotateby:Rotation) (updatedOrientation:Rotation) (flipped:bool) = 
     let symboltype = symbol.Component.Type
     let width = symbol.Component.W
     let height = symbol.Component.H
     match symboltype with
-    | Demux2 | Demux4 | Demux8 -> match orientation with
-                                  | Degree90 -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
-                                                                 Y=centre.Y+0.5*float(width)}
+    | Demux2 | Demux4 | Demux8 -> match rotateby with
+                                  | Degree90 | Degree270 -> match updatedOrientation with
+                                                            | Degree0 -> match flipped with
+                                                                         | true -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
+                                                                                                    Y=centre.Y+0.5*float(width)}
+                                                                         | false -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
+                                                                                                     Y=centre.Y+0.3*float(width)}
 
-                                  | Degree180 -> {symbol.Pos with X=centre.X-0.5*float(width);
-                                                                  Y=centre.Y+0.5*float(height)}
+                                                            | Degree90 -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
+                                                                                           Y=centre.Y+0.5*float(width)}
 
-                                  | Degree270 -> {symbol.Pos with X=centre.X-0.3*float(height); 
-                                                                  Y=centre.Y+float(width/2)}
-                                  | Degree0 -> {symbol.Pos with Y=symbol.Pos.Y-0.2*float(height)}
+                                                            | Degree180 -> match flipped with
+                                                                           | true -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
+                                                                                                      Y=centre.Y+0.3*float(width)}
+                                                                           | false -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
+                                                                                                       Y=centre.Y+0.5*float(width)}
 
-    | Mux2 | Mux4 | Mux8 -> match orientation with
-                            | Degree90 -> {symbol.Pos with X=centre.X-0.3*float(height); 
-                                                           Y=centre.Y+float(width/2)}
+                                                            | Degree270 -> {symbol.Pos with X=centre.X-0.3*float(height) ; 
+                                                                                            Y=centre.Y+0.5*float(width)}
 
-                            | Degree180 -> {symbol.Pos with Y=symbol.Pos.Y-0.2*float(height)}
+                                  | Degree180 -> match updatedOrientation with
+                                                | Degree0 -> match flipped with
+                                                             | true -> {symbol.Pos with X=centre.X-0.5*float(width) ; 
+                                                                                        Y=centre.Y+0.5*float(height)}
+                                                             | false -> {symbol.Pos with X=centre.X-0.5*float(width) ; 
+                                                                                         Y=centre.Y+0.3*float(height)}
 
-                            | Degree270 -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
-                                                            Y=centre.Y+0.5*float(width)}
+                                                | Degree90 -> {symbol.Pos with X=centre.X-0.5*float(width) ; 
+                                                                               Y=centre.Y+0.5*float(height)}
 
+                                                | Degree180 -> match flipped with
+                                                               | true -> {symbol.Pos with X=centre.X-0.5*float(width) ; 
+                                                                                          Y=centre.Y+0.3*float(height)}
+                                                               | false -> {symbol.Pos with X=centre.X-0.5*float(width) ; 
+                                                                                           Y=centre.Y+0.5*float(height)}
+
+                                                | Degree270 -> {symbol.Pos with X=centre.X-0.3*float(width) ; 
+                                                                                Y=centre.Y+0.5*float(height)}
+                                  | _ -> {symbol.Pos with X=symbol.Pos.X ; 
+                                                          Y=symbol.Pos.Y}
+
+    | Mux2 | Mux4 | Mux8 -> match rotateby with
+                            | Degree90 | Degree270 -> match updatedOrientation with
+                                                      | Degree0 -> match flipped with
+                                                                   | true -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
+                                                                                              Y=centre.Y+0.3*float(width)}
+                                                                   | false -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
+                                                                                               Y=centre.Y+0.5*float(width)}
+
+                                                      | Degree90 -> {symbol.Pos with X=centre.X-0.3*float(height) ; 
+                                                                                     Y=centre.Y+0.5*float(width)}
+
+                                                      | Degree180 -> match flipped with
+                                                                     | true -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
+                                                                                                Y=centre.Y+0.5*float(width)}
+                                                                     | false -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
+                                                                                                 Y=centre.Y+0.3*float(width)}
+
+                                                      | Degree270 -> {symbol.Pos with X=centre.X-0.5*float(height) ; 
+                                                                                      Y=centre.Y+0.5*float(width)}
+
+                            | Degree180 -> match updatedOrientation with
+                                           | Degree0 -> match flipped with 
+                                                        | true -> {symbol.Pos with X=centre.X-0.5*float(width) ; 
+                                                                                   Y=centre.Y+0.3*float(height)}
+                                                        | false -> {symbol.Pos with X=centre.X-0.5*float(width) ; 
+                                                                                    Y=centre.Y+0.3*float(height)}
+
+                                           | Degree90 -> {symbol.Pos with X=centre.X-0.5*float(width) ; 
+                                                                          Y=centre.Y+0.5*float(height)}
+
+                                           | Degree180 -> match flipped with
+                                                          | true -> {symbol.Pos with X=centre.X-0.5*float(width) ; 
+                                                                                     Y=centre.Y+0.5*float(height)}
+                                                          | false -> {symbol.Pos with X=centre.X-0.5*float(width) ; 
+                                                                                      Y=centre.Y+0.3*float(height)}
+
+                                           | Degree270 -> {symbol.Pos with X=centre.X-0.5*float(width) ; 
+                                                                           Y=centre.Y+0.5*float(height)}
                             | _ -> {symbol.Pos with X=symbol.Pos.X ; 
                                                     Y=symbol.Pos.Y}
 
-    | _ -> {X=centre.X-float(symbol.Component.H/2); 
-            Y=centre.Y+float(symbol.Component.W/2)}
+    | _ -> {X=centre.X-float(symbol.Component.W/2); 
+            Y=centre.Y+float(symbol.Component.H/2)}
+
+let getTopLeftFlipped (symbol:Symbol) (centre:XYPos) =
+    let orientation = symbol.STransform.Rotation
+    let symboltype = symbol.Component.Type
+    let width = symbol.Component.W
+    let height = symbol.Component.H
+
+    match symboltype with
+    | Mux2 | Mux4 | Mux8 -> match orientation with
+                            | Degree0 -> {symbol.Pos with X=centre.X-0.5*float(width);
+                                                          Y=centre.Y+0.3*float(height)}
+                            | Degree180 -> {symbol.Pos with X=centre.X-0.5*float(width);
+                                                            Y=centre.Y+0.5*float(height)}
+                            | _ -> symbol.Pos
+
+    | Demux2 | Demux4 | Demux8 -> match orientation with
+                                  | Degree0 -> {symbol.Pos with X=centre.X-0.5*float(width);
+                                                                Y=centre.Y+0.5*float(height)}
+                                  | Degree180 -> {symbol.Pos with X=centre.X-0.5*float(width);
+                                                                Y=centre.Y+0.3*float(height)}
+                                  | _ -> symbol.Pos
+
+    | _ -> symbol.Pos
 
 let getCentre (symbol:Symbol) = 
     match symbol.Component.Type with 
@@ -667,7 +749,7 @@ let rotateSymbolRight (symbol:Symbol) (rotateby:Rotation) =
         |> Map.map (fun portlist edge -> rotateSide edge) 
         |> inverseMap
         
-    let rotatedXYpos =  getTopLeft symbol centre updateOrientation.Rotation
+    let rotatedXYpos =  getTopLeftRotation symbol centre rotateby updateOrientation.Rotation false
     let rotatedcomp = 
         match rotateby with
         | Degree90 | Degree270 -> {symbol.Component with H=width; W=height}
@@ -683,7 +765,6 @@ let rotateSymbolRight (symbol:Symbol) (rotateby:Rotation) =
 let rotateSymbolLeft (symbol:Symbol) (rotateby:Rotation) = 
     let currentorientation = symbol.STransform.Rotation
     let centre = getCentre symbol
-    let comptype = symbol.Component.Type
     let height = symbol.Component.H
     let width = symbol.Component.W
 
@@ -752,7 +833,7 @@ let rotateSymbolLeft (symbol:Symbol) (rotateby:Rotation) =
         |> Map.map (fun portlist edge -> rotateSide edge) 
         |> inverseMap
 
-    let rotatedXYpos =  getTopLeft symbol centre updateOrientation.Rotation
+    let rotatedXYpos =  getTopLeftRotation symbol centre rotateby updateOrientation.Rotation false
     let rotatedcomp = 
         match rotateby with
         | Degree90 | Degree270 -> {symbol.Component with H=width; W=height}
@@ -767,6 +848,7 @@ let rotateSymbolLeft (symbol:Symbol) (rotateby:Rotation) =
 ///Flip symbol horizontaly
 let flipSymbolHorizontal (symbol:Symbol) : Symbol = 
     let orientation = symbol.STransform.Rotation
+    let centre = getCentre symbol
 
     let flipSide (edge: Edge) = 
         match edge with
@@ -792,10 +874,13 @@ let flipSymbolHorizontal (symbol:Symbol) : Symbol =
         |> inverseMap
         |> Map.map reversePortList
 
-    let updateOrientation = {flipped=not symbol.STransform.flipped;
-                             Rotation=symbol.STransform.Rotation}
+    let updateOrientation = {Rotation=symbol.STransform.Rotation;
+                             flipped=not symbol.STransform.flipped}
+    
+    let flippedXYpos =  getTopLeftFlipped symbol centre
 
-    {symbol with STransform=updateOrientation; 
+    {symbol with Pos=flippedXYpos
+                 STransform=updateOrientation; 
                  PortOrientation=updatePortOrientation; 
                  PortOrder=updatePortOrder} 
 
@@ -809,8 +894,6 @@ let compSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
     let width = comp.W
     let halfwidth = comp.W/2
     let halfheight = (comp.H)/2
-    let symbolX = symbol.Pos.X
-    let symbolY = symbol.Pos.Y
 
     let mergeSplitLine posX1 posX2 posY msb lsb =
         let text = 
