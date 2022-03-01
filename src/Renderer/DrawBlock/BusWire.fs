@@ -1073,9 +1073,8 @@ let getConnectedWireIds model compIds =
     getConnectedWires model compIds
     |> getFilteredIdList (fun _ -> true)
 
-/// Given a model and a list of component Ids, returns a tuple of: 
-/// wires connected to input ports, wires connected to output ports, 
-/// wires connected to both input and output ports
+/// Given a model and a list of component Ids, returns an anaonymous record
+/// containing the id of wires connected to input ports, output ports or both
 let filterWiresByCompMoved (model: Model) (compIds: list<ComponentId>) =
     let wireList = getWireList model
 
@@ -1100,7 +1099,7 @@ let filterWiresByCompMoved (model: Model) (compIds: list<ComponentId>) =
     let fullyConnected =
         wireList |> getFilteredIdList containsBothPort
 
-    (inputWires, outputWires, fullyConnected)
+    {| Inputs = inputWires; Outputs = outputWires; Both = fullyConnected |}
 
 /// Contains geometric information of a port
 type PortInfo = {
@@ -1494,17 +1493,17 @@ let resetWireSegmentJumps (wireList : list<ConnectionId>) (wModel : Model) : Mod
 /// Otherwise it will auto-route wires connected to components that have moved
 let updateWires (model : Model) (compIdList : ComponentId list) (diff : XYPos) =
 
-    let (inputWires, outputWires, fullyConnected) = filterWiresByCompMoved model compIdList
+    let wires = filterWiresByCompMoved model compIdList
 
     let newWires = 
         model.Wires
         |> Map.toList
         |> List.map (fun (cId, wire) -> 
-            if List.contains cId fullyConnected //Translate wires that are connected to moving components on both sides
+            if List.contains cId wires.Both //Translate wires that are connected to moving components on both sides
             then (cId, moveWire wire diff)
-            elif List.contains cId inputWires //Only route wires connected to ports that moved for efficiency
+            elif List.contains cId wires.Inputs //Only route wires connected to ports that moved for efficiency
             then (cId, updateWire model wire true)
-            elif List.contains cId outputWires
+            elif List.contains cId wires.Outputs
             then (cId, updateWire model wire false)
             else (cId, wire))
         |> Map.ofList
