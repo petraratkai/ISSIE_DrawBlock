@@ -45,7 +45,7 @@ This has similar problems to onSegment and orientation. It is a small function t
 This function could have been simplified by breaking up subsections of its functionality into external functions, as it is currently relatively unreadable. Furthermore, its implementation could be improved by using List functions as opposed to repeatedly appending.
 
 **singleWireView**, **view**:
-Both functions are nearly entirely undocumented, this is especially bad as these two functions dictate the rendering and so their ease of use and understanding are critical.
+Both functions are nearly entirely undocumented. This is especially poor as these functions dictate rendering and so their ease of use and understanding are critical.
 
 ### Other problems
 
