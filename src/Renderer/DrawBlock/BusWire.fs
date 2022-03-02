@@ -876,14 +876,7 @@ let toY (pos: XYPos) = pos.Y
 /// Returns the X and Y fields of an XYPos as a pair of floats
 let getXY (pos: XYPos) = pos.X, pos.Y
 
-/// Returns p1 + p2 as an XYPos
-let posAdd (p1: XYPos) (p2: XYPos) : XYPos =
-    { X = p1.X + p2.X; Y = p1.Y + p2.Y }
-
-/// Returns p1 - p2 as an XYPos
-let posDiff (p1: XYPos) (p2: XYPos) : XYPos = 
-    { X = p1.X - p2.X; Y = p1.Y - p2.Y }
-
+/// Returns pos with the X and Y fields scaled by factor
 let scalePos (factor: float) (pos: XYPos) : XYPos =
     { X = factor * pos.X; Y = factor * pos.Y}
 
@@ -897,7 +890,7 @@ let dotProduct (p1: XYPos) (p2: XYPos) : float =
 
 /// Returns the squared distance between 2 points using Pythagoras
 let squaredDistance (p1: XYPos) (p2: XYPos) = 
-    let diff = posDiff p1 p2
+    let diff = p1 - p2
     dotProduct diff diff
 
 //--------------------------------------------------------------------------------//
@@ -933,19 +926,19 @@ let segmentIntersectsBoundingBox (bb: BoundingBox) segStart segEnd =
 
     rectanglesIntersect bbRect segRect
 
-/// Returns the distance between a point and a segment defined by a start and end XYPos, and None if the segment is of 0 length (can't be clicked)
+/// Returns Some distance between a point and a segment defined by a start and end XYPos, and None if the segment is of 0 length (can't be clicked)
 let distanceBetweenPointAndSegment (segStart : XYPos) (segEnd : XYPos) (point : XYPos) : float option = 
     match squaredDistance segStart segEnd with
     | 0. -> None
     | l2 -> 
         // Extend the segment to line segStart + t (segEnd - segStart)
         // The projection of point on this line falls at tProjection
-        let tProjection = dotProduct (posDiff point segStart) (posDiff segEnd segStart) / l2 
+        let tProjection = dotProduct (point - segStart) (segEnd - segStart) / l2 
         let tBounded = max 0. (min 1. tProjection) // Bound tProjection to be within the segment
         let boundedProjection = 
-            posDiff segEnd segStart
+            segEnd - segStart
             |> scalePos tBounded
-            |> posAdd segStart
+            |> (+) segStart
         Some (sqrt (squaredDistance point boundedProjection))
 
 /// Finds the Id of the closest segment in a wire to a mouse click using euclidean distance
@@ -1332,7 +1325,7 @@ let partialAutoRoute (wire: Wire) (newPortPos: XYPos) =
         let fixedPoint = getAbsoluteSegmentPos wire manualIdx |> snd
         let relativeToFixed = relativePosition fixedPoint
         if relativeToFixed newStartPos = relativeToFixed oldStartPos then
-            Some (manualIdx, posDiff newStartPos oldStartPos)
+            Some (manualIdx, newStartPos - oldStartPos)
         else
             None
     
@@ -1355,8 +1348,8 @@ let partialAutoRoute (wire: Wire) (newPortPos: XYPos) =
 /// Moves a wire by the XY amounts specified by displacement
 let moveWire (wire: Wire) (displacement: XYPos) =
     { wire with
-          StartPos = posAdd wire.StartPos displacement
-          EndPos = posAdd wire.EndPos displacement }
+          StartPos = wire.StartPos + displacement
+          EndPos = wire.EndPos + displacement }
 
 /// Returns a re-routed wire from the given model.
 /// First attempts partial autorouting, and defaults to full autorouting if this is not possible.
