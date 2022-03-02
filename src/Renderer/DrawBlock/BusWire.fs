@@ -1770,7 +1770,6 @@ let getClickedWire (wModel : Model) (pos : XYPos) (n : float) : ConnectionId Opt
 ///
 let pasteWires (wModel : Model) (newCompIds : list<ComponentId>) : (Model * list<ConnectionId>) =
     let oldCompIds = Symbol.getCopiedSymbols wModel.Symbol
-
     let pastedWires =
         let createNewWire (oldWire : Wire) : list<Wire> =
             let newId = ConnectionId(JSHelpers.uuid())
