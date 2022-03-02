@@ -16,6 +16,9 @@ open System.Text.RegularExpressions
 /// default block size 
 let blockSize = 30 
 
+//---------------------------------------------------------------------------------//
+//--------------------KC319 CODE SECTION STARTS-------------------------------------//
+//---------------------------------------------------------------------------------//
 
 /// ---------- SYMBOL TYPES ---------- ///
 type Rotation = | Degree0 | Degree90 | Degree180 | Degree270 
@@ -233,7 +236,7 @@ let makeComponent (pos: XYPos) (compType: ComponentType) (id:string) (label:stri
         x + abs((x % n) - n)
 
     ///finds length of longest string in list returns it
-    let customToLength (lst : list<string*int>) : int =
+    let findLongestString (lst : list<string*int>) : int =
         let labelList = List.map (fst >> String.length) lst
         if List.isEmpty labelList then 0 //if a component has no inputs or outputs list max will fail
         else List.max labelList
@@ -286,7 +289,7 @@ let makeComponent (pos: XYPos) (compType: ComponentType) (id:string) (label:stri
         | NbitsAdder (n) -> (3, 2, 3*blockSize, 4*blockSize) 
         | Custom x -> 
             let h = blockSize + blockSize * (List.max [List.length x.InputLabels; List.length x.OutputLabels])
-            let maxInLength, maxOutLength = customToLength x.InputLabels, customToLength x.OutputLabels
+            let maxInLength, maxOutLength = findLongestString x.InputLabels, findLongestString x.OutputLabels
             let maxW = maxInLength + maxOutLength + label.Length
             let scaledW = roundToN blockSize (maxW * blockSize / 5) //Divide by 5 is just abitrary as otherwise the symbols would be too wide 
             let w = max scaledW (blockSize * 4) //Ensures a minimum width if the labels are very small
@@ -333,7 +336,6 @@ let defaultPortOrientation (comp : Component) : Map<string,Edge> =
             | Some x -> x.Id
             | None -> failwithf "error"
         Map.change inputPort0Id (fun x -> Some Bottom) defaultEdges
-
 
     match comp.Type with
     | Mux2 | DFFE | Demux2 -> portOnBottom
@@ -572,11 +574,11 @@ let drawSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
             | Degree0 ->
                 sprintf  $"0,{float(h)/5.} 0,{float(h)*0.8} {w},{h} {w},0"
             | Degree90 ->       
-                (sprintf "%f,%i %f,%i %i,%i %i,%i" (float(h)*0.2) 0 (float(h)*0.8) 0 h w 0 w)
+                sprintf $"{float(h)*0.2},0 {float(h)*0.8},0 {h},{w} 0,{w}"
             | Degree180 ->
                 sprintf $"0,0 {w},{float(h)/5.} {w},{float(h)*0.8} 0,{h}"
             | Degree270 ->
-                (sprintf "%i,%i %i,%i %f,%i %f,%i" 0 0 h 0 (float(h)*0.8) w (float(h)*0.2) w)
+                sprintf $"0,0 {h},0 {float(h)*0.8},{w} {float(h)*0.2},{w}"
         | Mux2 ->
             match symbol.STransform.Rotation with 
             | Degree0 -> 
@@ -584,9 +586,9 @@ let drawSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
             | Degree180 ->
                 sprintf $"0,{float(h)/5.} 0,{float(h)*0.8} {w},{h} {w},0"
             | Degree90 ->
-                (sprintf "%i,%i %i,%i  %f,%i %f,%i" 0 0 h 0 (float(h)*0.8) w (float(h)*0.2 ) w)
+                sprintf $"0,0 {h},0 {float(h)*0.8},{w} {float(h)*0.2},{w}"
             | Degree270 ->
-                (sprintf "%f,%i %f,%i  %i,%i %i,%i" (float(h)*0.2) 0 (float(h)*0.8) 0 h w 0 w )                
+                sprintf $"{float(h)*0.2},0 {float(h)*0.8},0 {h},{w} 0,{w}"               
 
         // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
@@ -636,7 +638,6 @@ let drawSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
     (drawPorts comp.OutputPorts showOutputPorts symbol)
     |> List.append (drawPorts comp.InputPorts showInputPorts symbol)
     |> List.append (drawPortsText (comp.InputPorts @ comp.OutputPorts) (portNames comp.Type) symbol)
-    //|> List.append (drawPortsText comp.OutputPorts (snd(portNames comp)) symbol)  
     |> List.append (addComponentLabel comp.H comp.W 5. (getComponentLabel comp.Type) "bold" "14px" symbol.STransform.Rotation) 
     |> List.append (addComponentLabel comp.H comp.W -20. comp.Label  "normal" "16px" symbol.STransform.Rotation)
     |> List.append (additions)
@@ -693,6 +694,10 @@ let view (model : Model) (dispatch : Msg -> unit) =
 
 let init () = 
     {Symbols = Map.empty; CopiedSymbols = Map.empty; Ports = Map.empty; InputPortsConnected= Set.empty; OutputPortsConnected = Map.empty}, Cmd.none
+
+//---------------------------------------------------------------------------------//
+//--------------------KC319 CODE SECTION ENDS-------------------------------------//
+//---------------------------------------------------------------------------------//
 
 //------------------------GET BOUNDING BOXES FUNCS--------------------------------used by sheet.
 /// Returns the bounding box of a symbol. It is defined by the height and the width as well as the x,y position of the symbol. TODO: handle rotation -> should be good
