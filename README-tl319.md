@@ -92,9 +92,9 @@ extractConnections - Implicitly shown in demo - Same functionality as original
 
 renderRadialWire - Explicitly shown in demo - Creates an SVG command that renders an entire radial wire apart from the first move and the final line.
 
-renderModernSegment  - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - renders a segment as well as any intersections along that segment.
+renderModernSegment  - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - renders a segment as well as any intersections along that segment. The intersection locations are dictated by the IntersectCoordinateList in the AbsSegment, in the case that this list is empty it will instead produce a simple straight line.
 
-renderJumpSegment - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - renders a segment as well as any jumps along that segment, is capable of supporting multiple jumps as in original function.
+renderJumpSegment - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - renders a segment as well as any jumps along that segment, is capable of supporting multiple jumps as in original function. The jump locations are dictated by the IntersectCoordinateList in the AbsSegment, in the case that this list is empty it will instead produce a simple straight line.
 
 singleWireJumpView - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - calls renderJumpSegment for each segment of the given wire as well as rendering the bit width text.
 
