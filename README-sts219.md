@@ -4,7 +4,7 @@
 
 [Common repo Team9 file](https://github.com/tomcl/hlp22docs/blob/main/Team9.md)
 
-[Buswire (section 2)](src/renderer/drawblock/buswire.fs)
+[Buswire (section 2)](src/Renderer/DrawBlock/BusWire.fs)
 
 Section 2 on my file is lines: 850-1371 
 I am also responsible for: 
