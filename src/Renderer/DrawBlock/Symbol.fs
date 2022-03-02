@@ -83,6 +83,10 @@ type Msg =
 
 //---------------------------------helper types and functions----------------//
 
+//---------------------------------------------------------------------------------//
+//--------------------jyc119 CODE SECTION STARTS-------------------------------------//
+//---------------------------------------------------------------------------------//
+
 let posAdd (a:XYPos) (b:XYPos) =
     {X=a.X+b.X; Y=a.Y+b.Y}
 
@@ -329,6 +333,10 @@ let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
       PortOrder = portOrderMap
     }
 
+//---------------------------------------------------------------------------------//
+//--------------------jyc119 CODE SECTION END-------------------------------------//
+//---------------------------------------------------------------------------------//
+
 // Function to add ports to port model     
 let addToPortModel (model: Model) (sym: Symbol) =
     let addOnePort (currentPorts: Map<string, Port>) (port: Port) =
@@ -479,6 +487,10 @@ let addHorizontalColorLine posX1 posX2 posY opacity (color:string) = // TODO: Li
     let points = (sprintf "%i,%f %i,%f" posX1 posY posX2 posY)
     let olColor = outlineColor color
     [makePolygon points {defaultPolygon with Fill = "olcolor"; Stroke=olColor; StrokeWidth = "2.0"; FillOpacity = opacity}]
+
+//---------------------------------------------------------------------------------//
+//--------------------jyc119 CODE SECTION STARTS-------------------------------------//
+//---------------------------------------------------------------------------------//
 
 //invert key and value
 let inverseMap map =
@@ -988,6 +1000,10 @@ let compSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
     |> List.append (addText (float halfwidth) (-20.0) comp.Label "middle" "normal" "16px")
     |> List.append (additionalInput)
     |> List.append (createBiColorPolygon points colour olColour opacity strokeWidth)
+
+//---------------------------------------------------------------------------------//
+//--------------------jyc119 CODE SECTION END-------------------------------------//
+//---------------------------------------------------------------------------------//
 
 let init () = 
     { Symbols = Map.empty; CopiedSymbols = Map.empty; Ports = Map.empty ; InputPortsConnected= Set.empty ; OutputPortsConnected = Map.empty}, Cmd.none
