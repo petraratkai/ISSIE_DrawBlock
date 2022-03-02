@@ -1148,6 +1148,12 @@ let rec rotateStartDest (target: Symbol.Edge) ((start, dest): PortInfo * PortInf
         rotateStartDest target (rotate90Port start, rotate90Port dest)
 
 
+/// Gets a wire orientation given a port edge
+let getOrientation (edge: Symbol.Edge) = 
+    match edge with
+    | Symbol.Top | Symbol.Bottom -> Vertical
+    | Symbol.Left | Symbol.Right -> Horizontal
+
 /// Returns an anonymous record containing the starting symbol edge of a wire and its segment list that has been 
 /// rotated to a target symbol edge.
 let rec rotateSegments (target: Symbol.Edge) (wire: {| edge: Symbol.Edge; segments: Segment list |}) =
