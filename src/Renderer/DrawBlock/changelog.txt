@@ -23,3 +23,7 @@ got portPosition working for all given symbols
 changed all bottom ports to be input 0
 rotate symbol working to an extent. need to fix text position + mux rotations
 
+02/02/2022 
+changed portText to use portOrientation 
+
+

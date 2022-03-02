@@ -460,17 +460,26 @@ let private portCircles (pos: XYPos) =
     [makeCircle pos.X pos.Y portCircle]
 
 // Define the name of each port 
-let private portText (pos: XYPos) name portType =
+let private portText (pos: XYPos) name edge portType =
     let pos' = 
-        if portType = PortType.Output
-        then pos - {X = 5.; Y = 7.}
-        else pos + {X = 5.; Y = -7.}
-    let test = if portType = PortType.Output then "end" else "start"
+            match edge with 
+            | Left -> pos + {X = 5.; Y = -5.}
+            | Top -> pos + {X = -5.; Y = 6.}
+            | Right -> pos + {X = -4.; Y = -8.}
+            | Bottom -> pos + {X = -5.; Y = -15.}
+        // if portType = PortType.Output
+        // then pos - {X = 5.; Y = 7.}
+        // else pos + {X = 5.; Y = -7.}
+
+    let test = 
+            match edge with
+            | Right -> "end"
+            | _ -> "start"
     (addText pos' name test "normal" "12px")
 
 /// Print the name of each port 
 let private drawPortsText (portList: Port List) (listOfNames: string List) (symb: Symbol) = 
-    let getPortName name x = portText (getPortPos symb portList[x]) name (portList.Head.PortType)
+    let getPortName name x = portText (getPortPos symb portList[x]) name (symb.PortOrientation[portList.[x].Id]) portList.Head.PortType
     if listOfNames.Length < 1
     then []
     else 
