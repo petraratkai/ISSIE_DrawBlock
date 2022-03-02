@@ -413,13 +413,13 @@ let xyVerticesToSegments connId (xyVerticesList: XYPos list) =
     List.pairwise xyVerticesList
     |> List.mapi (
         fun i ({X=xStart; Y=yStart},{X=xEnd; Y=yEnd}) ->    
-            let a = SegmentId(JSHelpers.uuid())
+            let id = SegmentId(JSHelpers.uuid())
             {
-                Id = a
+                Id = id
                 Index = i
                 Length = xEnd-xStart+yEnd-yStart
                 HostId  = connId;
-                IntersectCoordinateList = [(50, a); (35, a)] ;
+                IntersectCoordinateList = [] ; // To test jump and modern wire types need to manually insert elements into this list.
                 Mode = Auto
                 Draggable =
                     if i = 0 || i = xyVerticesList.Length - 2 then
@@ -506,10 +506,10 @@ let extractConnections (wModel : Model) : list<Connection> =
 //----------------------Rendering Functions----------------------//
 
 /// A pair of vertices as well as any intersections or jumps on that segment
-type VertexPair = 
+type AbsSegment = 
     {
-    First: XYPos
-    Second: XYPos
+    Start: XYPos
+    End: XYPos
     IntersectCoordinateList: list<float * SegmentId>
     }
 
@@ -517,7 +517,7 @@ type VertexPair =
 type WireRenderProps =
     {
         key: string
-        VertexPairs: list<VertexPair>
+        AbsSegments: list<AbsSegment>
         ColorP: HighLightColor
         StrokeWidthP: int
         OutputPortEdge : Symbol.Edge
@@ -526,11 +526,11 @@ type WireRenderProps =
     }
 
 ///Function to create the SVG command required to path the entire wire if the display type is radial
-let renderRadialWire (state : (string * Orientation)) (pair :VertexPair * VertexPair)= 
-    let startFirstSegment = fst(pair).First
-    let endFirstSegment = fst(pair).Second
-    let startSecondSegment = snd(pair).First
-    let endSecondSegment = snd(pair).Second
+let renderRadialWire (state : (string * Orientation)) (segmentpair :AbsSegment * AbsSegment)= 
+    let startFirstSegment = fst(segmentpair).Start
+    let endFirstSegment = fst(segmentpair).End
+    let startSecondSegment = snd(segmentpair).Start
+    let endSecondSegment = snd(segmentpair).End
     if startFirstSegment.X = endFirstSegment.X && 
        startFirstSegment.X = startSecondSegment.X &&
        startFirstSegment.X = endSecondSegment.X then
@@ -588,9 +588,9 @@ let renderRadialWire (state : (string * Orientation)) (pair :VertexPair * Vertex
                     (next, Horizontal) 
 
 ///Function used to render a single wire if the display type is modern
-let renderModernSegment (param : {| VertexPair : VertexPair; Colour :string; Width : string|}) = 
-    let startVertex = param.VertexPair.First
-    let endVertex = param.VertexPair.Second
+let renderModernSegment (param : {| AbsSegment : AbsSegment; Colour :string; Width : string|}) = 
+    let startVertex = param.AbsSegment.Start
+    let endVertex = param.AbsSegment.End
     let widthOpt = EEExtensions.String.tryParseWith System.Int32.TryParse param.Width
     let renderWidth = 
         match widthOpt with
@@ -602,11 +602,11 @@ let renderModernSegment (param : {| VertexPair : VertexPair; Colour :string; Wid
     
     let circles =
         if (startVertex.X - endVertex.X > 0) then //Segment is right to left
-            param.VertexPair.IntersectCoordinateList 
+            param.AbsSegment.IntersectCoordinateList 
             |> List.map (fun x -> startVertex.X - fst(x))
             |> List.map (fun x -> makeCircle x startVertex.Y circleParameters)
         else                                      //Segment is left to right
-            param.VertexPair.IntersectCoordinateList 
+            param.AbsSegment.IntersectCoordinateList 
             |> List.map (fun x -> startVertex.X + fst(x))
             |> List.map (fun x -> makeCircle x startVertex.Y circleParameters)
     
@@ -618,9 +618,9 @@ let renderModernSegment (param : {| VertexPair : VertexPair; Colour :string; Wid
         [makeLine startVertex.X startVertex.Y endVertex.X endVertex.Y lineParameters]
         
 ///Function used to render a single segment if the display type is jump
-let renderJumpSegment (param : {| VertexPair : VertexPair; Colour :string; Width : string|}) = 
-    let startVertex = param.VertexPair.First
-    let endVertex = param.VertexPair.Second
+let renderJumpSegment (param : {| AbsSegment : AbsSegment; Colour :string; Width : string|}) = 
+    let startVertex = param.AbsSegment.Start
+    let endVertex = param.AbsSegment.End
     let widthOpt = EEExtensions.String.tryParseWith System.Int32.TryParse param.Width
     let renderWidth = 
         match widthOpt with
@@ -643,16 +643,16 @@ let renderJumpSegment (param : {| VertexPair : VertexPair; Colour :string; Width
         (xPos-5.,List.append (snd(state)) [element])
     
     //If no jumps then straight line
-    if List.isEmpty param.VertexPair.IntersectCoordinateList then 
+    if List.isEmpty param.AbsSegment.IntersectCoordinateList then 
         [makeLine startVertex.X startVertex.Y endVertex.X endVertex.Y lineParameters]
     else
         if startVertex.X - endVertex.X < 0 then //Segment is left to right
             let jumps =
-                param.VertexPair.IntersectCoordinateList 
+                param.AbsSegment.IntersectCoordinateList 
                 |> List.map (fun x -> startVertex.X + fst(x))
                 |> List.map (fun x -> makePath {X = x - 5.; Y = startVertex.Y} {X = x - 5.; Y = startVertex.Y - 7.} {X = x + 5.; Y = startVertex.Y - 7.} {X = x + 5.; Y = startVertex.Y} pathParameters)
             let lines =
-                param.VertexPair.IntersectCoordinateList
+                param.AbsSegment.IntersectCoordinateList
                 |> List.map (fun x -> startVertex.X + fst(x))
                 |> List.sort
                 |> List.fold lefttoright (startVertex.X,[])
@@ -667,11 +667,11 @@ let renderJumpSegment (param : {| VertexPair : VertexPair; Colour :string; Width
         
         else                                    //Segment is right to left
             let jumps =
-                param.VertexPair.IntersectCoordinateList 
+                param.AbsSegment.IntersectCoordinateList 
                 |> List.map (fun x -> startVertex.X - fst(x))
                 |> List.map (fun x -> makePath {X = x - 5.; Y = startVertex.Y} {X = x - 5.; Y = startVertex.Y - 7.} {X = x + 5.; Y = startVertex.Y - 7.} {X = x + 5.; Y = startVertex.Y} pathParameters)
             let lines =
-                param.VertexPair.IntersectCoordinateList
+                param.AbsSegment.IntersectCoordinateList
                 |> List.map (fun x -> startVertex.X - fst(x))
                 |> List.sortDescending
                 |> List.fold righttoleft (startVertex.X,[])
@@ -687,9 +687,9 @@ let renderJumpSegment (param : {| VertexPair : VertexPair; Colour :string; Width
 
 ///Function used to render a single wire if the display type is jump
 let singleWireJumpView props = 
-    let firstVertex = props.VertexPairs.Head.First
-    let secondVertex = props.VertexPairs.Head.Second
-    let lastVertex = (List.last props.VertexPairs).Second
+    let firstVertex = props.AbsSegments.Head.Start
+    let secondVertex = props.AbsSegments.Head.End
+    let lastVertex = (List.last props.AbsSegments).Start
     let colour = props.ColorP.Text()
     let width = string props.StrokeWidthP
     let widthOpt = EEExtensions.String.tryParseWith System.Int32.TryParse width
@@ -700,8 +700,8 @@ let singleWireJumpView props =
         | _ -> 3.5
     
     let renderedSegmentList : ReactElement List = 
-        props.VertexPairs
-        |> List.map (fun x -> {|VertexPair = x; Colour = colour; Width = width|})
+        props.AbsSegments
+        |> List.map (fun x -> {|AbsSegment = x; Colour = colour; Width = width|})
         |> List.collect renderJumpSegment 
 
     let renderWireWidthText : ReactElement =
@@ -722,9 +722,9 @@ let singleWireJumpView props =
 
 ///Function used to render a single wire if the display type is modern
 let singleWireModernView props = 
-    let firstVertex = props.VertexPairs.Head.First
-    let secondVertex = props.VertexPairs.Head.Second
-    let lastVertex = (List.last props.VertexPairs).Second
+    let firstVertex = props.AbsSegments.Head.Start
+    let secondVertex = props.AbsSegments.Head.End
+    let lastVertex = (List.last props.AbsSegments).End
     let colour = props.ColorP.Text()
     let width = string props.StrokeWidthP
     let widthOpt = EEExtensions.String.tryParseWith System.Int32.TryParse width
@@ -735,8 +735,8 @@ let singleWireModernView props =
         | _ -> 3.5
     
     let renderedSegmentList : ReactElement List = 
-        props.VertexPairs
-        |> List.map (fun x -> {|VertexPair = x; Colour = colour; Width = width|})
+        props.AbsSegments
+        |> List.map (fun x -> {|AbsSegment = x; Colour = colour; Width = width|})
         |> List.collect renderModernSegment //colour width //(props.ColorP.Text()) (string props.StrokeWidthP)
 
     let renderWireWidthText : ReactElement =
@@ -756,9 +756,9 @@ let singleWireModernView props =
 
 ///Function used to render a single wire if the display type is radial
 let singleWireRadialView props =
-    let firstVertex = props.VertexPairs.Head.First
-    let secondVertex = props.VertexPairs.Head.Second
-    let lastVertex = (List.last props.VertexPairs).Second
+    let firstVertex = props.AbsSegments.Head.Start
+    let secondVertex = props.AbsSegments.Head.End
+    let lastVertex = (List.last props.AbsSegments).End
 
     let width = string props.StrokeWidthP
     let widthOpt = EEExtensions.String.tryParseWith System.Int32.TryParse width
@@ -773,7 +773,7 @@ let singleWireRadialView props =
     let initialState = (initialMoveCommand, getSegmentOrientation firstVertex secondVertex )
     
     let radialPathCommands = fst(
-        props.VertexPairs
+        props.AbsSegments
         |> List.pairwise
         |> List.fold renderRadialWire (initialState) )
     let finalLineCommand = sprintf "L %f %f" lastVertex.X lastVertex.Y
@@ -827,31 +827,31 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
                         
                     let outputPortLocation = Symbol.getPortLocation model.Symbol stringOutId 
                     let outputPortEdge = Symbol.getOutputPortOrientation model.Symbol wire.OutputPort 
-                    let getVertexPairs wire : VertexPair List= 
+                    let getAbsSegments wire : AbsSegment List= 
                         segmentsToVertices wire.Segments wire
                         |> List.map (fun x -> {X=fst(x); Y=snd(x)})
                         |> List.pairwise
                         |> List.zip wire.Segments
                         |> List.map (fun x -> fst(snd(x)),snd(snd(x)), fst(x).IntersectCoordinateList)
-                        |> List.map (fun (startVertex,endVertex,intersectList) -> {First=startVertex; Second=endVertex; IntersectCoordinateList=intersectList})
+                        |> List.map (fun (startVertex,endVertex,intersectList) -> {Start=startVertex; End=endVertex; IntersectCoordinateList=intersectList})
                     
                     let props =
                         {
                             key = match wire.Id with | ConnectionId s -> s
-                            VertexPairs = getVertexPairs wire
+                            AbsSegments = getAbsSegments wire
                             ColorP = wire.Color
                             StrokeWidthP = wire.Width
                             OutputPortEdge = outputPortEdge
                             OutputPortLocation = outputPortLocation
                             DisplayType = wire.Type
                         }
-                    if model.Type = Radial then
-                        singleWireRadialView props
-                    else if model.Type = Jump then
-                        singleWireRadialView props
-                    else
-                        singleWireRadialView props
-                    )
+                    //To test other display types need to change 2nd match to the relevant 
+                    //singleWire_View as section 3 has not yet implemented the model.Type properly
+                    match  model.Type with    
+                    | Radial -> singleWireRadialView props
+                    | Jump -> singleWireJumpView props
+                    | Modern -> singleWireModernView props
+            )
     TimeHelpers.instrumentInterval "WirePrepareProps" rStart ()
     let symbols = Symbol.view model.Symbol (Symbol >> dispatch)
  
