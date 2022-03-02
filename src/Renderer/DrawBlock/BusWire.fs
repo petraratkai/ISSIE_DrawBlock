@@ -837,11 +837,13 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
                             DisplayType = wire.Type
                         }
                     //To test other display types need to change 2nd match to the relevant 
-                    //singleWire_View as section 3 has not yet implemented the model.Type properly
+                    //singleWire____View as section 3 has not yet implemented the model.Type properly
+                    //currently the model.Type is always Jump
                     match  model.Type with    
                     | Radial -> singleWireRadialView props
                     | Jump -> singleWireJumpView props
                     | Modern -> singleWireModernView props
+
             )
     TimeHelpers.instrumentInterval "WirePrepareProps" rStart ()
     let symbols = Symbol.view model.Symbol (Symbol >> dispatch)

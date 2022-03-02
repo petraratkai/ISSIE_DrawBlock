@@ -7,7 +7,7 @@
 
 [Buswire (section 1)](src/Renderer/DrawBlock/BusWire.fs)
 
-Section 1 on my file is lines: 246-854
+Section 1 on my file is lines: 246-856
 
 Changes to the types used in Buswire were decided as a team with the people working on the other sections.
 
@@ -113,7 +113,7 @@ view - Implicitly shown in demo - Calls singleWire_____View on each wire in the 
      b. renderRadialWire this is a new function that generates a path command string according to the vertices of the wire
      
      c. view changed to support switching between wire displays according to Model.Type 
-     (NOTE: the code to change the Model.Type is currently not correctly implemented from section 3, as such it will always be the Jump type, in order to test different display types line X can be changed to different singleWireRadialView
+     (NOTE: the code to change the Model.Type is currently not correctly implemented from section 3, as such it will always be the Jump type, in order to test different display types line 844 can be changed to different singleWireRadialView props)
 
 2. Modern display type for wires
      a. singleWireModernView this is a new function that creates a react element that contains all of the segments and intersections for any given wire. 
@@ -122,7 +122,7 @@ view - Implicitly shown in demo - Calls singleWire_____View on each wire in the 
      (NOTE : at time of writing the code to populate the IntersectCoordinateList in section3  is not fully functional, in order to test this we can manually place intersections at fixed distances on every segment. This does cause incorrect rendering in the case that the segment is shorter than the fixed distance that was manually entered, however when IntersectCoordinateList is populated properly it would be impossible for the intersection to be a distance greater than the segment length, so this problem would be avoided and the final functionality would work)
      
      c. view changed to support switching between wire displays according to Model.Type 
-     (NOTE: the code to change the Model.Type is currently not correctly implemented from section 3, as such it will always be the Jump type, in order to test different display types line X can be changed to a different singleWireModernView)
+     (NOTE: the code to change the Model.Type is currently not correctly implemented from section 3, as such it will always be the Jump type, in order to test different display types line 844 can be changed to singleWireModernView props)
 
 
 3. Arbitrary orientations of endpoint
