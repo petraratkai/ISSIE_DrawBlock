@@ -14,7 +14,7 @@ Changes to the types used in Buswire were decided as a team with the people work
 ## Code Quality
 
 **Highlights**
-* renderRadialWire :The rendering of a single wire for display type, I believe that the creation of a single react element that renders the entire wire is a particularly elegant and efficient solution.
+* renderRadialWire: The rendering of a single wire for display type, I believe that the creation of a single react element that renders the entire wire is a particularly elegant and efficient solution.
 * The AbsSegments type is particularly useful for rendering each wire. This type is suitable for each different type of rendering (radial, modern, jump) and provides a useful conversion from the overall relative segment implementation. 
 
 ## Analysis
@@ -41,47 +41,52 @@ MapToSortedList
 view
 
 **segmentsToVertices**
-The original document of this function was misleading, as it stated in convert a wire to a connection when in reality it was converting a segment list into a list of vertices. It also uses List.mapi when List.map would have sufficed.
-
-**makeInitialWireVerticesList**
-The only issue with this function is it uses tuple parameters when it could easily use curried parameters, which goes against Issie guidelines.
+The original documentation of this function was misleading, as it stated it converted a wire to a connection when in reality it was converting a segment list into a list of vertices. It also used List.mapi when List.map would have sufficed.
 
 **inferDirectionFromVertices**
-This function has no xML comments whatsoever which goes against Issie guidelines. 
+This function had no documentation whatsoever.
 
-xyVerticesToSegments
-issieVerticesToSegments
+**xyVerticesToSegments**
+This function was made overcomplicated by the requirement for wires to have 7 segments. This meant that instead of simply the first and last segment of a wire being undraggable more considerations had to be done.
 
-onSegment
-orientation
-getAbsXY
-segmentIntersectsSegment
+**issieVerticesToSegments**
+The documentation of this function was again misleading, as it stated it converted an issie Connection to a wire, when it reality it was converting it to a segment list.
 
-makeSegPos
-distanceBetweenTwoPoints
-makeInitialSegmentsList
+**onSegment**, **orientation**
+Both functions are global when they are only used in one other function and could very easily be a subfunction as both are very small.
+
+**segmentIntersectsSegment**
+The implementation of this function is very poor. Because of using negative position values to indicate the routing method of a segment it forces the function to get the absolute value. This is obviously problematic as it limits everything to being in the top right quadrant in order to work properly. Finally it would also be simpler to find whether two segments by simply finding the theoretical intersection point (as segments can only be horizontal or vertical), and then checking whether that point lies between the coordinates.
+
+**makeSegPos**
+Similar problems to onSegment and orientation, very small function that could be defined locally without causing significant clutter in the code.
 
 **renderSegment**
-This is likely the worst function in the section of code, it is highly unreadable consisting of around 150 lines. This function could have been simplified significantly by breaking up subsections of its functionality into external functoins. Beyond this its actual implementation is also overly complex. 
+This is likely the worst function in the section of code, it is highly unreadable consisting of around 150 lines. This function could have been simplified significantly by breaking up subsections of its functionality into external functions. Beyond this its actual implementation is also overly complex. 
 
-**memoOf**
-This code is entirely unused, and so should be removed
-
-**singleWireView**
-This function is entirely undocumented, and is a very important function for the rendering so it is essential that it is easy to understand.
-
-MapToSortedList
-**view**
-This function is entirely undocumented, and is a very important function for the rendering so it is essential that it is easy to understand.
+**singleWireView**, **view**
+Both functions are nearly entirely undocumented, this is especially bad as these two functions dictate the rendering and so their ease of use and understanding are critical.
 
 **other problems**
-There is a fundamental underlying problem on the original codebase relating to the fact that the segment type is very poor. Segments all contain both a start and end position so duplication information, the only method to identify whether a segment is being manually routed is by negating it, causing 'abs' being used everywhere. Our team decided to make the following improvements to fix this: Segments contain a length and every segment is by definition at a right angle to the prior segment, furthermore the sign of the length indicates whether it is increasing or decreasing. Segments also contain a 'Mode' attribute indicating whether how it is routed. Finally the overall start and end positions are stored in the wire itself. 
 
-Another fundamental problem is that the original code relied entirely on having wires only be of 7-segment length. This is highly prohibitive to new port orientations. This requirement was removed in our code to allow for every possible orientation of input and output port, thus exhibiting a significant improvement in functionality.
+The segments type:
+* Contains a start and end position on every single segment, duplicating a large amount of information.
+* The method to determine routing of a segment is whether or not it is negative which is extremely unintuitive and leads to messier code later on. 
+* This was improved by changed segments to have a relative representation, only storing a length. Every segment is by defintion and a right angle to the previous segment, and the sign of the lenght indiciates whether the wires runs in an increasing or decreasing direction which is very logical.
+* Segments have a 'mode' attribute, which is either 'Manual' or 'Auto' that indicates whether or not it is being manually routed.
+* Wire contains both the start and final positions which allow us to produce absolute XY positions of segments whenever they are needed.
 
-Finally the functionality of segmentIntersectsSegment, as well as all of its subfunctions are entirely useless and can be entirely removed.
+Segment list of wires:
+* Originally there were only 2 types of segment lists, 3 and 5 seg, to route between various symbols. These were also implemented with the assumption of 7 segments in any given wire. 
+* This led not only to hard coding that made inclusion of new cases significantly harder, but also required extra data in the situation that a wire could be represented with fewer segments.
+* This was changed such that wires can have a variety of length of segment lists. 
 
-### Analysis of how/why code works
+Unused / Made redundant functions:
+* Many of the original functions were either never used, or could very easily be made redundant. 
+* segmentIntersectsSegment as well as a variety of global subfunctions it uses (which have no need to be global) were made redundant due to changes in Implementation.
+* MapToSortedList was never used.
+* MemoOf was never used.
+* distanceBetweenTwoPoints was never used.
 ### Analysis of how/why code works
 
 * Will demo all orientations of end point.
@@ -89,18 +94,8 @@ Finally the functionality of segmentIntersectsSegment, as well as all of its sub
 * Will demo jump wire rendering
 * Will demo modern wire rendering
 
-This section need not contain analysis if the code can be demonstarted working. In 
-that case list as bullet points the features you will demonstarte (quickly) in the 5 min
-interview.
-
-* If code works fully and can be demonstrated in the 5 minute feedback interview no analysis is needed. 
-* If code will be manually tested in interview say what the tests are that supplement your analysis
-* Interview code must be the assessed branch (not something else, or using later group code)
-* A good way to show code works is to explain how it differs from existing working code and how existing
-functionality is preserved.
-
 Final function list:
-segmentsToVertices - Implicitly shown in demo - changes from previous functionality are simply refactoring so that it works on the relative segments.
+segmentsToVertices - Implicitly shown in demo - changes from previous functionality are simply refactoring so that it works using the new relative segments.
 
 makeInitialWireVerticesList - Explicitly shown in demo - has a manual case for all differention endpoint orientations in all quadrants relative to the startpoint. Each different orientation and position can be shown. The previous functionality is a subset of the current functionality.
 
@@ -154,5 +149,8 @@ view - Implicitly shown in demo - Calls singleWire_____View on each wire in the 
 
    b. makeInitialSegmentsList as a result of makeInitialWireVerticesList being simplified a significant amount of the logic for this function could be removed so that it directly does what it states, creates an initial segment list. 
 
-   c. these functions were used in conjunction with section 2 in order to allow for an arbitrary orientaiton of starting point as well.
+   c. Each singleWire_____View function was also changed to correctly render the bit width in relation to the new orientation.
+
+
+   d. these functions were used in conjunction with section 2 in order to allow for an arbitrary orientaiton of starting point as well.
    
