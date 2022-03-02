@@ -910,7 +910,7 @@ let rectanglesIntersect (rect1: Rectangle) (rect2: Rectangle) =
     (intersect1D toX) && (intersect1D toY)
 
 /// Checks if a segment intersects a bounding box using the segment's start and end XYPos
-let segmentIntersectsBoundingBox (bb: BoundingBox) segStart segEnd =
+let segmentIntersectsBoundingBox (box: BoundingBox) segStart segEnd =
     let toRect p1 p2 =
         let topLeft, bottomRight =
             if lThanEqualPos p1 p2 then
@@ -922,10 +922,10 @@ let segmentIntersectsBoundingBox (bb: BoundingBox) segStart segEnd =
           BottomRight = bottomRight }
 
     let bbBottomRight =
-        { X = bb.TopLeft.X + bb.W
-          Y = bb.TopLeft.Y + bb.H }
+        { X = box.TopLeft.X + box.W
+          Y = box.TopLeft.Y + box.H }
 
-    let bbRect = toRect bb.TopLeft bbBottomRight
+    let bbRect = toRect box.TopLeft bbBottomRight
     let segRect = toRect segStart segEnd
 
     rectanglesIntersect bbRect segRect
@@ -1245,20 +1245,6 @@ let autoroute (model: Model) (wire: Wire) : Wire =
 let relativePosition (origin: XYPos) (pos:XYPos) = 
     {| isLeft = origin.X > pos.X; isAbove = origin.Y > pos.Y |}
 
-/// Reverses a wire so that it may be processed in the opposite direction. This function is self-inverse.
-let reverseWire (wire: Wire) =
-    let newSegs =
-        List.rev wire.Segments
-        |> List.indexed // I don't think we need to reverse the indices, test
-        |> List.map (fun (i, seg) -> { seg with Length = -seg.Length; Index = i })
-
-    { wire with
-        Segments = newSegs
-        StartPos = wire.EndPos
-        EndPos = wire.StartPos
-        InitialOrientation = wire.EndOrientation
-        EndOrientation = wire.InitialOrientation }
-
 /// Returns the tuple (startPos, endPos) of the segment at the target index in the given wire. Throws an error if the target index isn't found
 let getAbsoluteSegmentPos (wire: Wire) (target: int) =
     (None, wire)
@@ -1311,6 +1297,7 @@ let partialAutoroute (wire: Wire) (newPortPos: XYPos) =
     let segs = wire.Segments
     let newWire = { wire with StartPos = newPortPos }
 
+    /// Returns the manual index and change in port position if partial routing can be performend, else none
     let eligibleForPartialRouting manualIdx =
         let oldStartPos = getPartialRouteStart wire manualIdx
         let newStartPos = getPartialRouteStart newWire manualIdx
@@ -1321,6 +1308,7 @@ let partialAutoroute (wire: Wire) (newPortPos: XYPos) =
         else
             None
     
+    /// Returns the partially routed segment list
     let updateSegments (manualIdx, diff) =
         let start, changed, remaining = partitionSegments segs manualIdx
         let changed' = 
@@ -1339,6 +1327,22 @@ let partialAutoroute (wire: Wire) (newPortPos: XYPos) =
 
 //--------------------------------------------------------------------------------//
 
+//------------------------------updateWire--------------------------------------//
+
+/// Reverses a wire so that it may be processed in the opposite direction. This function is self-inverse.
+let reverseWire (wire: Wire) =
+    let newSegs =
+        List.rev wire.Segments
+        |> List.indexed // I don't think we need to reverse the indices, test
+        |> List.map (fun (i, seg) -> { seg with Length = -seg.Length; Index = i })
+
+    { wire with
+        Segments = newSegs
+        StartPos = wire.EndPos
+        EndPos = wire.StartPos
+        InitialOrientation = wire.EndOrientation
+        EndOrientation = wire.InitialOrientation }
+
 /// Returns a re-routed wire from the given model.
 /// First attempts partial autorouting, and defaults to full autorouting if this is not possible.
 /// Reverse indicates if the wire should be processed in reverse, 
@@ -1354,6 +1358,8 @@ let updateWire (model : Model) (wire : Wire) (reverse : bool) =
     else 
         partialAutoroute wire newPort
     |> Option.defaultValue (autoroute model wire)
+
+//--------------------------------------------------------------------------------//
 
 /// Moves a wire by the XY amounts specified by displacement
 let moveWire (wire: Wire) (displacement: XYPos) =
@@ -1778,11 +1784,11 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
 //---------------Other interface functions--------------------//
 
 /// Checks if a wire intersects a bounding box by checking if any of its segments intersect (sts219)
-let wireIntersectsBoundingBox (wire : Wire) (bb : BoundingBox) =
+let wireIntersectsBoundingBox (wire : Wire) (box : BoundingBox) =
     let segmentIntersectsBox segStart segEnd state seg =
         match state with
         | true -> true
-        | false -> segmentIntersectsBoundingBox bb segStart segEnd
+        | false -> segmentIntersectsBoundingBox box segStart segEnd
     
     foldOverSegs segmentIntersectsBox false wire
 
