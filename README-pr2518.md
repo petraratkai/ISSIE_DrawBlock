@@ -2,14 +2,16 @@
 
 ## Admin and quick access links
 
-[Common repo TeamN file](https://github.com/tomcl/hlp22docs/blob/main/Team9.md)
+[Common repo Team9 file](https://github.com/tomcl/hlp22docs/blob/main/Team9.md)
 
 [Symbol (section 2)](src/renderer/drawblock/symbol.fs)
 
 Section 2 on my file is lines : 678-1510
+
 I am also responsible for lines 
 * 215-264 (function initPortOrientation)
 * 365-439 (functions getSymbolPortOrientation, getHAndW, getPortBaseOffset, isMuxSel, getMuxSelOffset, getPortPos)
+
 Also wrote the updated types and the documentation for them (lines 20-106)
 
 
