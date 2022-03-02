@@ -47,7 +47,7 @@ This is likely the worst function in the section of code, it is highly unreadabl
 **singleWireView**, **view**
 Both functions are nearly entirely undocumented, this is especially bad as these two functions dictate the rendering and so their ease of use and understanding are critical.
 
-**other problems**
+### Other problems
 
 The segments type:
 * Contains a start and end position on every single segment, duplicating a large amount of information.
@@ -67,6 +67,7 @@ Unused / Made redundant functions:
 * MapToSortedList was never used.
 * MemoOf was never used.
 * distanceBetweenTwoPoints was never used.
+
 ### Analysis of how/why code works
 
 * Will demo all orientations of end point.
