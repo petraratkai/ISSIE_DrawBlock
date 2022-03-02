@@ -265,7 +265,7 @@ let segmentsToVertices (segList:Segment list) (wire:Wire) =
 /// this function returns a list of wire vertices
 let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (portOrientation : Symbol.Edge) = 
     let xStart, yStart, xEnd, yEnd = wireStartPos.X, wireStartPos.Y, wireEndPos.X, wireEndPos.Y
-    match xStart - xEnd < 0 with 
+    match xStart - xEnd + 20. < 0 with //add 20 to prevent issues in the case that the ports are directly on in line with one another
     | true -> //Right of startpos
         match yStart - yEnd < 0 with 
         | true -> //Below startpos
@@ -844,6 +844,8 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
                     | Jump -> singleWireJumpView props
                     | Modern -> singleWireModernView props
 
+                    //Testing radial
+                    //
             )
     TimeHelpers.instrumentInterval "WirePrepareProps" rStart ()
     let symbols = Symbol.view model.Symbol (Symbol >> dispatch)
