@@ -164,25 +164,12 @@ interview.
 * A good way to show code works is to explain how it differs from existing working code and how existing
 functionality is preserved.
 
+**moveSegment**
+This function allows individual segments of a wire in Issie to be dragged in a direction perpendicular to its orientation. It's original call tree is below:
+![]( sts219/moveSegment.png)
+`getSafeDistanceForMove` is meant to prevent users from dragging wire segments perpendicular to the port orientation too close to the port.
+
 # Extensions
-
-Extensions are required for mark > 70 and optional for mark below 70. High marks on 
-the first two sections cannot boost extensions mark if this is lower than them.
-
-$baseMark = \min (70, code * 20/35 + analysis * 15/35)$
-
-$extendedMark = code * 20/50 + analysis * 15/50  + extensions * 15/50$
-
-$overallMark = \max (baseMark, extendedMark)$
-
-* This section can be missing if you have not done significant extension work.
-* Extension code, if well documented (in the code) and clearly written, can be assessed without working 
-  (if it is demonstrated it depends on other people's code not yet written). 
-* Don't bother writing this section unless you have significant extension work, because the mark here 
-  will usually not be counted in that case (see the marking scheme). Marks for extensions will be awarded 
-only for work of C level or above.
-
-* delete the above comemnts and add your satement of extensions as below*
 
 1.  List as numbered points the extensions (features) your code will support
 

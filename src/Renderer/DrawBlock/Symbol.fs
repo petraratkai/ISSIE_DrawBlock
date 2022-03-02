@@ -16,6 +16,7 @@ open System.Text.RegularExpressions
 /// default block size 
 let blockSize = 30 
 
+
 /// ---------- SYMBOL TYPES ---------- ///
 type Rotation = | Degree0 | Degree90 | Degree180 | Degree270 
     with
@@ -842,6 +843,36 @@ let generateLabel (model: Model) (compType: ComponentType) : string =
     | IOLabel -> prefix
     | _ -> prefix + (generateLabelNumber listSymbols compType)
 
+let initCopiedPorts (oldSymbol:Symbol) (newComp: Component) =
+    let inPortIds = List.map (fun (p:Port) -> p.Id)  newComp.InputPorts
+    let outPortIds = List.map (fun (p:Port) -> p.Id) newComp.OutputPorts
+    let oldInPortIds =  
+        List.map (fun (p:Port) -> p.Id) oldSymbol.Component.InputPorts
+    let oldOutPortIds =
+        List.map (fun (p:Port) -> p.Id) oldSymbol.Component.OutputPorts
+    let equivPortIds = 
+        List.zip oldInPortIds inPortIds @ List.zip oldOutPortIds outPortIds
+        |> Map.ofList
+    let portOrientation = 
+        (Map.empty,oldSymbol.PortOrientation)
+        ||> Map.fold 
+            (fun currMap oldPortId edge -> Map.add equivPortIds[oldPortId] edge currMap)
+
+    let emptyPortOrder = 
+        (Map.empty, [Top; Bottom; Left; Right])
+        ||> List.fold (fun currMap side -> Map.add side [] currMap)
+    let portOrder =
+        (emptyPortOrder, oldSymbol.PortOrder)
+        ||> Map.fold 
+            (fun currMap side oldList -> 
+                let newList =
+                    ([], oldList)
+                    ||> List.fold 
+                        (fun currList oldPortId ->
+                            currList @ [equivPortIds[oldPortId]])
+                Map.add side newList currMap)
+    portOrientation, portOrder
+
 /// Interface function to paste symbols. Is a function instead of a message because we want an output.
 /// Currently drag-and-drop.
 /// Pastes a list of symbols into the model and returns the new model and the id of the pasted modules.
@@ -853,15 +884,18 @@ let pasteSymbols (symModel: Model) (newBasePos: XYPos) : (Model * ComponentId li
         let newLabel = 
             compType
             |> generateLabel { symModel with Symbols = currSymbolModel.Symbols}
-
         let newComp = makeComponent newPos compType newId newLabel
+        let orientation = defaultPortOrientation newComp
         let newSymbol =
             { oldSymbol with
                 Id = ComponentId newId
                 Component = newComp
                 Pos = newPos
                 ShowInputPorts = false
-                ShowOutputPorts = false }
+                ShowOutputPorts = false
+                PortOrientation = orientation 
+                PortOrder = findPortOrder orientation newComp
+            }
              
         let newSymbolMap = currSymbolModel.Symbols.Add (ComponentId newId, newSymbol)
         let newPorts = addPortsToModel currSymbolModel.Ports (newComp.InputPorts @ newComp.OutputPorts)
@@ -999,7 +1033,6 @@ let changeConstantf (symModel:Model) (compId:ComponentId) (constantVal:int64) (c
 //Helper functions for the upadte function
 
 /// initialises the port positions of a component that are needed in Symbol
-
 
 /// Given a model and a list of component ids deletes the specified components from the model and returns the updated model
 let inline deleteSymbols (model: Model) compIds =
