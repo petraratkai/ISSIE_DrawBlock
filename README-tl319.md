@@ -85,6 +85,11 @@ Finally the functionality of segmentIntersectsSegment, as well as all of its sub
 ### Analysis of how/why code works
 ### Analysis of how/why code works
 
+* Will demo all orientations of end point.
+* Will demo radial wire rendering
+* Will demo jump wire rendering
+* Will demo modern wire rendering
+
 This section need not contain analysis if the code can be demonstarted working. In 
 that case list as bullet points the features you will demonstarte (quickly) in the 5 min
 interview.
@@ -96,22 +101,33 @@ interview.
 functionality is preserved.
 
 Final function list:
-segmentsToVertices 
-makeInitialWireVerticesList
-xyVerticesToSegments
-issieVerticesToSegments
-makeInitialSegmentsList
-MapToSortedList
-extractConnection
-extractConnections
-renderRadialWire
-renderModernSegment
-renderJumpSegment
-singleWireJumpView
-singleWireModernView
-singleWireRadialView
-view
+segmentsToVertices - Implicitly shown in demo - changes from previous functionality are simply refactoring so that it works on the relative segments.
 
+makeInitialWireVerticesList - Explicitly shown in demo - has a manual case for all differention endpoint orientations in all quadrants relative to the startpoint. Each different orientation and position can be shown. The previous functionality is a subset of the current functionality.
+
+xyVerticesToSegments - Implicitly shown in demo - Calculates the length for each segment by calculating the difference in both X and Y. It then creates segments using this distance. It also ensures that the first and last segment are not draggable, preserving original functionality. 
+
+issieVerticesToSegments - Implicitly shown in demo - converts the vertices from issie (two floats) to an XYPos that can then be used with xyVerticesToSegments to create segments as before.
+
+makeInitialSegmentsList - Implicitly shown in demo - Creates the verticeslist by using makeinitialWireVerticesList with the correct endpoint orientation, this list is then passed to xyVerticesToSegents to create all initial segment list.
+
+extractConnection - Implicitly shown in demo - Same functionality as original
+
+extractConnections - Implicitly shown in demo - Same functionality as original
+
+renderRadialWire - Explicitly shown in demo - Creates an SVG command that renders an entire radial wire apart from the first move and the final line.
+
+renderModernSegment  - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - renders a segment as well as any intersections along that segment.
+
+renderJumpSegment - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - renders a segment as well as any jumps along that segment, is capable of supporting multiple jumps as in original function.
+
+singleWireJumpView - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - calls renderJumpSegment for each segment of the given wire as well as rendering the text.
+
+singleWireModernView - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - calls renderModernSegment for each segment of the given wire as well as rendering the text.
+
+singleWireRadialView  - Explicitly shown in demo - Uses the SVG command to generate the ReactElements that render the entire radial wire
+
+view - Implicitly shown in demo - Calls singleWire_____View on each wire in the model, according to the Model.Type
 
 ## Extensions
 

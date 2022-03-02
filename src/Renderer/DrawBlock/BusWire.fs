@@ -450,34 +450,7 @@ let makeInitialSegmentsList (hostId : ConnectionId) (startPos : XYPos) (endPos :
     xyPairs
     |> xyVerticesToSegments hostId 
 
-let MapToSortedList map : Wire list = 
-    let listSelected = 
-        Map.filter (fun id wire -> wire.Color = HighLightColor.Purple) map
-        |> Map.toList
-        |> List.map snd
-    let listErrorSelected =
-        Map.filter (fun id wire -> wire.Color = HighLightColor.Brown) map
-        |> Map.toList
-        |> List.map snd
-    let listErrorUnselected =
-        Map.filter (fun id wire -> wire.Color = HighLightColor.Red) map
-        |> Map.toList
-        |> List.map snd
-    let listUnSelected = 
-        Map.filter (fun id wire -> wire.Color = HighLightColor.DarkSlateGrey) map
-        |> Map.toList
-        |> List.map snd
-    let listCopied = 
-        Map.filter (fun id wire -> wire.Color = HighLightColor.Thistle) map
-        |> Map.toList
-        |> List.map snd
-    let listWaves = 
-        Map.filter (fun id wire -> wire.Color = HighLightColor.Blue) map
-        |> Map.toList
-        |> List.map snd
 
-    listUnSelected @ listErrorUnselected @ listErrorSelected @ listSelected @ listWaves @ listCopied
-   
 //----------------------interface to Issie-----------------------//
 /// This function is given a ConnectionId and it
 /// converts the corresponding BusWire.Wire type to a
