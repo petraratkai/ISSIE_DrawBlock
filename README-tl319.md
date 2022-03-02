@@ -76,31 +76,31 @@ Both functions are nearly entirely undocumented. This is especially poor as thes
 * Will demo modern wire rendering
 
 Final function list:
-segmentsToVertices - Implicitly shown in demo - changes from previous functionality are simply refactoring so that it works using the new relative segments.
+segmentsToVertices - Implicitly shown in demo - The changes from previous functionality are simply refactoring so that it works using the new relative segments.
 
-makeInitialWireVerticesList - Explicitly shown in demo - has a manual case for all different endpoint orientations in all quadrants relative to the startpoint. Each different orientation and position can be shown. 
+makeInitialWireVerticesList - Explicitly shown in demo - This function has a manual case for each different endpoint orientation in all quadrants relative to the startpoint. Each different orientation and position can be shown. 
 
-xyVerticesToSegments - Implicitly shown in demo - Calculates the length for each segment by calculating the difference in both X and Y. It then creates segments using this distance. It also ensures that the first and last segment are not draggable, preserving original functionality. 
+xyVerticesToSegments - Implicitly shown in demo - This function calculates the length for each segment by calculating the difference in both X and Y. It then creates segments using this distance. It also ensures that the first and last segment are not draggable, preserving original functionality. 
 
-issieVerticesToSegments - Implicitly shown in demo - converts the vertices from issie (two floats) to an XYPos that can then be used with xyVerticesToSegments to create segments as before.
+issieVerticesToSegments - Implicitly shown in demo - This function converts the vertices from issie (two floats) to an XYPos that can then be used with xyVerticesToSegments to create segments as before.
 
-makeInitialSegmentsList - Implicitly shown in demo - Creates the verticeslist by using makeinitialWireVerticesList with the correct endpoint orientation, this list is then passed to xyVerticesToSegents to create all initial segment list.
+makeInitialSegmentsList - Implicitly shown in demo - This function creates the segmentlist by using makeinitialWireVerticesList and the relevant endpoint orientation; this list is then passed to xyVerticesToSegents to create all initial segment list.
 
-extractConnection - Implicitly shown in demo - Same functionality as original
+extractConnection - Implicitly shown in demo - This function has the same functionality and logic as the original.
 
-extractConnections - Implicitly shown in demo - Same functionality as original
+extractConnections - Implicitly shown in demo - This function has the same functionality and logic as the original.
 
-renderRadialWire - Explicitly shown in demo - Creates an SVG command that renders an entire radial wire apart from the first move and the final line.
+renderRadialWire - Explicitly shown in demo - This function creates an SVG command that renders an entire radial wire except from the first move command and the final line.
 
-renderModernSegment  - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - renders a segment as well as any intersections along that segment. The intersection locations are dictated by the IntersectCoordinateList in the AbsSegment, in the case that this list is empty it will instead produce a simple straight line.
+renderModernSegment  - Explicitly shown in demo , however I will have to manually test this because it requires code from section 3 that is not yet implemented -  The function renders a segment as well as any intersections along that segment. The intersection locations are dictated by the IntersectCoordinateList in the AbsSegment. In the case that this list is empty it will instead produce a simple straight line.
 
-renderJumpSegment - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - renders a segment as well as any jumps along that segment, is capable of supporting multiple jumps as in original function. The jump locations are dictated by the IntersectCoordinateList in the AbsSegment, in the case that this list is empty it will instead produce a simple straight line.
+renderJumpSegment - Explicitly shown in demo , however I will have to manually test this because it requires code from section 3 that is not yet implemented - The function renders a segment as well as any jumps along that segment. It is capable of supporting multiple jumps as in original function. The jump locations are dictated by the IntersectCoordinateList in the AbsSegment. In the case that this list is empty it will instead produce a simple straight line.
 
-singleWireJumpView - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - calls renderJumpSegment for each segment of the given wire as well as rendering the bit width text.
+singleWireJumpView - Explicitly shown in demo , however I will have to manually test this because it requires code from section 3 that is not yet implemented - calls renderJumpSegment for each segment of the given wire as well as rendering the bit width text.
 
-singleWireModernView - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - calls renderModernSegment for each segment of the given wire as well as rendering the bit width text.
+singleWireModernView - Explicitly shown in demo , however I will have to manually test this because it requires code from section 3 that is not yet implemented - calls renderModernSegment for each segment of the given wire and renders the bit width text.
 
-singleWireRadialView  - Explicitly shown in demo - Uses the SVG command to generate the ReactElements that renders the entire radial wire as well as rendering the bit width text. There is some incorrect behaviour in this function, due to the fact that the rendered arcs are all of radius 5. Specifically if there are 3 segments and the middle segment has a length of less than 5 the two arcs will pass one another and subsequently be joined by another straight line. This however is a relatively minor problem as the issue is likely to only come up when specifically attempting to recreate it.
+singleWireRadialView  - Explicitly shown in demo - Uses the SVG command to generate the ReactElements that render the entire radial wire as well as rendering the bit width text. There is some incorrect behaviour in this function, due to the fact that the rendered arcs are all of radius 5. Specifically whenever there are 3 segments and the middle segment has a length of less than 5 the two arcs will cross one another and subsequently be joined by another straight line. This however is a relatively minor problem as the issue is likely to only come up when specifically attempting to recreate it.
 
 view - Implicitly shown in demo - Calls singleWire_____View on each wire in the model, according to the Model.Type
 
@@ -108,27 +108,27 @@ view - Implicitly shown in demo - Calls singleWire_____View on each wire in the 
 
 1.  Radial display type for wires
 
-     a. singleWireRadialView this is a new function that creates a custom path from a string created in renderRadialWire and makes an SVG element from it
+     a. singleWireRadialView - This is a new function that creates a custom path from a string created in renderRadialWire and makes an SVG element from it.
 
-     b. renderRadialWire this is a new function that generates a path command string according to the vertices of the wire
+     b. renderRadialWire - This is a new function that generates a path command string according to the vertices of the wire.
      
-     c. view changed to support switching between wire displays according to Model.Type 
-     (NOTE: the code to change the Model.Type is currently not correctly implemented from section 3, as such it will always be the Jump type, in order to test different display types line 844 can be changed to different singleWireRadialView props)
+     c. view - This was changed to support switching between wire displays according to Model.Type 
+     (NOTE: the code to change the Model.Type is currently not correctly implemented from section 3, as such it will always be the Jump type. In order to test different display types line 844 can be changed to  singleWireRadialView props.)
 
 2. Modern display type for wires
-     a. singleWireModernView this is a new function that creates a react element that contains all of the segments and intersections for any given wire. 
+     a. singleWireModernView - This is a new function that creates a react element that contains all of the segments and intersections for any given wire. 
      
-     b. renderModernSegment this is a new function that creates the react element of any given segment as well as circles for any intersection. The location of these circle is passed via the Segment.IntersectCoordinateList
-     (NOTE : at time of writing the code to populate the IntersectCoordinateList of segments  is not fully functional as section 3 has not completed it, in order to test this we can manually place intersections at fixed distances on every segment. This does cause incorrect rendering in the case that the segment is shorter than the manually entered distance, however when IntersectCoordinateList is populated properly in section 3, this scenario would become impossible. Thus this problem would be avoided and it would have entirely correct functionality)
+     b. renderModernSegment - This is a new function that creates the react element of any given segment as well as circles for any intersection. The location of these circle is passed via the Segment.IntersectCoordinateList
+     (NOTE : at time of writing the code to populate the IntersectCoordinateList of segments  is not fully functional as section 3 has not completed it. In order to test this we can manually place intersections at fixed distances on every segment. This does cause incorrect rendering in the case that the segment is shorter than the manually entered distance, however when IntersectCoordinateList is populated properly in section 3, this scenario would become impossible. Thus this problem would be avoided and it would have entirely correct functionality)
      
-     c. view changed to support switching between wire displays according to Model.Type 
-     (NOTE: the code to change the Model.Type is currently not correctly implemented from section 3, as such it will always be the Jump type, in order to test different display types line 844 can be changed to singleWireModernView props)
+     c. view - This was changed to support switching between wire displays according to Model.Type 
+     (NOTE: the code to change the Model.Type is currently not correctly implemented from section 3, as such it will always be the Jump type. In order to test different display types line 844 can be changed to singleWireModernView props)
 
 
 3. Arbitrary orientations of endpoint
-   a. makeInitialWireVerticesList the overall implementation was simplified to support any orientation of the endpoint in any location, it also simplified the logic such that it directly passes the complete and final list of vertices to ensure a clear division of functionality.
+   a. makeInitialWireVerticesList - The overall implementation was simplified to support any orientation of the endpoint in any location. It also simplified the logic such that it directly passes the complete and final list of vertices to ensure a clear division of functionality.
 
-   b. makeInitialSegmentsList as a result of makeInitialWireVerticesList being simplified a significant amount of the logic for this function could be removed so that it directly does what it states, creates an initial segment list. 
+   b. makeInitialSegmentsList - As a result of makeInitialWireVerticesList being simplified a significant amount of the logic for this function could be removed so that it directly does what it states, creates an initial segment list. 
 
    c. Each singleWire_____View function was also changed to correctly render the bit width in relation to the new orientation.
 
