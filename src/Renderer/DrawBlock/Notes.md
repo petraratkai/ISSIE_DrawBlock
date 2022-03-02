@@ -1,8 +1,12 @@
-﻿Analysis - Symbol
+﻿jyc119 Analysis - Symbol 1
 ==========
 Types
 ----------
-Symbol -> struct that contains a Component, if component has ports maybe move out ports directly into symbol, not super neccessary
+Symbol:
+- New type Rotation tells us how many degrees a symbol has been rotated left 
+- Added field STransform which has type {Rotation:Rotation and flipped:bool} to symbol where flipped tells us if a symbol is flipped horizontally
+- In Symbol, added field PortOrientation which tells us which ports are on each edge and PortOrder which stores the order of ports on each edge
+
 
 Analysis - Symbol 1
 
