@@ -100,7 +100,7 @@ singleWireJumpView - Explicitly shown in demo , have to manually test however as
 
 singleWireModernView - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - calls renderModernSegment for each segment of the given wire as well as rendering the bit width text.
 
-singleWireRadialView  - Explicitly shown in demo - Uses the SVG command to generate the ReactElements that renders the entire radial wire as well as rendering the bit width text.
+singleWireRadialView  - Explicitly shown in demo - Uses the SVG command to generate the ReactElements that renders the entire radial wire as well as rendering the bit width text. There is some incorrect behaviour in this function, due to the fact that the rendered arcs are all of radius 5. Specifically if there are 3 segments and the middle segment has a length of less than 5 the two arcs will pass one another and subsequently be joined by another straight line. This however is a relatively minor problem as the issue is likely to only come up when specifically attempting to recreate it.
 
 view - Implicitly shown in demo - Calls singleWire_____View on each wire in the model, according to the Model.Type
 
