@@ -248,6 +248,7 @@ let getOrientation (edge: Symbol.Edge) =
 //---------------------------------------------------------------------------------//
 
 /// Converts a segment list into a list of vertices
+/// Needs wire for starting position
 let segmentsToVertices (segList:Segment list) (wire:Wire) = 
     ((wire.StartPos, wire.InitialOrientation),segList)
     ||> List.scan(fun (currPos, currOrientation) seg ->
@@ -269,144 +270,144 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
         match yStart - yEnd < 0 with 
         | true -> //Below startpos
             match portOrientation with
-            | Symbol.Top  ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = xEnd; Y = yStart};
-                    {X = xEnd; Y = yEnd-5.0}; 
-                    {X = xEnd; Y = yEnd-5.0};// Length 0 horizontal
-                    {X = xEnd; Y = yEnd}] // Stick vertical
+            | Symbol.Top  ->   [{X = xStart; Y = yStart};
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                                {X = xEnd; Y = yStart};
+                                {X = xEnd; Y = yEnd-5.0}; 
+                                {X = xEnd; Y = yEnd-5.0};// Length 0 horizontal
+                                {X = xEnd; Y = yEnd}] // Stick vertical
             | Symbol.Right ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = xEnd+20.; Y = yStart};
-                    {X = xEnd+20.; Y = yEnd};
-                    {X = xEnd+Wire.stickLength/2.; Y = yEnd}; 
-                    {X = xEnd+Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
-                    {X = xEnd; Y = yEnd}] //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                                {X = xEnd+20.; Y = yStart};
+                                {X = xEnd+20.; Y = yEnd};
+                                {X = xEnd+Wire.stickLength/2.; Y = yEnd}; 
+                                {X = xEnd+Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
+                                {X = xEnd; Y = yEnd}] //Stick horizontal
             | Symbol.Bottom->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = (xEnd+xStart)/2.; Y = yStart};
-                    {X = (xEnd+xStart)/2.; Y = yEnd+20.};
-                    {X = xEnd; Y = yEnd+20.};
-                    {X = xEnd; Y = yEnd+Wire.stickLength/2.}; 
-                    {X = xEnd; Y = yEnd+Wire.stickLength/2.}; //Length 0 horizontal
-                    {X = xEnd; Y = yEnd}] //Stick vertical
-            | Symbol.Left ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = (xEnd+xStart)/2.; Y = yStart};
-                    {X = (xEnd+xStart)/2.; Y = yEnd};
-                    {X = xEnd-Wire.stickLength/2.; Y = yEnd}; 
-                    {X = xEnd-Wire.stickLength/2.; Y = yEnd}; //Length 0 horizontal
-                    {X = xEnd; Y = yEnd}] //Stick vertical
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                                {X = (xEnd+xStart)/2.; Y = yStart};
+                                {X = (xEnd+xStart)/2.; Y = yEnd+20.};
+                                {X = xEnd; Y = yEnd+20.};
+                                {X = xEnd; Y = yEnd+Wire.stickLength/2.}; 
+                                {X = xEnd; Y = yEnd+Wire.stickLength/2.}; //Length 0 horizontal
+                                {X = xEnd; Y = yEnd}] //Stick vertical
+            | Symbol.Left ->   [{X = xStart; Y = yStart};
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                                {X = (xEnd+xStart)/2.; Y = yStart};
+                                {X = (xEnd+xStart)/2.; Y = yEnd};
+                                {X = xEnd-Wire.stickLength/2.; Y = yEnd}; 
+                                {X = xEnd-Wire.stickLength/2.; Y = yEnd}; //Length 0 horizontal
+                                {X = xEnd; Y = yEnd}] //Stick vertical
         | false -> //Above startpos
             match portOrientation with
-            | Symbol.Bottom ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = xEnd; Y = yStart};
-                    {X = xEnd; Y = yEnd+Wire.stickLength/2.}; 
-                    {X = xEnd; Y = yEnd+Wire.stickLength/2.}; //Length 0 hortizontal
-                    {X = xEnd; Y = yEnd}] //Stick vertical
+            | Symbol.Bottom -> [{X = xStart; Y = yStart};
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                                {X = xEnd; Y = yStart};
+                                {X = xEnd; Y = yEnd+Wire.stickLength/2.}; 
+                                {X = xEnd; Y = yEnd+Wire.stickLength/2.}; //Length 0 hortizontal
+                                {X = xEnd; Y = yEnd}] //Stick vertical
             | Symbol.Right ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = xEnd+20.; Y = yStart};
-                    {X = xEnd+20.; Y = yEnd};
-                    {X = xEnd+Wire.stickLength/2.; Y = yEnd}; 
-                    {X = xEnd+Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
-                    {X = xEnd; Y = yEnd}] //Stick horizontal
-            | Symbol.Top ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = (xEnd+xStart)/2.; Y = yStart};
-                    {X = (xEnd+xStart)/2.; Y = yEnd-20.};
-                    {X = xEnd; Y = yEnd-20.};
-                    {X = xEnd; Y = yEnd-Wire.stickLength/2.}; 
-                    {X = xEnd; Y = yEnd-Wire.stickLength/2.}; //Length 0 horizontal
-                    {X = xEnd; Y = yEnd}] //Stick vertical
-            | Symbol.Left ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = (xEnd+xStart)/2.; Y = yStart};
-                    {X = (xEnd+xStart)/2.; Y = yEnd};
-                    {X = xEnd-Wire.stickLength/2.; Y = yEnd}; 
-                    {X = xEnd-Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
-                    {X = xEnd; Y = yEnd}] //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                                {X = xEnd+20.; Y = yStart};
+                                {X = xEnd+20.; Y = yEnd};
+                                {X = xEnd+Wire.stickLength/2.; Y = yEnd}; 
+                                {X = xEnd+Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
+                                {X = xEnd; Y = yEnd}] //Stick horizontal
+            | Symbol.Top ->    [{X = xStart; Y = yStart};
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                                {X = (xEnd+xStart)/2.; Y = yStart};
+                                {X = (xEnd+xStart)/2.; Y = yEnd-20.};
+                                {X = xEnd; Y = yEnd-20.};
+                                {X = xEnd; Y = yEnd-Wire.stickLength/2.}; 
+                                {X = xEnd; Y = yEnd-Wire.stickLength/2.}; //Length 0 horizontal
+                                {X = xEnd; Y = yEnd}] //Stick vertical
+            | Symbol.Left ->   [{X = xStart; Y = yStart};
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                                {X = (xEnd+xStart)/2.; Y = yStart};
+                                {X = (xEnd+xStart)/2.; Y = yEnd};
+                                {X = xEnd-Wire.stickLength/2.; Y = yEnd}; 
+                                {X = xEnd-Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
+                                {X = xEnd; Y = yEnd}] //Stick horizontal
     | false-> //left of startpos
         match yStart - yEnd < 0 with
         | true -> //below startpos
             match portOrientation with
-            | Symbol.Bottom ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = xStart+Wire.stickLength/2.+10.; Y = yStart}; //Small horizontal for dragging  
-                    {X = xStart+Wire.stickLength/2.+10.; Y = yEnd+20.};
-                    {X = xEnd; Y = yEnd+20.};
-                    {X = xEnd; Y = yEnd+Wire.stickLength/2.}; 
-                    {X = xEnd; Y = yEnd+Wire.stickLength/2.}; //Length 0 horizontal
-                    {X = xEnd; Y = yEnd}] //Stick vertical
+            | Symbol.Bottom -> [{X = xStart; Y = yStart};
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                                {X = xStart+Wire.stickLength/2.+10.; Y = yStart}; //Small horizontal for dragging  
+                                {X = xStart+Wire.stickLength/2.+10.; Y = yEnd+20.};
+                                {X = xEnd; Y = yEnd+20.};
+                                {X = xEnd; Y = yEnd+Wire.stickLength/2.}; 
+                                {X = xEnd; Y = yEnd+Wire.stickLength/2.}; //Length 0 horizontal
+                                {X = xEnd; Y = yEnd}] //Stick vertical
             | Symbol.Right ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = xStart+Wire.stickLength/2.+10.; Y = yStart}; //Small horizontal for dragging
-                    {X = xStart+Wire.stickLength/2.+10.; Y = yEnd};
-                    {X = xEnd+Wire.stickLength/2.; Y = yEnd}; 
-                    {X = xEnd+Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
-                    {X = xEnd; Y = yEnd}] //Stick horizontal
-            | Symbol.Top ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = (yStart+yEnd)/2.}; //Length 0 vertical
-                    {X = xEnd; Y = (yStart+yEnd)/2.};
-                    {X = xEnd; Y = yEnd-Wire.stickLength/2.}; 
-                    {X = xEnd; Y = yEnd-Wire.stickLength/2.}; //Length 0 horizontal
-                    {X = xEnd; Y = yEnd}] //Stick vertical
-            | Symbol.Left ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = xStart+Wire.stickLength/2.+10.; Y = yStart}; //Small horizontal for dragging
-                    {X = xStart+Wire.stickLength/2.+10.; Y = (yStart+yEnd)/2.}; 
-                    {X = xEnd-20.; Y = (yStart+yEnd)/2.}; 
-                    {X = xEnd-20.; Y = yEnd};
-                    {X = xEnd-Wire.stickLength/2.; Y = yEnd}; 
-                    {X = xEnd-Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
-                    {X = xEnd; Y = yEnd}] //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                                {X = xStart+Wire.stickLength/2.+10.; Y = yStart}; //Small horizontal for dragging
+                                {X = xStart+Wire.stickLength/2.+10.; Y = yEnd};
+                                {X = xEnd+Wire.stickLength/2.; Y = yEnd}; 
+                                {X = xEnd+Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
+                                {X = xEnd; Y = yEnd}] //Stick horizontal
+            | Symbol.Top ->    [{X = xStart; Y = yStart};
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = (yStart+yEnd)/2.}; //Length 0 vertical
+                                {X = xEnd; Y = (yStart+yEnd)/2.};
+                                {X = xEnd; Y = yEnd-Wire.stickLength/2.}; 
+                                {X = xEnd; Y = yEnd-Wire.stickLength/2.}; //Length 0 horizontal
+                                {X = xEnd; Y = yEnd}] //Stick vertical
+            | Symbol.Left ->   [{X = xStart; Y = yStart};
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                                {X = xStart+Wire.stickLength/2.+10.; Y = yStart}; //Small horizontal for dragging
+                                {X = xStart+Wire.stickLength/2.+10.; Y = (yStart+yEnd)/2.}; 
+                                {X = xEnd-20.; Y = (yStart+yEnd)/2.}; 
+                                {X = xEnd-20.; Y = yEnd};
+                                {X = xEnd-Wire.stickLength/2.; Y = yEnd}; 
+                                {X = xEnd-Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
+                                {X = xEnd; Y = yEnd}] //Stick horizontal
         | false -> //above startpos
             match portOrientation with
-            | Symbol.Top ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yEnd-20.}; //Length 0 vertical
-                    {X = xEnd; Y = yEnd-20.};
-                    {X = xEnd; Y = yEnd-Wire.stickLength/2.}; 
-                    {X = xEnd; Y = yEnd-Wire.stickLength/2.}; //Length 0 horizontal
-                    {X = xEnd; Y = yEnd}] //Stick vertical
+            | Symbol.Top ->    [{X = xStart; Y = yStart};
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yEnd-20.}; //Length 0 vertical
+                                {X = xEnd; Y = yEnd-20.};
+                                {X = xEnd; Y = yEnd-Wire.stickLength/2.}; 
+                                {X = xEnd; Y = yEnd-Wire.stickLength/2.}; //Length 0 horizontal
+                                {X = xEnd; Y = yEnd}] //Stick vertical
             | Symbol.Right ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = xStart+Wire.stickLength/2.+10.; Y = yStart}; //Small horizontal for dragging
-                    {X = xStart+Wire.stickLength/2.+10.; Y = yEnd};
-                    {X = xEnd+Wire.stickLength/2.; Y = yEnd}; 
-                    {X = xEnd+Wire.stickLength/2.; Y = yEnd}; //Lenght 0 vertical
-                    {X = xEnd; Y = yEnd}] //Stick horizontal
-            | Symbol.Bottom ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = (yStart+yEnd)/2.}; //Length 0 vertical
-                    {X = xEnd; Y = (yStart+yEnd)/2.};
-                    {X = xEnd; Y = yEnd-Wire.stickLength/2.}; 
-                    {X = xEnd; Y = yEnd-Wire.stickLength/2.}; //Length 0 horizontal
-                    {X = xEnd; Y = yEnd}] //Stick vertical
-            | Symbol.Left ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = xStart+Wire.stickLength/2.+10.; Y = yStart}; //Small horizontal for dragging
-                    {X = xStart+Wire.stickLength/2.+10.; Y = (yStart+yEnd)/2.}; 
-                    {X = xEnd-20.; Y = (yStart+yEnd)/2.}; 
-                    {X = xEnd-20.; Y = yEnd};
-                    {X = xEnd-Wire.stickLength/2.; Y = yEnd}; 
-                    {X = xEnd-Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
-                    {X = xEnd; Y = yEnd}] //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                                {X = xStart+Wire.stickLength/2.+10.; Y = yStart}; //Small horizontal for dragging
+                                {X = xStart+Wire.stickLength/2.+10.; Y = yEnd};
+                                {X = xEnd+Wire.stickLength/2.; Y = yEnd}; 
+                                {X = xEnd+Wire.stickLength/2.; Y = yEnd}; //Lenght 0 vertical
+                                {X = xEnd; Y = yEnd}] //Stick horizontal
+            | Symbol.Bottom -> [{X = xStart; Y = yStart};
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = (yStart+yEnd)/2.}; //Length 0 vertical
+                                {X = xEnd; Y = (yStart+yEnd)/2.};
+                                {X = xEnd; Y = yEnd-Wire.stickLength/2.}; 
+                                {X = xEnd; Y = yEnd-Wire.stickLength/2.}; //Length 0 horizontal
+                                {X = xEnd; Y = yEnd}] //Stick vertical
+            | Symbol.Left ->   [{X = xStart; Y = yStart};
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
+                                {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                                {X = xStart+Wire.stickLength/2.+10.; Y = yStart}; //Small horizontal for dragging
+                                {X = xStart+Wire.stickLength/2.+10.; Y = (yStart+yEnd)/2.}; 
+                                {X = xEnd-20.; Y = (yStart+yEnd)/2.}; 
+                                {X = xEnd-20.; Y = yEnd};
+                                {X = xEnd-Wire.stickLength/2.; Y = yEnd}; 
+                                {X = xEnd-Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
+                                {X = xEnd; Y = yEnd}] //Stick horizontal
 
 /// Converts a list of vertices into a list of segments
 let xyVerticesToSegments connId (xyVerticesList: XYPos list) =
