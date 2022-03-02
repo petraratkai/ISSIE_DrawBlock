@@ -130,9 +130,9 @@ view - Implicitly shown in demo - Calls singleWire_____View on each wire in the 
 
    a. makeInitialWireVerticesList - The overall implementation was simplified to support any orientation of the endpoint in any location. It also simplified the logic such that it directly passes the complete and final list of vertices to ensure a clear division of functionality.
 
-   b. makeInitialSegmentsList - As a result of makeInitialWireVerticesList being simplified a significant amount of the logic for this function could be removed so that it directly does what it states, creates an initial segment list. 
+   b. makeInitialSegmentsList - As a result of makeInitialWireVerticesList being simplified a significant amount of the logic for this function could be removed so that it does directly what it states and creates an initial segment list. 
 
-   c. Each singleWire_____View function was also changed to correctly render the bit width in relation to the new orientation.
+   c. Each singleWire_____View function was changed to correctly render the bit width in relation to the new orientation.
 
-   d. these functions were used in conjunction with section 2 in order to allow for an arbitrary orientaiton of starting point as well.
+   d. These functions were used in conjunction with section 2 in order to allow for an arbitrary orientation of starting point as well.
    
