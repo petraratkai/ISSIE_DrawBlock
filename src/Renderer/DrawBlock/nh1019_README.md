@@ -7,6 +7,15 @@
 
 Section 3 on my file is lines : 1371-1808
 
+### Type Changes 
+
+* Segment: `JumpCoordinateList` --> `IntersectCoordinateList` 
+* `Type RoutingMode = | Auto | Manual` (allows user to choose between auto or manual routing, used for the `Mode` field in `Segment`)
+* Wire: `StartPos: XYPos`
+* Wire: `InitialOrientation` and `EndOrientation` (can either be `Horizontal` or `Vertical`)
+* Model: `WireType`
+* Wire: `WireType`
+
 ## Analysis
 
 ### Changes 
