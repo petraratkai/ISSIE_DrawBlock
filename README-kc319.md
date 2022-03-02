@@ -4,7 +4,6 @@
 
 [Team Contribution Repo](https://github.com/sts219/HLP_Project)
 
-
 ## Admin and quick access links
 
 *link to your teamN.md file*
@@ -16,6 +15,9 @@ Section 1 on my file is lines : 0-700
 
 Anything else you need to say about what you are or are not responsible for.
 
+Some support for rotateSymbol (Interfacing with sheet to provide the rotate message)
+and some other small functions such as getHAndW done by Petra.
+Rotation points for MUX implemented by Petra (in drawSymbol), I modified to its current state and got working with my functions.
 
 ## Analysis
 

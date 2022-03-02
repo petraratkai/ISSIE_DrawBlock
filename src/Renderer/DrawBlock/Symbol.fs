@@ -1290,49 +1290,6 @@ let inline writeMemoryType model compId memory =
     
     { model with Symbols = newSymbols }
 
-
-// let flipAngleHorizontal (rotation: Rotation): Rotation =
-//     match rotation with
-//     | Degree90 | Degree270 -> 
-//         rotation
-//         |> rotateAngleRight
-//         |> rotateAngleRight
-//     | _ -> rotation
-
-
-// let flipSideHorizontal (edge: Edge) : Edge =
-//     match edge with
-//     | Left | Right ->
-//         edge
-//         |> rotateSideRight
-//         |> rotateSideRight
-//     | _ -> edge
-
-// let flipSymbolHorizontal (sym:Symbol) : Symbol =
-//     match sym.Component.Type with
-//     | Custom _ -> sym
-//     | _ ->
-//         let newPortOrientation = 
-//             sym.PortOrientation |> Map.map (fun id side -> flipSideHorizontal side)
-
-//         let flipPortList currPortOrder side =
-//             currPortOrder |> Map.add (flipSideHorizontal side ) sym.PortOrder[side]
-
-//         let newPortOrder = 
-//             (Map.empty, [Top; Left; Bottom; Right]) ||> List.fold flipPortList
-//             |> Map.map (fun edge order -> List.rev order)
-
-//         let newSTransform = 
-//             {flipped= not sym.STransform.flipped;
-//             Rotation= flipAngleHorizontal sym.STransform.Rotation}
-
-//         { sym with
-//             PortOrientation = newPortOrientation
-//             PortOrder = newPortOrder
-//             STransform = newSTransform
-//         }
-        
-
 /// update function which displays symbols
 let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
     match msg with
