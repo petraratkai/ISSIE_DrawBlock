@@ -4,7 +4,7 @@
 
 [Common repo Team9 file](https://github.com/tomcl/hlp22docs/blob/main/Team9.md)
 
-[Symbol (section 2)](src/renderer/drawblock/symbol.fs)
+[Symbol (section 2)](src/Renderer/DrawBlock/Symbol.fs)
 
 Section 2 on my file is lines : 678-1510
 
