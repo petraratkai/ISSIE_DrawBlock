@@ -40,7 +40,7 @@
     <Compile Include="Interface\Extractor.fs" />
     <Compile Include="Interface\FilesIO.fs" />
     <None Include="scss\main.scss" />
-    <None Include="DrawBlock\Notes.md" />
+    <None Include="DrawBlock\Analysis.md" />
 
     <!-- Draw2D diagram -->
     <Compile Include="DrawBlock\Symbol.fs" />
