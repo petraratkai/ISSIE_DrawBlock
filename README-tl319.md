@@ -116,6 +116,7 @@ view - Implicitly shown in demo - Calls singleWire_____View on each wire in the 
      (NOTE: the code to change the Model.Type is currently not correctly implemented from section 3, as such it will always be the Jump type. In order to test different display types line 844 can be changed to  singleWireRadialView props.)
 
 2. Modern display type for wires
+
      a. singleWireModernView - This is a new function that creates a react element that contains all of the segments and intersections for any given wire. 
      
      b. renderModernSegment - This is a new function that creates the react element of any given segment as well as circles for any intersection. The location of these circle is passed via the Segment.IntersectCoordinateList
@@ -126,6 +127,7 @@ view - Implicitly shown in demo - Calls singleWire_____View on each wire in the 
 
 
 3. Arbitrary orientations of endpoint
+
    a. makeInitialWireVerticesList - The overall implementation was simplified to support any orientation of the endpoint in any location. It also simplified the logic such that it directly passes the complete and final list of vertices to ensure a clear division of functionality.
 
    b. makeInitialSegmentsList - As a result of makeInitialWireVerticesList being simplified a significant amount of the logic for this function could be removed so that it directly does what it states, creates an initial segment list. 
