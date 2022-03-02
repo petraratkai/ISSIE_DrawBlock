@@ -53,11 +53,11 @@ Both functions are nearly entirely undocumented. This is especially poor as thes
 * This type contains a start and end position in every segment, duplicating a large amount of information.
 * The method to determine routing of a segment is by checking the sign of its position, which is unintuitive and leads to messier code later on. 
 * This was improved by changing segments to have a relative representation, storing lengths as opposed to absolute positions. Furthermore every segment is by definition at a right angle to the previous segment, and the sign of the length indiciates whether the wires runs in an increasing or decreasing direction which is logical.
-* Segments have a 'mode' attribute, which is either 'Manual' or 'Auto' that indicates whether or not it is being manually routed.
-* Wire contains both the start and final positions which allow us to produce absolute XY positions of segments whenever they are needed.
+* Segments now have a 'mode' attribute, which is either 'Manual' or 'Auto' that indicates whether or not it is being manually routed, which is more logical.
+* The Wire type now contains both the start and final positions which allows us to produce absolute XY positions of segments whenever they are needed.
 
 **Segment list of wires**
-* Originally there were only 2 types of segment lists, 3 and 5 seg, to route between various symbols. These were also implemented with the assumption of 7 segments in any given wire. 
+* Originally, there were only 2 types of segment lists (3 and 5 seg) to route between symbols. These were implemented with the assumption that any given wire must consist of 7 segments.
 * This led not only to hard coding that made inclusion of new cases significantly harder, but also required extra data in the situation that a wire could be represented with fewer segments.
 * This was changed such that wires can have a variety of length of segment lists. 
 
