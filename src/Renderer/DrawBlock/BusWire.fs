@@ -401,26 +401,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd-5.; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}]
 
-let inferDirectionfromVertices (xyVerticesList: XYPos list) =
-    if xyVerticesList.Length <> 8 then 
-        failwithf $"Can't perform connection type inference except with 8 vertices: here given {xyVerticesList.Length} vertices"
-    let getDir (vs:XYPos) (ve:XYPos) =
-        match sign ((abs vs.X - abs ve.X)*(abs vs.X - abs ve.X) - (abs vs.Y - abs ve.Y)*(abs vs.Y - abs ve.Y)) with
-        | 1 -> Some Horizontal
-        | -1 -> Some Vertical
-        | _ -> None
-    let midS, midE = xyVerticesList[3], xyVerticesList[4]
-    let first,last = xyVerticesList[1], xyVerticesList[5]
-    let xDelta = abs last.X - abs first.X
-    match getDir midS midE, abs xDelta > 20.0, xDelta > 0.0 with
-    | Some Horizontal, _, _ when midE.X < midS.X -> Some Horizontal
-    | Some Vertical, _, _ -> Some Vertical 
-    | _, true, true -> Some Vertical
-    | _, true, false -> Some Horizontal
-    | _, false, _ -> None
-
 /// this turns a list of vertices into a list of segments
-// Need to fix
 let xyVerticesToSegments connId (xyVerticesList: XYPos list) =
     List.pairwise xyVerticesList
     |> List.mapi (
@@ -477,85 +458,7 @@ let extractConnections (wModel : Model) : list<Connection> =
     |> Map.toList
     |> List.map (fun (key, _) -> extractConnection wModel key)
 
-/// Given three points p, q, r, the function returns true if 
-/// point q lies on line segment 'pr'. Otherwise it returns false.
-let onSegment (p : XYPos) (q : XYPos) (r : XYPos) : bool = 
-    (
-        (q.X <= max (p.X) (r.X)) &&
-        (q.X >= min (p.X) (r.X)) &&
-        (q.Y <= max (p.Y) (r.Y)) &&
-        (q.Y >= min (p.Y) (r.Y))
-    )
- (*
-/// Given three points p, q, r, the function returns:
-/// - 0 if p, q and r are colinear;
-/// - 1 if the path that you must follow when you start at p, you visit q and you end at r, is a CLOCKWISE path;
-/// - 2 if the path that you must follow when you start at p, you visit q and you end at r, is a COUNTERCLOCKWISE path.
-(* let orientation (p : XYPos) (q : XYPos) (r : XYPos) : int =
-    let result = (q.Y - p.Y) * (r.X - q.X) - (q.X - p.X) * (r.Y - q.Y)
-  
-    if (result = 0.0) then 0 // colinear
-    elif (result > 0.0) then 1 // clockwise
-    else 2 //counterclockwise
- *)
-///Returns the abs of an XYPos object
-(* let getAbsXY (pos : XYPos) = 
-    {X = abs pos.X; Y = abs pos.Y}
-   *)
-/// Given two sets of two points: (p1, q1) and (p2, q2)
-/// that define two segments, the function returns true
-/// if these two segments intersect and false otherwise.
-(* let segmentIntersectsSegment ((p1, q1) : (XYPos * XYPos)) ((p2, q2) : (XYPos * XYPos)) : bool =
-    // this is a terrible implementation
-    // determining intersection should be done by finding intersection point and comparing with coords
-    // since segments are always horizontal or vertical that is pretty easy.
-    // in addition the way that coordinates can be positive or negative but are absed when used is appalling
-    // the manual or auto route info per segment should be a separate field in Segmnet, not encoded in the sign of the coordinates
-    // that is needed when writing out or reading from Issie, but the write/read process can easily translate to a sane internal data structure in the draw blokc model
-    let p1,q1,p2,q2= getAbsXY p1, getAbsXY q1, getAbsXY p2, getAbsXY q2
-    // Find the four orientations needed for general and 
-    // special cases 
-    let o1 = orientation (p1) (q1) (p2)
-    let o2 = orientation (p1) (q1) (q2)
-    let o3 = orientation (p2) (q2) (p1)
-    let o4 = orientation (p2) (q2) (q1)
-  
-    // General case 
-    if (o1 <> o2 && o3 <> o4)
-        then true
 
-    // Special Cases 
-    // p1, q1 and p2 are colinear and p2 lies on segment p1q1 
-    elif (o1 = 0 && onSegment (p1) (p2) (q1))
-        then true
-  
-    // p1, q1 and q2 are colinear and q2 lies on segment p1q1 
-    elif (o2 = 0 && onSegment (p1) (q2) (q1))
-        then true
-  
-    // p2, q2 and p1 are colinear and p1 lies on segment p2q2 
-    elif (o3 = 0 && onSegment (p2) (p1) (q2))
-        then true
-  
-     // p2, q2 and q1 are colinear and q1 lies on segment p2q2 
-    elif (o4 = 0 && onSegment (p2) (q1) (q2))
-        then true
-    else false
- *)
-
-
-///Returns a segment with positive Start and End coordinates
-//let makeSegPos (seg : Segment) =
-//    {seg with
-//        Start = getAbsXY seg.Start
-//        End = getAbsXY seg.End }
-
-/// Given two coordinates, this function returns the euclidean
-/// distance between them.
-(* let distanceBetweenTwoPoints (pos1 : XYPos) (pos2 : XYPos) : float =
-    sqrt ( (pos1.X - pos2.X)*(pos1.X - pos2.X) + (pos1.Y - pos2.Y)*(pos1.Y - pos2.Y) )
- *)
- *)
 /// Given the coordinates of two port locations that correspond
 /// to the endpoints of a wire, this function returns a list of
 /// Segment(s).
@@ -563,6 +466,7 @@ let makeInitialSegmentsList (hostId : ConnectionId) (startPos : XYPos) (endPos :
     let xyPairs = makeInitialWireVerticesList startPos endPos portOrientation
     xyPairs
     |> xyVerticesToSegments hostId 
+
 
 type VertexPair = 
     {
@@ -583,8 +487,9 @@ let renderSegment (vertexPair : VertexPair) (colour : string) (width : string) :
         | Some n when n < int "8" -> 2.5
         | _ -> 3.5
     let halfWidth = (renderWidth/2.0) - (0.75)
-    let lineParameters = { defaultLine with Stroke = colour; StrokeWidth = string renderWidth }
-    let circleParameters = { defaultCircle with R = halfWidth; Stroke = colour; Fill = colour }
+    let lineParameters = { defaultLine with Stroke = "blue"; StrokeWidth = string renderWidth }
+    let circleParameters = { defaultCircle with R = halfWidth; Stroke = "red";  Fill = colour }
+    //colour; Fill = colour }
 
     match getSegmentOrientation vertexPair.First vertexPair.Second with
     | Horizontal ->
@@ -605,7 +510,6 @@ let renderSegment (vertexPair : VertexPair) (colour : string) (width : string) :
         
         let renderSingleSegmentJump (intersectionCoordinate : XYPos) : list<ReactElement> =
             let x, y = intersectionCoordinate.X, intersectionCoordinate.Y
-            failwithf "HI"
             let startingPoint = {X = x - segmentJumpHorizontalSize/2.0; Y = y}
             let startingControlPoint = {X = x - segmentJumpHorizontalSize/2.0; Y = y - segmentJumpVerticalSize}
             let endingControlPoint = {X = x + segmentJumpHorizontalSize/2.0; Y = y - segmentJumpVerticalSize}
@@ -733,7 +637,7 @@ let memoOf (f: WireRenderProps -> ReactElement, _, _) =
                 re)
 //-------------------------------------------------------------------------------------------
 
-let singleWireView = 
+let singleWireJumpView = 
     FunctionComponent.Of(
         fun (props: WireRenderProps) ->
             let renderWireSegmentList : list<ReactElement> =
@@ -762,6 +666,122 @@ let singleWireView =
     , "Wire"
     , equalsButFunctions
     )
+
+let renderRadialWire (state : (string * Orientation)) (pair :VertexPair * VertexPair)= 
+    let startFirstSegment = fst(pair).First
+    let endFirstSegment = fst(pair).Second
+    let startSecondSegment = snd(pair).First
+    let endSecondSegment = snd(pair).Second
+    if startFirstSegment.X = endFirstSegment.X && 
+       startFirstSegment.X = startSecondSegment.X &&
+       startFirstSegment.X = endSecondSegment.X then
+        let current = sprintf "L %f %f" endFirstSegment.X endFirstSegment.Y
+        if snd(state) = Horizontal then
+            (fst(state)+current, Vertical)
+        else 
+            (fst(state)+current, Horizontal)
+    else if startFirstSegment.Y = endFirstSegment.Y && 
+            startFirstSegment.Y = startSecondSegment.Y && 
+            startFirstSegment.Y = endSecondSegment.Y then
+        let current = sprintf "L %f %f" (endFirstSegment.X) (endFirstSegment.Y)
+        if snd(state) = Horizontal then
+            (fst(state)+current, Vertical)
+        else 
+            (fst(state)+current, Horizontal)           
+    else
+        if snd(state) = Horizontal then
+            if startFirstSegment.X - endFirstSegment.X > 0 then
+                if startSecondSegment.Y - endSecondSegment.Y > 0 then
+                    let (current :string) =  sprintf "L %f %f A %i %i, %i, %i, %i, %f %f" (endFirstSegment.X+5.) (endFirstSegment.Y) 5 5 45 0 1 (startSecondSegment.X) (startSecondSegment.Y-5.)
+                    let next = fst(state) + current
+                    (next, Vertical)
+                else
+                    let (current :string) =  sprintf "L %f %f A %i %i, %i, %i, %i, %f %f" (endFirstSegment.X+5.) (endFirstSegment.Y) 5 5 45 0 0 (startSecondSegment.X) (startSecondSegment.Y+5.)
+                    let next = fst(state) + current
+                    (next, Vertical)
+            else
+                if startSecondSegment.Y - endSecondSegment.Y > 0 then
+                    let (current :string) =  sprintf "L %f %f A %i %i, %i, %i, %i, %f %f"(endFirstSegment.X-5.) (endFirstSegment.Y) 5 5 45 0 0 (startSecondSegment.X) (startSecondSegment.Y-5.)
+                    let next = fst(state) + current
+                    (next, Vertical)
+                else
+                    let (current :string) =  sprintf "L %f %f A %i %i, %i, %i, %i, %f %f" (endFirstSegment.X-5.) (endFirstSegment.Y) 5 5 0 0 1 (startSecondSegment.X) (startSecondSegment.Y+5.)
+                    let next = fst(state) + current
+                    (next, Vertical)
+        else
+            if startFirstSegment.Y - endFirstSegment.Y > 0 then
+                if startSecondSegment.X - endSecondSegment.X > 0 then
+                    let (current :string) =  sprintf "L %f %f A %i %i, %i, %i, %i, %f %f"(endFirstSegment.X) (endFirstSegment.Y+5.) 5 5 0 0 0 (startSecondSegment.X-5.) (startSecondSegment.Y)
+                    let next = fst(state) + current
+                    (next, Horizontal)
+                else
+                    let (current :string) =  sprintf "L %f %f A %i %i, %i, %i, %i, %f %f" (endFirstSegment.X) (endFirstSegment.Y+5.) 5 5 0 0 1 (startSecondSegment.X+5.) (startSecondSegment.Y)
+                    let next = fst(state) + current
+                    (next, Horizontal)
+            else
+                if startSecondSegment.X - endSecondSegment.X > 0 then
+                    let (current :string) =  sprintf "L %f %f A %i %i, %i, %i, %i, %f %f"(endFirstSegment.X) (endFirstSegment.Y-5.) 5 5 0 0 1 (startSecondSegment.X-5.) (startSecondSegment.Y)
+                    let next = fst(state) + current
+                    (next, Horizontal)
+                else
+                    let (current :string) =  sprintf "L %f %f A %i %i, %i, %i, %i, %f %f" (endFirstSegment.X) (endFirstSegment.Y-5.) 5 5 0 0 0 (startSecondSegment.X+5.) (startSecondSegment.Y)
+                    let next = fst(state) + current
+                    (next, Horizontal) 
+
+
+
+let singleWireRadialView props =
+    let firstVertex = props.VertexPairs.Head.First
+    let secondVertex = props.VertexPairs.Head.Second
+    let lastVertex = (List.last props.VertexPairs).Second
+    let xStart = firstVertex.X
+    let yStart = firstVertex.Y
+    let width = string props.StrokeWidthP
+    let widthOpt = EEExtensions.String.tryParseWith System.Int32.TryParse width
+    let renderWidth = 
+        match widthOpt with
+        | Some 1 -> 1.5
+        | Some n when n < int "8" -> 2.5
+        | _ -> 3.5
+
+    let pathParameters = { defaultPath with Stroke = props.ColorP.Text(); StrokeWidth = string renderWidth;}
+    let initialMoveCommand = sprintf "M %f %f "  xStart yStart
+    let initialState = (initialMoveCommand, getSegmentOrientation firstVertex secondVertex )
+    
+    let radialPathCommands = fst(
+        props.VertexPairs
+        |> List.pairwise
+        |> List.fold renderRadialWire (initialState) )
+    let finalLineCommand = sprintf "L %f %f" lastVertex.X lastVertex.Y
+    let fullPathCommand = radialPathCommands + finalLineCommand
+    
+    let makeCustomPath command (pathParameters: Path) =
+        let dAttrribute = command 
+        path [
+            D dAttrribute
+            SVGAttr.Stroke pathParameters.Stroke
+            SVGAttr.StrokeWidth pathParameters.StrokeWidth
+            SVGAttr.StrokeDasharray pathParameters.StrokeDashArray
+            SVGAttr.StrokeLinecap pathParameters.StrokeLinecap
+            SVGAttr.Fill pathParameters.Fill
+        ]   []
+
+    let renderedSVGPath = makeCustomPath fullPathCommand pathParameters
+    let renderWireWidthText : ReactElement =
+        let textParameters =
+            {
+                    TextAnchor = "left";
+                    FontSize = "12px";
+                    FontWeight = "Bold";
+                    FontFamily = "Verdana, Arial, Helvetica, sans-serif";
+                    Fill = props.ColorP.Text();
+                    UserSelect = UserSelectOptions.None;
+                    DominantBaseline = "middle";
+            }
+        let textString = if props.StrokeWidthP = 1 then "" else string props.StrokeWidthP //Only print width > 1
+        makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+    g [] ([ renderWireWidthText ] @ [renderedSVGPath])
+
 
 ///
 let MapToSortedList map : Wire list = 
@@ -810,14 +830,13 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
                         | OutputPortId stringId -> stringId
                         
                     let outputPortLocation = Symbol.getPortLocation model.Symbol stringOutId 
-                    
                     let getVertexPairs wire : VertexPair List= 
                         segmentsToVertices wire.Segments wire
                         |> List.map (fun x -> {X=fst(x); Y=snd(x)})
                         |> List.pairwise
                         |> List.zip wire.Segments
                         |> List.map (fun x -> fst(snd(x)),snd(snd(x)), fst(x).IntersectCoordinateList)
-                        |> List.map (fun (a,b,c) -> {First=a; Second=b; IntersectCoordinateList=c})
+                        |> List.map (fun (startVertex,endVertex,intersectList) -> {First=startVertex; Second=endVertex; IntersectCoordinateList=intersectList})
                     
                     let props =
                         {
@@ -828,7 +847,13 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
                             OutputPortLocation = outputPortLocation
                             DisplayType = wire.Type
                         }
-                    singleWireView props)
+                    if model.Type = Radial then
+                        singleWireRadialView props
+                    else if model.Type = Jump then
+                        singleWireJumpView props
+                    else
+                        singleWireRadialView props
+                    )
     TimeHelpers.instrumentInterval "WirePrepareProps" rStart ()
     let symbols = Symbol.view model.Symbol (Symbol >> dispatch)
  
@@ -973,27 +998,22 @@ let getSafeDistanceForMove (segments: Segment list) (index: int) (distance: floa
         if findBindingIndex bindingSegs <> index then 
             distance
         else
-            findDistanceFromPort bindingSegs |> (fun dist -> printfn $"Bounded distance {dist}"; dist)
+            findDistanceFromPort bindingSegs
             |> (fun dist -> 
                     if sign dist = -1 then 
                         max distance (dist + Wire.stickLength/2.)
                     else 
                         min distance (dist - Wire.stickLength/2.))
-    printfn $"All segments, target: {index}"
-    List.map logSegment segments |> ignore
+
     let bindingInputSegs = 
-        printfn "Binding input segments"
         segments
         |> findBindingSegments 0
         |> List.map (fun seg -> { seg with Length = -seg.Length})
 
     let bindingOutputSegs =
-        printfn "Binding output segments"
         List.rev segments
         |> findBindingSegments (segments.Length - 1)
-        |> List.map logSegment
 
-    printfn $"Start distance {distance}"
     distance
     |> reduceDistance bindingInputSegs findInputBindingIndex
     |> reduceDistance bindingOutputSegs findOutputBindingIndex
@@ -1024,7 +1044,7 @@ let moveSegment (model:Model) (seg:Segment) (distance:float) =
     {wire with Segments = newSegments}
 
 /// Initialises an empty Wire Model
-let init () = // Doesn't seem that harmful, revisit if we change the model type
+let init () = 
     let symbols,_ = Symbol.init()
     {   
         Wires = Map.empty;
@@ -1050,7 +1070,6 @@ let getFilteredIdList condition wireLst =
     wireLst
     |> List.filter condition
     |> List.map (fun wire -> wire.Id)
-    //|> List.distinct // TODO: Figure out if this is needed - I don't think it is
 
 ///Returns the wires in the model connected to a list of components given by componentIds
 let getConnectedWires (model: Model) (compIds: list<ComponentId>) =
@@ -1070,7 +1089,8 @@ let getConnectedWireIds model compIds =
     getConnectedWires model compIds
     |> getFilteredIdList (fun _ -> true)
 
-/// Returns a tuple of: wires connected to inputs ONLY, wires connected to outputs ONLY, wires connected to both inputs and outputs
+/// Given a model and a list of component Ids, returns an anaonymous record
+/// containing the id of wires connected to input ports, output ports or both
 let filterWiresByCompMoved (model: Model) (compIds: list<ComponentId>) =
     let wireList = getWireList model
 
@@ -1095,7 +1115,7 @@ let filterWiresByCompMoved (model: Model) (compIds: list<ComponentId>) =
     let fullyConnected =
         wireList |> getFilteredIdList containsBothPort
 
-    (inputWires, outputWires, fullyConnected)
+    {| Inputs = inputWires; Outputs = outputWires; Both = fullyConnected |}
 
 /// Contains geometric information of a port
 type PortInfo = {
@@ -1115,7 +1135,7 @@ let rotate90Edge (edge: Symbol.Edge) =
     | Symbol.Bottom -> Symbol.Right
     | Symbol.Right -> Symbol.Top
 
-/// Returns a port rotated 90 degrees anticlockwise
+/// Returns a port rotated 90 degrees anticlockwise about the origin
 let rotate90Port (port: PortInfo) =
     let newEdge = rotate90Edge port.Edge
 
@@ -1125,7 +1145,7 @@ let rotate90Port (port: PortInfo) =
 
     genPortInfo newEdge newPos
 
-/// Returns a function to rotate a segment list 90 degrees anticlockwise,
+/// Returns a function to rotate a segment list 90 degrees anticlockwise (actually maybe clockwise? doesn't matter lol),
 /// depending on its initial orientation
 let rotateSegments90 initialOrientation =
     let horizontal i =
@@ -1183,10 +1203,9 @@ let autorouteWire (model: Model) (wire: Wire) : Wire =
     
     let normalisedStart, normalisedEnd =
         rotateStartDest Symbol.Right (startPort, destPort)
-    printfn $"Start = {startPort}\nNormalised start = {normalisedStart}\n,Dest = {destPort}\nnormalised dest = {normalisedEnd}"
+
     let initialSegments =
         makeInitialSegmentsList wire.Id normalisedStart.Position normalisedEnd.Position normalisedEnd.Edge
-        |> List.map logSegment
 
     let segments =
         {| edge = Symbol.Right
@@ -1263,7 +1282,7 @@ let reverseWire (wire: Wire) =
         InitialOrientation = wire.EndOrientation
         EndOrientation = wire.InitialOrientation }
 
-/// Returns the end of the segment at the target index in the given wire. Throws an error if the target index isn't found
+/// Returns the tupel (startPos, endPos) of the segment at the target index in the given wire. Throws an error if the target index isn't found
 let getAbsoluteSegmentPos (wire: Wire) (target: int) =
     (None, wire)
     ||> foldOverSegs
@@ -1273,83 +1292,73 @@ let getAbsoluteSegmentPos (wire: Wire) (target: int) =
         | None -> failwithf $"Couldn't find index {target} in wire"
         | Some pos -> pos)     
 
-/// Returns the end of the segment at the target index in the given wire. Throws an error if the target index isn't found
-let getSegmentEnd (wire: Wire) (target: int) =
-    (None, wire)
-    ||> foldOverSegs
-        (fun _ endPos state seg ->
-            if seg.Index = target then Some endPos else state)
-    |> (function
-        | None -> failwithf $"Couldn't find index {target} in wire"
-        | Some pos -> pos)        
-
-
-
-/// Scales a segment length for partial autorouting
-let scale fixedPoint newStart oldStart length =
-    if newStart = fixedPoint then 
-        length 
-    else 
-        fixedPoint + (length * (newStart - fixedPoint) / (oldStart - fixedPoint))
+/// Returns the length to change a segment represented by startPos -> endPos in the appropriate dimension of the difference vector
+let getLengthDiff difference startPos endPos =
+    match getSegmentOrientation startPos endPos with
+    | Horizontal -> toX difference
+    | Vertical -> toY difference
 
 /// Given a segment list, returns the first manual segment index
 let getManualIndex segList =
     segList
     |> List.tryFind (fun seg -> seg.Mode = Manual)
     |> Option.map (fun seg -> seg.Index)
+    |> Option.bind (fun index ->
+        if index < 1 || index >= segList.Length - 1 then
+            None
+        else
+            Some index)
+
+/// Gets the start position for partial routing.
+let getPartialRouteStart wire manualIndex =
+    wire.Segments
+    |> List.tryFind (fun seg -> seg.Index = manualIndex - 1)
+    |> Option.map (fun seg -> seg.Index)
+    |> Option.map (getAbsoluteSegmentPos wire >> fst)
+    |> Option.defaultValue wire.StartPos
+
+/// Partitions a segment list into sections 3 sections for partial autorouting
+let partitionSegments segs manualIdx =
+    let start, tmp =
+        match manualIdx with
+        | 1 -> ([], segs)
+        | _ -> List.splitAt (manualIdx - 1) segs
+
+    let changed, remaining = List.splitAt 2 tmp
+    (start, changed, remaining)
 
 /// Returns None if full autoroute is required or applies partial autorouting
 /// from the start of the wire at newPortPos to the first manually routed segment 
 /// and returns Some wire with the new segments.
 let partialAutoRoute (wire: Wire) (newPortPos: XYPos) = 
     let segs = wire.Segments
-    let portPos = wire.StartPos
-    let manualIndex = getManualIndex segs
-    
-    let getStartPos portPos =
-        manualIndex
-        |> Option.map (fun idx -> 
-            if idx = 1 then 
-                portPos 
-            else 
-                (addLengthToPos portPos wire.InitialOrientation segs[0].Length))
-        |> Option.defaultValue portPos
+    let newWire = { wire with StartPos = newPortPos }
 
-    let startPos = getStartPos portPos
-    let newStartPos = getStartPos newPortPos
-
-    let eligibleForPartialRouting index =
-        let fixedPoint = getSegmentEnd wire index
+    let eligibleForPartialRouting manualIdx =
+        let oldStartPos = getPartialRouteStart wire manualIdx
+        let newStartPos = getPartialRouteStart newWire manualIdx
+        let fixedPoint = getAbsoluteSegmentPos wire manualIdx |> snd
         let relativeToFixed = relativePosition fixedPoint
-        if relativeToFixed newStartPos = relativeToFixed startPos then
-            Some index
+        if relativeToFixed newStartPos = relativeToFixed oldStartPos then
+            Some (manualIdx, posDiff newStartPos oldStartPos)
         else
             None
-    /// Scales the lengths of the segment list to the segment at index
-    let scaleSegmentsToIndex index =
-        let fixedPoint = getSegmentEnd wire index
-        let scaleXOrY xOrY = scale (xOrY fixedPoint) (xOrY newStartPos) (xOrY startPos) 
-        let scaleX = scaleXOrY toX
-        let scaleY = scaleXOrY toY
+    
+    let updateSegments (manualIdx, diff) =
+        let start, changed, remaining = partitionSegments segs manualIdx
+        let changed' = 
+            changed
+            |> List.map (fun seg -> 
+                let (startPos, endPos) = getAbsoluteSegmentPos wire seg.Index
+                { seg with Length = seg.Length - getLengthDiff diff startPos endPos })
 
-        match List.splitAt (index + 1) segs, index with
-        | ((scaledSegs), remainingSegs), 1 -> // We only scale the nub if it's the only Auto segment
-            Some(
-                transformSegments scaleX scaleY wire.InitialOrientation scaledSegs
-                @ remainingSegs
-            )
-        | ((nub :: scaledSegs), remainingSegs), _ ->
-            Some(
-                [ nub ]
-                @ transformSegments scaleX scaleY wire.InitialOrientation scaledSegs
-                @ remainingSegs
-            )
-        | _ -> None
-
-    manualIndex
+        start @ changed' @ remaining
+        
+    segs
+    |> getManualIndex
     |> Option.bind eligibleForPartialRouting
-    |> Option.bind scaleSegmentsToIndex
-    |> Option.map (fun segs -> { wire with Segments = segs })
+    |> Option.map updateSegments
+    |> Option.map (fun segs -> { wire with Segments = segs; StartPos = newPortPos })
 
 /// Moves a wire by the XY amounts specified by displacement
 let moveWire (wire: Wire) (displacement: XYPos) =
@@ -1455,7 +1464,6 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
                                  jumps <- (x, segB.Id) :: jumps
                  | _ -> ()
          | _ -> ()
-
          match jumps, segA.IntersectCoordinateList with
          | [], [] -> ()
          | [ a ], [ b ] when a <> b -> changeJumps segA.HostId segA.Index jumps
@@ -1466,10 +1474,8 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
              let newJ = List.sort newJumps
                 // oldJ is already sorted (we only ever write newJ back to model)
              if newJ <> oldJ then changeJumps segA.HostId segA.Index newJumps else ()
-
     foldOverSegs 
     newJumps model.Wires
-
     { model with Wires = newWX } *)
 
 
@@ -1500,17 +1506,17 @@ let resetWireSegmentJumps (wireList : list<ConnectionId>) (wModel : Model) : Mod
 /// Otherwise it will auto-route wires connected to components that have moved
 let updateWires (model : Model) (compIdList : ComponentId list) (diff : XYPos) =
 
-    let (inputWires, outputWires, fullyConnected) = filterWiresByCompMoved model compIdList
+    let wires = filterWiresByCompMoved model compIdList
 
     let newWires = 
         model.Wires
         |> Map.toList
         |> List.map (fun (cId, wire) -> 
-            if List.contains cId fullyConnected //Translate wires that are connected to moving components on both sides
+            if List.contains cId wires.Both //Translate wires that are connected to moving components on both sides
             then (cId, moveWire wire diff)
-            elif List.contains cId inputWires //Only route wires connected to ports that moved for efficiency
+            elif List.contains cId wires.Inputs //Only route wires connected to ports that moved for efficiency
             then (cId, updateWire model wire true)
-            elif List.contains cId outputWires
+            elif List.contains cId wires.Outputs
             then (cId, updateWire model wire false)
             else (cId, wire))
         |> Map.ofList
