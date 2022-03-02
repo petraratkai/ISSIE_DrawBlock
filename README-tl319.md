@@ -49,10 +49,10 @@ Both functions are nearly entirely undocumented. This is especially poor as thes
 
 ### Other problems
 
-**The segments type**
-* Contains a start and end position on every single segment, duplicating a large amount of information.
-* The method to determine routing of a segment is whether or not it is negative which is extremely unintuitive and leads to messier code later on. 
-* This was improved by changed segments to have a relative representation, only storing a length. Every segment is by defintion and a right angle to the previous segment, and the sign of the lenght indiciates whether the wires runs in an increasing or decreasing direction which is very logical.
+**The segment type**
+* This type contains a start and end position in every segment, duplicating a large amount of information.
+* The method to determine routing of a segment is by checking the sign of its position, which is unintuitive and leads to messier code later on. 
+* This was improved by changing segments to have a relative representation, storing lengths as opposed to absolute positions. Furthermore every segment is by definition at a right angle to the previous segment, and the sign of the length indiciates whether the wires runs in an increasing or decreasing direction which is logical.
 * Segments have a 'mode' attribute, which is either 'Manual' or 'Auto' that indicates whether or not it is being manually routed.
 * Wire contains both the start and final positions which allow us to produce absolute XY positions of segments whenever they are needed.
 
