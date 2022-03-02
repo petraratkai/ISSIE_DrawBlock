@@ -1,42 +1,18 @@
 # Example README for individual code submission
 
-## Instructions
-
-* This file should be submitted (changed) on branch `hlp22-indiv-assess-<login>` of either your own repo or your group repo
-   * replace `<login>` in filename `README-<login>.md` by your login - in his example `<login> = tomcl`
-   * name the branch as above, including your login. This branch is used only for your submission.
-* A link to the repo and branch must be on the `indiv` sheet of Tom Clarke's Team [google spreadsheet](https://docs.google.com/spreadsheets/d/1prQ5usnpu36FgtbsMO8j6_mwbdd34haSMOQKN2OkLBA/edit?usp=sharing)
-* The repo you use **must have your marker added as collaborator** (github login is on indiv assessment spreadsheet page)
-* Delete these instructions from your version of this readme
-* Delete my comments from your version of the readme (it is an example, not something you add lines to). 
-Keep the headings and **replace the admin section links and notes with correct ones**.
-* Link to the sourcefile your code is contained in (drawblock or symbol) with an absolute hyperlink 
-to your repo and branch
-* Specify which code section and file you are doing as in my ppt (1,2,3), (buswire,symbol)
-* Add any changes to my section code allocations. This must be consistent with what has been 
-recorded in your team's file in my Team contributions repo](https://github.com/tomcl/hlp22docs/blob/main/README.md)  
-main branch ./TeamN.md (N = 1 - 9) file. The team contrib repo is as official record. This file will be 
-used marking and should have line numbers for easy access. Expect to be marked down if your marker
-cannot easily find everything via links from this README.
-
 ## Team Shared Team.md
 
-[Team Contribution Repo](https://github.com/tomcl/hlp22docs/blob/main/README.md)
+[Team Contribution Repo](https://github.com/sts219/HLP_Project)
 
-* A file in this repo file is common to the team contains who is responsible for which parts of code
-* Fork and clone it
-* Any team member can make agreed by team commits. First commit before Wed 23 Fen 16:00. 
-* Changes in who does what are recorded by altering list of functions AND 
-as extra lines in this file. See sample file in [README](https://github.com/tomcl/hlp22docs/blob/main/README.md)
 
 ## Admin and quick access links
 
 *link to your teamN.md file*
-[Common repo TeamN file](https://github.com/tomcl/hlp22docs/blob/main/Team9.md)
+[Common repo TeamN file](https://github.com/sts219/hlp22docs/blob/main/Team9.md)
 
 [Symbol (section 1)](src/renderer/drawblock/Symbol.fs)
 
-Section 1 on my file is lines : 0-~500
+Section 1 on my file is lines : 0-700
 
 Anything else you need to say about what you are or are not responsible for.
 
@@ -49,50 +25,6 @@ Insert clear comments in the source files indicating where each person's code st
 //--------------------TJWC CODE SECTION STARTS-------------------------------------//
 //---------------------------------------------------------------------------------//
 ```
-
-### Separating code into 3 modules (in different files)
-
-Groups can - **if they wish** - modularise their buswire or symbol files into 2 or 3 modules in separate files
-
-1. Symbol1
-2. Symbol2
-3. Symbol3
-
-With each module referencing the ones before with `open`. 
-
-A top-level module `Symbol` or `BusWire` after these three must contain functions exported anywhere outside symbol so that
-references in the rest of the code still work.
-
-```
-Symbol.fs
-
-let interface1 = Symbol1.interface1
-let interface2 = Symbol1.Interface2
-let interface3 = Symbol2.interface3
-```
-
-### Submodules within one file
-
-Less dramatic, but still useful for modularity. Groups can - **if they wish** - modularise their buswire or symbol files into 3 submodules inside the existing file
-
-```
-Symbol.fs
-
-module symbol1 =
-    let symbol1defn = ...
-
-module symbol2
-    open symbol1
-    let symbol2defn
-
-module symbol3 =
-    open symbol1
-    open symbol2
-    let symbol3 defn = 
-```
-
-Again you will need to mend references - because open Symbol in some other part of Issie would need to become open Symbol.Symbol1, open Symbol.Symbol2 etc to pick up exported code in the submodules. you can add exports to Symbol.fs outside the three submodules as
-when each moduel is in separate files.
 
 ## Note on assessment
 
@@ -166,7 +98,6 @@ functionality is preserved.
 
 **moveSegment**
 This function allows individual segments of a wire in Issie to be dragged in a direction perpendicular to its orientation. It's original call tree is below:
-![]( sts219/moveSegment.png)
 `getSafeDistanceForMove` is meant to prevent users from dragging wire segments perpendicular to the port orientation too close to the port.
 
 # Extensions
