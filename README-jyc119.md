@@ -32,11 +32,11 @@ as extra lines in this file. See sample file in [README](https://github.com/tomc
 ## Admin and quick access links
 
 *link to your teamN.md file*
-[Common repo TeamN file](https://github.com/tomcl/hlp22docs/blob/main/Team9.md)
+[Common repo Team9 file](https://github.com/tomcl/hlp22docs/blob/main/Team9.md)
 
 [Symbol (section 1)](src/renderer/drawblock/Symbol.fs)
 
-Section 1 on my file is lines : 85-339 (creating new symbol)
+Section 1 on my file is lines : 85-337 (creating new symbol)
 I am also responsible for lines 493-1004 (rotation and flipping)
 
 I am not responsible for port positions and only worked on creating symbols with ports on other edges, rotation and flipping.
