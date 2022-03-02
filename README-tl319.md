@@ -58,12 +58,12 @@ Both functions are nearly entirely undocumented. This is especially poor as thes
 
 **Segment list of wires**
 * Originally, there were only 2 types of segment lists (3 and 5 seg) to route between symbols. These were implemented with the assumption that any given wire must consist of 7 segments.
-* This led not only to hard coding that made inclusion of new cases significantly harder, but also required extra data in the situation that a wire could be represented with fewer segments.
-* This was changed such that wires can have a variety of length of segment lists. 
+* This led to hard-coding that made inclusion of new cases significantly more difficult. Furthermore this led to extra data being used in the situation that a wire could be represented with fewer segments.
+* This was changed so that wires can have a variety of length of segment lists, which allows for different endpoint orientations.
 
 **Unused / Made redundant functions**
 * Many of the original functions were either never used, or could very easily be made redundant. 
-* segmentIntersectsSegment as well as a variety of global subfunctions it uses (which have no need to be global) were made redundant due to changes in Implementation.
+* segmentIntersectsSegment as well as a variety of global subfunctions it used (which had no need to be global) were made redundant due to changes in implementation.
 * MapToSortedList was never used.
 * MemoOf was never used.
 * distanceBetweenTwoPoints was never used.
