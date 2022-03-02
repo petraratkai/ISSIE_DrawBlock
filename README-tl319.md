@@ -7,7 +7,7 @@
 
 [Buswire (section 1)](src/Renderer/DrawBlock/BusWire.fs)
 
-Section 1 on my file is lines: **UPDATE WITH FINAL LINES**
+Section 1 on my file is lines: 246-854
 
 Changes to the types used in Buswire were decided as a team with the people working on the other sections.
 
