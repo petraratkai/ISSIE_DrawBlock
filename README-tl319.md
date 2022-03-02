@@ -105,6 +105,7 @@ singleWireRadialView  - Explicitly shown in demo - Uses the SVG command to gener
 view - Implicitly shown in demo - Calls singleWire_____View on each wire in the model, according to the Model.Type
 
 **Specific explanation of renderJumpSegment and renderModernSegment** 
+
 These functions work by recieving the start and end position of a segment as well as a list of any jumps / intersections along the segment respectively. Since jumps and intersections can only be on horizontal segments we only need to consider the x coordinates along the segment. For every element in the IntersectCoordinateList an arc or a circle is created that is centred around the start position + the element in the IntersectCoordinateList. Subsequently the functions create straight horizontal lines that fill the gap between each of the circles or arcs along the segment.
 
 ## Extensions
