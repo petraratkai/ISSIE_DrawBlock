@@ -32,7 +32,7 @@ type WireType = Radial | Modern | Jump
 /// Represents how a wire segment is currently being routed
 type RoutingMode = Manual | Auto
 
-///
+/// Used to represent a segment in a wire
 type Segment = 
     {
         Id : SegmentId
@@ -46,8 +46,6 @@ type Segment =
     }
 
 
-
-///
 type Wire =
     {
         Id: ConnectionId 
@@ -63,9 +61,8 @@ type Wire =
         EndOrientation : Orientation
     }
 
-    with static member stickLength = 16.0
-
-
+    /// The minimum length of the initial segments (nubs) leaving the ports
+    with static member nubLength = 8.0
 
 ///
 type Model =
@@ -280,142 +277,142 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
         | true -> //Below startpos
             match portOrientation with
             | Symbol.Top  ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xEnd; Y = yStart};
                     {X = xEnd; Y = yEnd-5.0}; 
                     {X = xEnd; Y = yEnd-5.0};// Length 0 horizontal
                     {X = xEnd; Y = yEnd}] // Stick vertical
             | Symbol.Right ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xEnd+20.; Y = yStart};
                     {X = xEnd+20.; Y = yEnd};
-                    {X = xEnd+Wire.stickLength/2.; Y = yEnd}; 
-                    {X = xEnd+Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
+                    {X = xEnd+Wire.nubLength; Y = yEnd}; 
+                    {X = xEnd+Wire.nubLength; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
             | Symbol.Bottom->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = (xEnd+xStart)/2.; Y = yStart};
                     {X = (xEnd+xStart)/2.; Y = yEnd+20.};
                     {X = xEnd; Y = yEnd+20.};
-                    {X = xEnd; Y = yEnd+Wire.stickLength/2.}; 
-                    {X = xEnd; Y = yEnd+Wire.stickLength/2.}; //Length 0 horizontal
+                    {X = xEnd; Y = yEnd+Wire.nubLength}; 
+                    {X = xEnd; Y = yEnd+Wire.nubLength}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
             | Symbol.Left ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = (xEnd+xStart)/2.; Y = yStart};
                     {X = (xEnd+xStart)/2.; Y = yEnd};
-                    {X = xEnd-Wire.stickLength/2.; Y = yEnd}; 
-                    {X = xEnd-Wire.stickLength/2.; Y = yEnd}; //Length 0 horizontal
+                    {X = xEnd-Wire.nubLength; Y = yEnd}; 
+                    {X = xEnd-Wire.nubLength; Y = yEnd}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
         | false -> //Above startpos
             match portOrientation with
             | Symbol.Bottom ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xEnd; Y = yStart};
-                    {X = xEnd; Y = yEnd+Wire.stickLength/2.}; 
-                    {X = xEnd; Y = yEnd+Wire.stickLength/2.}; //Length 0 hortizontal
+                    {X = xEnd; Y = yEnd+Wire.nubLength}; 
+                    {X = xEnd; Y = yEnd+Wire.nubLength}; //Length 0 hortizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
             | Symbol.Right ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xEnd+20.; Y = yStart};
                     {X = xEnd+20.; Y = yEnd};
-                    {X = xEnd+Wire.stickLength/2.; Y = yEnd}; 
-                    {X = xEnd+Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
+                    {X = xEnd+Wire.nubLength; Y = yEnd}; 
+                    {X = xEnd+Wire.nubLength; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
             | Symbol.Top ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = (xEnd+xStart)/2.; Y = yStart};
                     {X = (xEnd+xStart)/2.; Y = yEnd-20.};
                     {X = xEnd; Y = yEnd-20.};
-                    {X = xEnd; Y = yEnd-Wire.stickLength/2.}; 
-                    {X = xEnd; Y = yEnd-Wire.stickLength/2.}; //Length 0 horizontal
+                    {X = xEnd; Y = yEnd-Wire.nubLength}; 
+                    {X = xEnd; Y = yEnd-Wire.nubLength}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
             | Symbol.Left ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = (xEnd+xStart)/2.; Y = yStart};
                     {X = (xEnd+xStart)/2.; Y = yEnd};
-                    {X = xEnd-Wire.stickLength/2.; Y = yEnd}; 
-                    {X = xEnd-Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
+                    {X = xEnd-Wire.nubLength; Y = yEnd}; 
+                    {X = xEnd-Wire.nubLength; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
     | false-> //left of startpos
         match yStart - yEnd < 0 with
         | true -> //below startpos
             match portOrientation with
             | Symbol.Bottom ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = xStart+Wire.stickLength/2.+10.; Y = yStart}; //Small horizontal for dragging  
-                    {X = xStart+Wire.stickLength/2.+10.; Y = yEnd+20.};
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength+10.; Y = yStart}; //Small horizontal for dragging  
+                    {X = xStart+Wire.nubLength+10.; Y = yEnd+20.};
                     {X = xEnd; Y = yEnd+20.};
-                    {X = xEnd; Y = yEnd+Wire.stickLength/2.}; 
-                    {X = xEnd; Y = yEnd+Wire.stickLength/2.}; //Length 0 horizontal
+                    {X = xEnd; Y = yEnd+Wire.nubLength}; 
+                    {X = xEnd; Y = yEnd+Wire.nubLength}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
             | Symbol.Right ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = xStart+Wire.stickLength/2.+10.; Y = yStart}; //Small horizontal for dragging
-                    {X = xStart+Wire.stickLength/2.+10.; Y = yEnd};
-                    {X = xEnd+Wire.stickLength/2.; Y = yEnd}; 
-                    {X = xEnd+Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength+10.; Y = yStart}; //Small horizontal for dragging
+                    {X = xStart+Wire.nubLength+10.; Y = yEnd};
+                    {X = xEnd+Wire.nubLength; Y = yEnd}; 
+                    {X = xEnd+Wire.nubLength; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
             | Symbol.Top ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = (yStart+yEnd)/2.}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
+                    {X = xStart+Wire.nubLength; Y = (yStart+yEnd)/2.}; //Length 0 vertical
                     {X = xEnd; Y = (yStart+yEnd)/2.};
-                    {X = xEnd; Y = yEnd-Wire.stickLength/2.}; 
-                    {X = xEnd; Y = yEnd-Wire.stickLength/2.}; //Length 0 horizontal
+                    {X = xEnd; Y = yEnd-Wire.nubLength}; 
+                    {X = xEnd; Y = yEnd-Wire.nubLength}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
             | Symbol.Left ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = xStart+Wire.stickLength/2.+10.; Y = yStart}; //Small horizontal for dragging
-                    {X = xStart+Wire.stickLength/2.+10.; Y = (yStart+yEnd)/2.}; 
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength+10.; Y = yStart}; //Small horizontal for dragging
+                    {X = xStart+Wire.nubLength+10.; Y = (yStart+yEnd)/2.}; 
                     {X = xEnd-20.; Y = (yStart+yEnd)/2.}; 
                     {X = xEnd-20.; Y = yEnd};
-                    {X = xEnd-Wire.stickLength/2.; Y = yEnd}; 
-                    {X = xEnd-Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
+                    {X = xEnd-Wire.nubLength; Y = yEnd}; 
+                    {X = xEnd-Wire.nubLength; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
         | false -> //above startpos
             match portOrientation with
             | Symbol.Top ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yEnd-20.}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
+                    {X = xStart+Wire.nubLength; Y = yEnd-20.}; //Length 0 vertical
                     {X = xEnd; Y = yEnd-20.};
-                    {X = xEnd; Y = yEnd-Wire.stickLength/2.}; 
-                    {X = xEnd; Y = yEnd-Wire.stickLength/2.}; //Length 0 horizontal
+                    {X = xEnd; Y = yEnd-Wire.nubLength}; 
+                    {X = xEnd; Y = yEnd-Wire.nubLength}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
             | Symbol.Right ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = xStart+Wire.stickLength/2.+10.; Y = yStart}; //Small horizontal for dragging
-                    {X = xStart+Wire.stickLength/2.+10.; Y = yEnd};
-                    {X = xEnd+Wire.stickLength/2.; Y = yEnd}; 
-                    {X = xEnd+Wire.stickLength/2.; Y = yEnd}; //Lenght 0 vertical
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength+10.; Y = yStart}; //Small horizontal for dragging
+                    {X = xStart+Wire.nubLength+10.; Y = yEnd};
+                    {X = xEnd+Wire.nubLength; Y = yEnd}; 
+                    {X = xEnd+Wire.nubLength; Y = yEnd}; //Lenght 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
             | Symbol.Bottom ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = (yStart+yEnd)/2.}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
+                    {X = xStart+Wire.nubLength; Y = (yStart+yEnd)/2.}; //Length 0 vertical
                     {X = xEnd; Y = (yStart+yEnd)/2.};
-                    {X = xEnd; Y = yEnd-Wire.stickLength/2.}; 
-                    {X = xEnd; Y = yEnd-Wire.stickLength/2.}; //Length 0 horizontal
+                    {X = xEnd; Y = yEnd-Wire.nubLength}; 
+                    {X = xEnd; Y = yEnd-Wire.nubLength}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
             | Symbol.Left ->  [{X = xStart; Y = yStart};
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.stickLength/2.; Y = yStart}; //Length 0 vertical
-                    {X = xStart+Wire.stickLength/2.+10.; Y = yStart}; //Small horizontal for dragging
-                    {X = xStart+Wire.stickLength/2.+10.; Y = (yStart+yEnd)/2.}; 
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
+                    {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
+                    {X = xStart+Wire.nubLength+10.; Y = yStart}; //Small horizontal for dragging
+                    {X = xStart+Wire.nubLength+10.; Y = (yStart+yEnd)/2.}; 
                     {X = xEnd-20.; Y = (yStart+yEnd)/2.}; 
                     {X = xEnd-20.; Y = yEnd};
-                    {X = xEnd-Wire.stickLength/2.; Y = yEnd}; 
-                    {X = xEnd-Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
+                    {X = xEnd-Wire.nubLength; Y = yEnd}; 
+                    {X = xEnd-Wire.nubLength; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
 
 /// Converts a list of vertices into a list of segments
@@ -852,13 +849,29 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
 //--------------------STS219 CODE SECTION STARTS-------------------------------------//
 //---------------------------------------------------------------------------------//
 
+/// Initialises an empty BusWire Model
+let init () = 
+    let symbols,_ = Symbol.init()
+    {   
+        Wires = Map.empty;
+        FromVerticalToHorizontalSegmentIntersections = Map.empty;
+        FromHorizontalToVerticalSegmentIntersections = Map.empty;
+        Symbol = symbols; 
+        CopiedWires = Map.empty; 
+        SelectedSegment = SegmentId(""); 
+        LastMousePos = {X = 0.0; Y = 0.0};
+        ErrorWires = []
+        Notifications = None
+        Type = Jump
+    } , Cmd.none
+
+//-------------------------segmentIntersectsBoundingBox---------------------------------//
+
 /// Type used to simplify BoundingBox intersection calculations
 type Rectangle = {
     TopLeft: XYPos
     BottomRight: XYPos
 }
-
-//-------------------------XYPos Helper Functions---------------------------------//
 
 /// Returns the X-value of an XYPos
 let toX (pos: XYPos) = pos.X
@@ -885,8 +898,6 @@ let dotProduct (p1: XYPos) (p2: XYPos) : float =
 let squaredDistance (p1: XYPos) (p2: XYPos) = 
     let diff = p1 - p2
     dotProduct diff diff
-
-//--------------------------------------------------------------------------------//
 
 /// Checks if 2 rectangles intersect
 let rectanglesIntersect (rect1: Rectangle) (rect2: Rectangle) =
@@ -919,7 +930,12 @@ let segmentIntersectsBoundingBox (bb: BoundingBox) segStart segEnd =
 
     rectanglesIntersect bbRect segRect
 
-/// Returns Some distance between a point and a segment defined by a start and end XYPos, and None if the segment is of 0 length (can't be clicked)
+//--------------------------------------------------------------------------------//
+
+//---------------------------getClickedSegment-----------------------------------//
+
+/// Returns Some distance between a point and a segment defined by a start and end XYPos, 
+/// and None if the segment is of 0 length (can't be clicked)
 let distanceBetweenPointAndSegment (segStart : XYPos) (segEnd : XYPos) (point : XYPos) : float option = 
     match squaredDistance segStart segEnd with
     | 0. -> None
@@ -949,93 +965,12 @@ let getClickedSegment (model: Model) (wireId: ConnectionId) (mouse: XYPos) : Seg
         | None -> Option.map (fun dist -> (seg.Id, dist)) currDist // Needed to deal with initial state
 
     match foldOverSegs closestSegment None model.Wires[wireId] with
-    | Some (segmentId, dist) -> segmentId 
+    | Some (segmentId, _dist) -> segmentId 
     | None -> failwithf "getClosestSegment was given a wire with no segments" // Should never happen
 
-/// Returns a distance for a wire move that has been reduced if needed to enforce minimum first/last segment lengths.
-let getSafeDistanceForMove (segments: Segment list) (index: int) (distance: float) =
-    /// Returns a list of segments up to the first non-zero segment perpendicular to the segment leaving the port
-    let findBindingSegments portIndex segList = 
-        segList
-        |> List.takeWhile (fun seg -> seg.Index % 2 = portIndex % 2 || seg.Length = 0)
+//--------------------------------------------------------------------------------//
 
-    let findInputBindingIndex boundSegList =
-        boundSegList
-        |> List.length
-
-    let findOutputBindingIndex boundSegList =
-        boundSegList
-        |> findInputBindingIndex
-        |> (-) (segments.Length - 1)
-
-    let findDistanceFromPort boundSegList =
-        (0., boundSegList)
-        ||> List.fold (fun dist seg -> dist + seg.Length) // Since the segments in perpendicular direction are 0 we can just sum up all the segments as if they are in the same direction
-   
-    let reduceDistance bindingSegs findBindingIndex distance = 
-        if findBindingIndex bindingSegs <> index then 
-            distance
-        else
-            findDistanceFromPort bindingSegs
-            |> (fun dist -> 
-                    if sign dist = -1 then 
-                        max distance (dist + Wire.stickLength/2.)
-                    else 
-                        min distance (dist - Wire.stickLength/2.))
-
-    let bindingInputSegs = 
-        segments
-        |> findBindingSegments 0
-        |> List.map (fun seg -> { seg with Length = -seg.Length})
-
-    let bindingOutputSegs =
-        List.rev segments
-        |> findBindingSegments (segments.Length - 1)
-
-    distance
-    |> reduceDistance bindingInputSegs findInputBindingIndex
-    |> reduceDistance bindingOutputSegs findOutputBindingIndex
-
-/// Returns a wire containing the updated list of segments after a segment is moved by 
-/// a specified distance. The moved segment is tagged as manual so that it is no longer auto-routed.
-/// Throws an error if the segment being moved is out of range.
-let moveSegment (model:Model) (seg:Segment) (distance:float) = 
-    let wire = model.Wires[seg.HostId]
-    let segments = wire.Segments
-    let idx = seg.Index
-
-    if idx <= 0 || idx >= segments.Length - 1 then
-        failwithf $"Trying to move wire segment {seg.Index}:{formatSegmentId seg.Id}, out of range in wire length {segments.Length}"
-
-    let safeDistance = getSafeDistanceForMove segments idx distance
-    
-    let prevSeg = segments[idx - 1]
-    let nextSeg = segments[idx + 1]
-    let movedSeg = segments[idx]
-
-    let newPrevSeg = { prevSeg with Length = prevSeg.Length + safeDistance }
-    let newNextSeg = { nextSeg with Length = nextSeg.Length - safeDistance }
-    let newMovedSeg = { movedSeg with Mode = Manual }
-    
-    let newSegments = segments[.. idx - 2] @ [newPrevSeg; newMovedSeg; newNextSeg] @ segments[idx + 2 ..]
-
-    {wire with Segments = newSegments}
-
-/// Initialises an empty Wire Model
-let init () = 
-    let symbols,_ = Symbol.init()
-    {   
-        Wires = Map.empty;
-        FromVerticalToHorizontalSegmentIntersections = Map.empty;
-        FromHorizontalToVerticalSegmentIntersections = Map.empty;
-        Symbol = symbols; 
-        CopiedWires = Map.empty; 
-        SelectedSegment = SegmentId(""); 
-        LastMousePos = {X = 0.0; Y = 0.0};
-        ErrorWires = []
-        Notifications = None
-        Type = Jump
-    } , Cmd.none
+//------------------------Wires Filtering Functions--------------------------------//
 
 /// Returns a list of all the wires in the given model
 let getWireList (model: Model) =
@@ -1043,14 +978,8 @@ let getWireList (model: Model) =
     |> Map.toList
     |> List.map snd
 
-/// Returns a list of wire IDs that meet the given condition
-let getFilteredIdList condition wireLst = 
-    wireLst
-    |> List.filter condition
-    |> List.map (fun wire -> wire.Id)
-
-///Returns the wires in the model connected to a list of components given by componentIds
-let getConnectedWires (model: Model) (compIds: list<ComponentId>) =
+/// Returns the IDs of the wires in the model connected to a list of components given by compIds
+let getConnectedWires model compIds =
     let containsPorts wire =
         let inputPorts, outputPorts =
             Symbol.getPortLocations model.Symbol compIds
@@ -1065,9 +994,15 @@ let getConnectedWires (model: Model) (compIds: list<ComponentId>) =
 /// Returns the IDs of the wires in the model connected to a list of components given by compIds
 let getConnectedWireIds model compIds =
     getConnectedWires model compIds
-    |> getFilteredIdList (fun _ -> true)
+    |> List.map (fun wire -> wire.Id)
 
-/// Given a model and a list of component Ids, returns an anaonymous record
+/// Returns a list of wire IDs that meet the given condition
+let getFilteredIdList condition wireLst = 
+    wireLst
+    |> List.filter condition
+    |> List.map (fun wire -> wire.Id)
+
+/// Given a model and a list of component Ids, returns an anonymous record
 /// containing the id of wires connected to input ports, output ports or both
 let filterWiresByCompMoved (model: Model) (compIds: list<ComponentId>) =
     let wireList = getWireList model
@@ -1094,6 +1029,106 @@ let filterWiresByCompMoved (model: Model) (compIds: list<ComponentId>) =
         wireList |> getFilteredIdList containsBothPort
 
     {| Inputs = inputWires; Outputs = outputWires; Both = fullyConnected |}
+
+//--------------------------------------------------------------------------------//
+
+//  ====================================================================================================================
+//
+//                                                  WIRE NOTES
+//
+// - The first and last segments of a wire (connected to the output and input ports) are called the 'nubs'. These have a minimum 
+//   length defined in Wire.nubLength, and are oriented perpendicular to the symbol edge (i.e. A nub for a port on the Right side
+//   of a Symbol will be Horizontal). The initial positions and orientations of these nubs are defined in wire. Nubs cannot be dragged
+//
+// - Additional segments are generated to route between the two nubs. The orientation of one segment will always be the 
+//   opposite of the previous.
+//
+// - To allow for any (non-nub) segments to be draggable, several segments of length 0 are inserted into the initial segment list.
+//
+// - Both the start and end of the wire is defined to allow the wire to be processed from either direction. This is important because
+//   routing is performed from the port that has been moved (i.e. if the input port has been moved we process from the end of the wire)
+//
+// - Partial autorouting attempts to preserve manually routed segments when moving a port. The fixed point is defined as 
+//   the end of the first manually routed segment from the moved port. Partial autorouting can only be applied when
+//   the position of the moved port relative to the fixed point is the same as before it was moved (see relativePosition).
+//
+// ======================================================================================================================
+
+//------------------------------moveSegment--------------------------------------//
+
+/// Returns a distance for a wire move that has been reduced if needed to enforce minimum first/last segment lengths.
+/// These prevent the first non-zero segment perpendicular to the nubs
+/// to be dragged closer than Wire.nubLength
+let getSafeDistanceForMove (segments: Segment list) (index: int) (distance: float) =
+    /// Returns a list of segments up to the first non-zero segment perpendicular to the segment leaving the port
+    let findBindingSegments portIndex segList = 
+        segList
+        |> List.takeWhile (fun seg -> seg.Index % 2 = portIndex % 2 || seg.Length = 0) // Works for both input and output ports
+
+    let findDistanceFromPort boundSegList =
+        (0., boundSegList)
+        ||> List.fold (fun dist seg -> dist + seg.Length) // Since the segments in perpendicular direction are 0 we can just sum up all the segments as if they are in the same direction
+   
+    let reduceDistance bindingSegs findBindingIndex distance = 
+        if findBindingIndex bindingSegs <> index then 
+            distance
+        else
+            findDistanceFromPort bindingSegs
+            |> (fun dist -> 
+                    if sign dist = -1 then 
+                        max distance (dist + Wire.nubLength)
+                    else 
+                        min distance (dist - Wire.nubLength))
+
+    let bindingInputSegs = 
+        segments
+        |> findBindingSegments 0
+        |> List.map (fun seg -> { seg with Length = -seg.Length})
+
+    let bindingOutputSegs =
+        List.rev segments
+        |> findBindingSegments (segments.Length - 1)
+
+    let findInputBindingIndex boundSegList =
+        boundSegList
+        |> List.length
+
+    let findOutputBindingIndex =
+        findInputBindingIndex
+        >> (-) (segments.Length - 1)
+
+    distance
+    |> reduceDistance bindingInputSegs findInputBindingIndex
+    |> reduceDistance bindingOutputSegs findOutputBindingIndex
+
+/// Returns a wire containing the updated list of segments after a segment is moved by 
+/// a specified distance. The moved segment is tagged as manual so that it is no longer auto-routed.
+/// Throws an error if the index of the segment being moved is not a valid movable segment index.
+let moveSegment (model:Model) (seg:Segment) (distance:float) = 
+    let wire = model.Wires[seg.HostId]
+    let segments = wire.Segments
+    let idx = seg.Index
+
+    if idx <= 0 || idx >= segments.Length - 1 then // Should never happen
+        failwithf $"Trying to move wire segment {seg.Index}:{formatSegmentId seg.Id}, out of range in wire length {segments.Length}"
+
+    let safeDistance = getSafeDistanceForMove segments idx distance
+    
+    let prevSeg = segments[idx - 1]
+    let nextSeg = segments[idx + 1]
+    let movedSeg = segments[idx]
+
+    let newPrevSeg = { prevSeg with Length = prevSeg.Length + safeDistance }
+    let newNextSeg = { nextSeg with Length = nextSeg.Length - safeDistance }
+    let newMovedSeg = { movedSeg with Mode = Manual }
+    
+    let newSegments = segments[.. idx - 2] @ [newPrevSeg; newMovedSeg; newNextSeg] @ segments[idx + 2 ..]
+
+    { wire with Segments = newSegments }
+
+//--------------------------------------------------------------------------------//
+
+//------------------------------autoroute--------------------------------------//
 
 /// Contains geometric information of a port
 type PortInfo = {
@@ -1123,7 +1158,7 @@ let rotate90Port (port: PortInfo) =
 
     genPortInfo newEdge newPos
 
-/// Returns a function to rotate a segment list 90 degrees anticlockwise (actually maybe clockwise? doesn't matter lol),
+/// Returns a function to rotate a segment list 90 degrees about the origin, 
 /// depending on its initial orientation
 let rotateSegments90 initialOrientation =
     let horizontal i =
@@ -1167,7 +1202,7 @@ let rec rotateSegments (target: Symbol.Edge) (wire: {| edge: Symbol.Edge; segmen
         |> rotateSegments target 
 
 /// Returns a newly autorouted version of a wire for the given model
-let autorouteWire (model: Model) (wire: Wire) : Wire =
+let autoroute (model: Model) (wire: Wire) : Wire =
     let destPos, startPos =
         Symbol.getTwoPortLocations (model.Symbol) (wire.InputPort) (wire.OutputPort)
 
@@ -1180,7 +1215,8 @@ let autorouteWire (model: Model) (wire: Wire) : Wire =
     let startPort = genPortInfo startEdge startPos
     let destPort = genPortInfo destEdge destPos
     
-    let normalisedStart, normalisedEnd =
+    // Normalise the routing problem to reduce the number of cases in makeInitialSegmentsList
+    let normalisedStart, normalisedEnd = 
         rotateStartDest Symbol.Right (startPort, destPort)
 
     let initialSegments =
@@ -1189,7 +1225,7 @@ let autorouteWire (model: Model) (wire: Wire) : Wire =
     let segments =
         {| edge = Symbol.Right
            segments = initialSegments |}
-        |> rotateSegments startEdge
+        |> rotateSegments startEdge // Rotate the segments back to original orientation
         |> (fun wire -> wire.segments)
 
     { wire with
@@ -1199,47 +1235,9 @@ let autorouteWire (model: Model) (wire: Wire) : Wire =
           StartPos = startPos
           EndPos = destPos }
 
+//--------------------------------------------------------------------------------//
 
-//
-//  ====================================================================================================================
-//
-//                                        WIRE SEGMENTS FOR ROUTING
-//
-//
-// Segments, going from Start (output port) to End (input port) coords, are summarised as:
-// H => Horizontal (incr X)
-// V => Vertical (incr Y)
-// 0 => zero length segment (never used)
-//
-// segment qualifiers:
-// F => min length (next to output or input, cannot be shortened) // stick
-//
-// "Simple" case where output.X < input.X and 3 segment autoroute is possible
-//  S0.FH  S1.0V  S2.H  S3.V  S4.H  S5.0V S6.FH
-//
-// "Complex" case where output.X > input.X and wire ends back for 5 segment autoroute
-//  S0.FH  S1.V  S2.H  S3.V  S4.H  S5.0V S6.FH (not sure if H and V are correct here) 
-//
-// To determine adjustment on End change we just reverse the segment and apply the Start change algorithm
-// Adjustment => reverse list of segments, swap Start and End, and alter the sign of all coordinates
-// For simplicity, due to the encoding of manual changes into coordinates by negating them (yuk!)
-// we do not alter coordinate sign. Instead we invert all numeric comparisons.
-// There are no constants used in the algorithm (if there were, they would need to be negated)
-//
-// ======================================================================================================================
-
-/// Transforms the segments in segList. Applies tX to the horizontal segments and tY to the vertical segments.
-let transformSegments tX tY (initialOrientation: Orientation) segList =
-    // If a segment is horizontal, applies X transformation, if it is vertical applies Y transformation
-    let transformSeg orientation (seg: Segment) =
-        match orientation with
-        | Horizontal -> { seg with Length = tX seg.Length }
-        | Vertical -> { seg with Length = tY seg.Length }
-
-    ((initialOrientation, []), segList)
-    ||> List.fold (fun (orientation, segs) seg ->
-        (switchOrientation orientation, segs @ [ transformSeg orientation seg ]))
-    |> snd
+//------------------------------partialAutoroute--------------------------------------//
 
 /// Returns an anonymous record indicating the position of pos relative to origin.
 /// The isAbove field indicates whether pos is above (true) or below (false) origin.
@@ -1261,7 +1259,7 @@ let reverseWire (wire: Wire) =
         InitialOrientation = wire.EndOrientation
         EndOrientation = wire.InitialOrientation }
 
-/// Returns the tupel (startPos, endPos) of the segment at the target index in the given wire. Throws an error if the target index isn't found
+/// Returns the tuple (startPos, endPos) of the segment at the target index in the given wire. Throws an error if the target index isn't found
 let getAbsoluteSegmentPos (wire: Wire) (target: int) =
     (None, wire)
     ||> foldOverSegs
@@ -1309,7 +1307,7 @@ let partitionSegments segs manualIdx =
 /// Returns None if full autoroute is required or applies partial autorouting
 /// from the start of the wire at newPortPos to the first manually routed segment 
 /// and returns Some wire with the new segments.
-let partialAutoRoute (wire: Wire) (newPortPos: XYPos) = 
+let partialAutoroute (wire: Wire) (newPortPos: XYPos) = 
     let segs = wire.Segments
     let newWire = { wire with StartPos = newPortPos }
 
@@ -1339,26 +1337,29 @@ let partialAutoRoute (wire: Wire) (newPortPos: XYPos) =
     |> Option.map updateSegments
     |> Option.map (fun segs -> { wire with Segments = segs; StartPos = newPortPos })
 
-/// Moves a wire by the XY amounts specified by displacement
-let moveWire (wire: Wire) (displacement: XYPos) =
-    { wire with
-          StartPos = wire.StartPos + displacement
-          EndPos = wire.EndPos + displacement }
+//--------------------------------------------------------------------------------//
 
 /// Returns a re-routed wire from the given model.
 /// First attempts partial autorouting, and defaults to full autorouting if this is not possible.
-/// Reverse indicates if the wire should be processed in backwards, used when an input port (end of wire) is moved.
+/// Reverse indicates if the wire should be processed in reverse, 
+/// used when an input port (end of wire) is moved.
 let updateWire (model : Model) (wire : Wire) (reverse : bool) =
     let newPort = 
         match reverse with
         | true -> Symbol.getInputPortLocation model.Symbol wire.InputPort
         | false -> Symbol.getOutputPortLocation model.Symbol wire.OutputPort
     if reverse then
-        partialAutoRoute (reverseWire wire) newPort
+        partialAutoroute (reverseWire wire) newPort
         |> Option.map reverseWire
     else 
-        partialAutoRoute wire newPort
-    |> Option.defaultValue (autorouteWire model wire)
+        partialAutoroute wire newPort
+    |> Option.defaultValue (autoroute model wire)
+
+/// Moves a wire by the XY amounts specified by displacement
+let moveWire (wire: Wire) (displacement: XYPos) =
+    { wire with
+          StartPos = wire.StartPos + displacement
+          EndPos = wire.EndPos + displacement }
 
 //---------------------------------------------------------------------------------//
 //--------------------STS219 CODE SECTION ENDS-------------------------------------//
@@ -1531,7 +1532,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                 InitialOrientation = Horizontal
                 EndOrientation = Horizontal
             }
-            |> autorouteWire model
+            |> autoroute model
         
         let wireAddedMap = Map.add newWire.Id newWire model.Wires
         let newModel = updateWireSegmentJumps [wireId] {model with Wires = wireAddedMap}
@@ -1766,7 +1767,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
         let updatedWireEntries = 
             componentIds
             |> getConnectedWires model
-            |> List.map (autorouteWire model)
+            |> List.map (autoroute model)
             |> List.map (fun wire -> wire.Id, wire)
             |> Map.ofList
         
@@ -1821,7 +1822,7 @@ let pasteWires (wModel : Model) (newCompIds : list<ComponentId>) : (Model * list
                             StartPos = { X = 0; Y = 0 };
                             EndPos = { X = 0; Y = 0 }
                     }
-                    |> autorouteWire wModel
+                    |> autoroute wModel
                 ]
             | None -> []
         

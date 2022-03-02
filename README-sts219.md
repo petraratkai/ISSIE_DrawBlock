@@ -28,7 +28,7 @@ cannot easily find everything via links from this README.
 
 Section 2 on my file is lines: **UPDATE WITH FINAL LINES**
 I am also responsible for: 
-- lines 104-226 (foldOverSegs, Debugging functions)
+- lines 104-250 (foldOverSegs, Debugging functions)
 - Changing the BoundingBox type (and updating parts of Sheet.fs to update references to it)
 
 Changes to the types used in Buswire were decided as a team with the people working on the other sections.
