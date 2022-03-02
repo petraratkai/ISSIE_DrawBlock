@@ -1,27 +1,7 @@
 # Inidividual Submission for sts219
 
-## Instructions
-
-* This file should be submitted (changed) on branch `hlp22-indiv-assess-<login>` of either your own repo or your group repo
-   * replace `<login>` in filename `README-<login>.md` by your login - in his example `<login> = tomcl`
-   * name the branch as above, including your login. This branch is used only for your submission.
-* A link to the repo and branch must be on the `indiv` sheet of Tom Clarke's Team [google spreadsheet](https://docs.google.com/spreadsheets/d/1prQ5usnpu36FgtbsMO8j6_mwbdd34haSMOQKN2OkLBA/edit?usp=sharing)
-* The repo you use **must have your marker added as collaborator** (github login is on indiv assessment spreadsheet page)
-* Delete these instructions from your version of this readme
-* Delete my comments from your version of the readme (it is an example, not something you add lines to). 
-Keep the headings and **replace the admin section links and notes with correct ones**.
-* Link to the sourcefile your code is contained in (drawblock or symbol) with an absolute hyperlink 
-to your repo and branch
-* Specify which code section and file you are doing as in my ppt (1,2,3), (buswire,symbol)
-* Add any changes to my section code allocations. This must be consistent with what has been 
-recorded in your team's file in my Team contributions repo](https://github.com/tomcl/hlp22docs/blob/main/README.md)  
-main branch ./TeamN.md (N = 1 - 9) file. The team contrib repo is as official record. This file will be 
-used marking and should have line numbers for easy access. Expect to be marked down if your marker
-cannot easily find everything via links from this README.
-
 ## Admin and quick access links
 
-*link to your teamN.md file*
 [Common repo Team9 file](https://github.com/tomcl/hlp22docs/blob/main/Team9.md)
 
 [Buswire (section 2)](src/renderer/drawblock/buswire.fs)
@@ -41,10 +21,10 @@ Changes to the types used in Buswire were decided as a team with the people work
 * Reworking how intersections between segments and bounding boxes are calculated, especially the `intersect1D` higher order function.
 * Renaming `topology` to `relativePosition` and changing the return type to significantly improve readbility. 
 
-
 ## Analysis
 
-To first understand the existing code, I created call graphs of the functions in my section of the code. Their interdependencies with other functions are defined by the following key:
+All call graphs shown below have the following key to define function interdependencies:
+
 ![]( sts219/key.png)
 
 ### Issues in Existing Code
@@ -64,7 +44,9 @@ refer to your code if this helps.
 
 **getClickedSegment**
 This function was an overcomplicated and confusing mess:
+
 ![]( sts219/getClickedSegment.png)
+
 This function has a simple purpose, which is to find the closest segment to a mouse-click, but has decided to do this in 2 different ways:
 - `getIntersectingSegments`: returns a list of segments which intersect the bounding box created by a mouseclick
 - `getClosestSegment`: returns the closest segment
@@ -80,7 +62,9 @@ This function was one of the sub-functions called by `getClickedSegment` (see ca
 
 **partialAutoRoute / topology**
 This function is part of the top level `updateWire` function, which has the following call graph:
+
 ![]( sts219/updateWire.png)
+
 This function is too long, and uses some sub-function / other functions which have particularly bad names. `topology` is one of the worst offenders, with no documentation as to what the function is meant to do. The `scaleBeforeSegmentEnd` sub-function is also very confusing, with unhelpful variable names and long lines of code. This could be improved by moving some functions out of the `partialAutoRoute`, improving the names of these functions and variables and adding documentation explaining the purpose of this function.
 
 #### Other problems
@@ -98,9 +82,13 @@ This was improved as follows:
 - Segments contain a `Mode` attribute, which is either `Manual` or `Auto` to indicate how the wire is being routed.
 - The initial / final positions and orientations are stored in the wire. Both endpoints are stored to allow the wire to be processed from either direction.
 There were 2 types of segment lists considered in the existing Issie functionality ('3'-seg and '5'-seg) to route between different IO configurations. A lot of their functionality was hard coded in using this assumed 7-segment length, which is bad as it makes it more difficult to include new cases for alternate port orientations. In both cases, the wires have small 'nubs' at both ports. This allows all the visible segments in the 3-segment wire to be dragged:
+
 ![]( sts219/dragged3seg.png)
+
 However, for the 5-segment wire, the following segments cannot be dragged:
+
 ![]( sts219/dragged5seg.png)
+
 This is because 8 segments would be needed to support this. As a result, one of the 7 segments are completely unused. By adapting the number of wire segments to the different routing problems, we can ensure that all wires can be moved appropriately.
 
 **BoundingBox**
@@ -108,7 +96,9 @@ The main issue with this type is what its `X` and `Y` fields represent. Is it th
 
 **Unused functions**
 There were a significant amount of functions, some quite complex, that were never called anywhere in the code (see below):
+
 ![]( sts219/unused.png)
+
 Those with debugging utility were moved into the debugging section at the top of the code, functional ones were removed.
 
 ### Analysis of how/why code works
@@ -131,7 +121,9 @@ All the functionality of the new code described below will be demonstrated in th
 
 **moveSegment**
 This function allows individual segments of a wire in Issie to be dragged in a direction perpendicular to its orientation. It's original call tree is below:
+
 ![]( sts219/moveSegment.png)
+
 `getSafeDistanceForMove` is meant to prevent users from dragging wire segments perpendicular to the port orientation too close to the port. This was implemented by hard-coding the different behaviour for different wire indexes. It also doesn't consider cases where the nubs have vertical orientations. This current implementation results in some glitchy behaviour when moving certain segments of the wire. This functionality was reworked and generalised:
 - The binding segment for a port is the first non-zero segment with an opposite orientation to the nub of that port.
 - This binding segment cannot be moved past the nub.
@@ -153,7 +145,9 @@ The old conditions for autorouting to be applied can be have the following requi
 - The quadrant of `newStartPos` relative to `endPos` must be the same the quadrant of `startPos` relative to `endPos`
 
 These requirements can be illustrated graphically:
+
 ![]( sts219/partialRoutingConditions.png)
+
 The second condition causes the additional blue line seen above. I have removed this requirement, as I think it is more intuitive to only have the bounds shown by the red lines. I also reworked the partial autorouting logic to update the necessary segments by the difference between `newStartPos` and `startPos`, rather than scaling segments using a multiplier.
 
 # Extensions
