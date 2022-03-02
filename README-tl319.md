@@ -33,13 +33,13 @@ This function was made overcomplicated by the requirement for wires to have 7 se
 The documentation of this function was again misleading, as it stated it converted an issie Connection to a wire, when it reality it was converting it to a segment list.
 
 **onSegment**, **orientation**:
-Both functions are global when they are only used in one other function and could very easily be a subfunction as both are very small.
+Both functions are global, however they are both very small and are only used in one other function so could easily be a subfunction.
 
 **segmentIntersectsSegment**:
-The implementation of this function is very poor. Because of using negative position values to indicate the routing method of a segment it forces the function to get the absolute value. This is obviously problematic as it limits everything to being in the top right quadrant in order to work properly. Finally it would also be simpler to find whether two segments by simply finding the theoretical intersection point (as segments can only be horizontal or vertical), and then checking whether that point lies between the coordinates.
+The implementation of this function is poor. Using negative position values to indicate the routing method of a segment forces the function to get the absolute value. This is problematic as it limits segments to being in the top right quadrant in order for the function to work properly. It would also be simpler to check whether two segments intersect by finding the theoretical intersection point (as segments can only be horizontal or vertical), and then checking whether that point lies between the coordinates of both segments.
 
 **makeSegPos**:
-Similar problems to onSegment and orientation, very small function that could be defined locally without causing significant clutter in the code.
+This has similar problems to onSegment and orientation. It is a small function that could be defined locally without causing significant clutter in the code.
 
 **renderSegment**:
 This function could have been simplified significantly by breaking up subsections of its functionality into external functions, as it is currently relatively unreadable. Furthermore its implementation could be significantly improved by using List.Map etc as opposed to repeatedly appending.
