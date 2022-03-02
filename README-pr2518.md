@@ -43,8 +43,8 @@ Also wrote the updated types and the documentation for them (lines 20-106)
 
 #### Other problems
 
-* Lack of documentation for some of the fields in Symbol, which point does Symbol.Pos represent for example?
-* Lack of XML comments / incorrect usage of XML comments
+* Lack of documentation for some of the fields in Symbol, which point does Symbol.Pos represent for example? + Lack of XML comments / incorrect usage of XML comments
+* Many times confusing function and variable names, many functions too long
 * PasteSymbols is a function, not a message, so it changes the model outside of a message which is bad, the pasteSymbols message does not do anything else but change the color of the pasted symbols
 
 ### Analysis of how/why code works
