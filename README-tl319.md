@@ -92,7 +92,7 @@ extractConnections - Implicitly shown in demo - This function has the same funct
 
 renderRadialWire - Explicitly shown in demo - This function creates an SVG command that renders an entire radial wire except from the first move command and the final line.
 
-renderModernSegment  - Explicitly shown in demo , however I will have to manually test this because it requires code from section 3 that is not yet implemented -  The function renders a segment as well as any intersections along that segment. The intersection locations are dictated by the IntersectCoordinateList in the AbsSegment. In the case that this list is empty it will instead produce a simple straight line.
+renderModernSegment  - Explicitly shown in demo , however I will have to manually test this because it requires code from section 3 that is not yet implemented -  The function renders a segment as well as any intersections along that segment. The intersection locations are dictated by the IntersectCoordinateList in the AbsSegment. In the case that this list is empty it will instead produce a simple straight line. 
 
 renderJumpSegment - Explicitly shown in demo , however I will have to manually test this because it requires code from section 3 that is not yet implemented - The function renders a segment as well as any jumps along that segment. It is capable of supporting multiple jumps as in original function. The jump locations are dictated by the IntersectCoordinateList in the AbsSegment. In the case that this list is empty it will instead produce a simple straight line.
 
@@ -103,6 +103,9 @@ singleWireModernView - Explicitly shown in demo , however I will have to manuall
 singleWireRadialView  - Explicitly shown in demo - Uses the SVG command to generate the ReactElements that render the entire radial wire as well as rendering the bit width text. There is some incorrect behaviour in this function, due to the fact that the rendered arcs are all of radius 5. Specifically whenever there are 3 segments and the middle segment has a length of less than 5 the two arcs will cross one another and subsequently be joined by another straight line. This however is a relatively minor problem as the issue is likely to only come up when specifically attempting to recreate it.
 
 view - Implicitly shown in demo - Calls singleWire_____View on each wire in the model, according to the Model.Type
+
+**Specific explanation of renderJumpSegment and renderModernSegment** 
+These functions work by recieving the start and end position of a segment as well as a list of any jumps / intersections along the segment respectively. Since jumps and intersections can only be on horizontal segments we only need to consider the x coordinates along the segment. For every element in the IntersectCoordinateList an arc or a circle is created that is centred around the start position + the element in the IntersectCoordinateList. Subsequently the functions create straight horizontal lines that fill the gap between each of the circles or arcs along the segment.
 
 ## Extensions
 
