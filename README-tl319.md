@@ -107,14 +107,18 @@ view
 1.  Radial display type for wires
 
      a. singleWireRadialView this is a new function that creates a custom path from a string created in renderRadialWire and makes an SVG element from it
+
      b. renderRadialWire this is a new function that generates a path command string according to the vertices of the wire
+     
      c. view changed to support switching between wire displays according to Model.Type 
      (NOTE: the code to change the Model.Type is currently not correctly implemented from section 3, as such it will always be the Modern type, in order to test different display types line X can be changed to a different singleWireBlankView
 
 2. Modern display type for wires
      a. singleWireModernView this is a new function that creates a react element that contains all of the segments and intersections for any given wire. 
+     
      b. renderModern this is a new function that creates the react element of any given segment as well as circles for any intersection. The location of these circle is passed via the Segment.IntersectCoordinateList
      (NOTE : at time of writing the code to populate the IntersectCoordinateList in section3  is not fully functional, as such I have manually placed 2 intersections at fixed distances on every segment in order to test functionality. This does cause issues in the case that the segment is shorter than the fixed distance, however when IntersectCoordinateList is populated properly it would be impossible for the intersection to be a distance greater than the segment length)
+     
      c. view changed to support switching between wire displays according to Model.Type 
      (NOTE: the code to change the Model.Type is currently not correctly implemented from section 3, as such it will always be the Modern type, in order to test different display types line X can be changed to a different singleWireBlankView)
 
