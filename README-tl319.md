@@ -5,7 +5,7 @@
 *link to your teamN.md file*
 [Common repo Team9 file](https://github.com/tomcl/hlp22docs/blob/main/Team9.md)
 
-[Buswire (section 1)](src/renderer/drawblock/buswire.fs)
+[Buswire (section 1)](src/Renderer/drawblock/buswire.fs)
 
 Section 1 on my file is lines: **UPDATE WITH FINAL LINES**
 
