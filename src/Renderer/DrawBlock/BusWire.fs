@@ -422,7 +422,7 @@ let xyVerticesToSegments connId (xyVerticesList: XYPos list) =
                 IntersectCoordinateList = [] ; // To test jump and modern wire types need to manually insert elements into this list.
                 Mode = Auto
                 Draggable =
-                    if i = 0 || i = xyVerticesList.Length - 2 then
+                    if i = 0 || i = xyVerticesList.Length - 2 then //First and Last should not be draggable
                         false
                     else
                         true
@@ -440,7 +440,7 @@ let makeInitialSegmentsList (hostId : ConnectionId) (startPos : XYPos) (endPos :
 
 //----------------------interface to Issie-----------------------//
 
-/// Convert a (possibly legacy) issie Connection stored as a list of vertices to Wire
+/// Convert a (possibly legacy) issie Connection stored as a list of vertices to a list of segments
 let issieVerticesToSegments 
         (connId) 
         (verticesList: list<float*float>) =
@@ -500,7 +500,8 @@ type WireRenderProps =
         DisplayType : WireType
     }
 
-///Function to create the SVG command required to path the entire wire if the display type is radial
+///Creates the SVG command string required to render the wire 
+/// (apart from the final "nub") with a radial display type 
 let renderRadialWire (state : (string * Orientation)) (segmentpair : {| First : AbsSegment; Second :AbsSegment|}) =
     
     let startFirstSegment = segmentpair.First.Start
@@ -562,7 +563,7 @@ let renderRadialWire (state : (string * Orientation)) (segmentpair : {| First : 
                     let current :string =  makeCommandString endFirstSegment.X (endFirstSegment.Y-5.)  0 (startSecondSegment.X+5.) startSecondSegment.Y
                     ((fst(state)+current), Horizontal)
 
-///Function used to render a single wire if the display type is modern
+///Renders a single segment in the display type of modern
 let renderModernSegment (param : {| AbsSegment : AbsSegment; Colour :string; Width : string|}) = 
     let startVertex = param.AbsSegment.Start
     let endVertex = param.AbsSegment.End
@@ -592,7 +593,7 @@ let renderModernSegment (param : {| AbsSegment : AbsSegment; Colour :string; Wid
     else
         [makeLine startVertex.X startVertex.Y endVertex.X endVertex.Y lineParameters]
         
-///Function used to render a single segment if the display type is jump
+///Renders a single segment in the display type of jump
 let renderJumpSegment (param : {| AbsSegment : AbsSegment; Colour :string; Width : string|}) = 
     let startVertex = param.AbsSegment.Start
     let endVertex = param.AbsSegment.End

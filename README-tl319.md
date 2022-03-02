@@ -96,11 +96,11 @@ renderModernSegment  - Explicitly shown in demo , have to manually test however 
 
 renderJumpSegment - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - renders a segment as well as any jumps along that segment, is capable of supporting multiple jumps as in original function.
 
-singleWireJumpView - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - calls renderJumpSegment for each segment of the given wire as well as rendering the text.
+singleWireJumpView - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - calls renderJumpSegment for each segment of the given wire as well as rendering the bit width text.
 
-singleWireModernView - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - calls renderModernSegment for each segment of the given wire as well as rendering the text.
+singleWireModernView - Explicitly shown in demo , have to manually test however as requires section 3 that is not yet implemented - calls renderModernSegment for each segment of the given wire as well as rendering the bit width text.
 
-singleWireRadialView  - Explicitly shown in demo - Uses the SVG command to generate the ReactElements that render the entire radial wire
+singleWireRadialView  - Explicitly shown in demo - Uses the SVG command to generate the ReactElements that renders the entire radial wire as well as rendering the bit width text.
 
 view - Implicitly shown in demo - Calls singleWire_____View on each wire in the model, according to the Model.Type
 
