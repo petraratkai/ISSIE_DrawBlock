@@ -49,19 +49,19 @@ Both functions are nearly entirely undocumented. This is especially poor as thes
 
 ### Other problems
 
-The segments type:
+**The segments type**
 * Contains a start and end position on every single segment, duplicating a large amount of information.
 * The method to determine routing of a segment is whether or not it is negative which is extremely unintuitive and leads to messier code later on. 
 * This was improved by changed segments to have a relative representation, only storing a length. Every segment is by defintion and a right angle to the previous segment, and the sign of the lenght indiciates whether the wires runs in an increasing or decreasing direction which is very logical.
 * Segments have a 'mode' attribute, which is either 'Manual' or 'Auto' that indicates whether or not it is being manually routed.
 * Wire contains both the start and final positions which allow us to produce absolute XY positions of segments whenever they are needed.
 
-Segment list of wires:
+**Segment list of wires**
 * Originally there were only 2 types of segment lists, 3 and 5 seg, to route between various symbols. These were also implemented with the assumption of 7 segments in any given wire. 
 * This led not only to hard coding that made inclusion of new cases significantly harder, but also required extra data in the situation that a wire could be represented with fewer segments.
 * This was changed such that wires can have a variety of length of segment lists. 
 
-Unused / Made redundant functions:
+**Unused / Made redundant functions**
 * Many of the original functions were either never used, or could very easily be made redundant. 
 * segmentIntersectsSegment as well as a variety of global subfunctions it uses (which have no need to be global) were made redundant due to changes in Implementation.
 * MapToSortedList was never used.
