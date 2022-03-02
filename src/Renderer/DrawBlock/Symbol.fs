@@ -683,11 +683,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
 /// Returns the bounding box of a symbol. It is defined by the height and the width as well as the x,y position of the symbol.
 /// Works with rotation.
 let getSymbolBoundingBox (sym:Symbol): BoundingBox =
-    let h,w = //might need to redo, bounding box should be top left, and maybe we should just return h and w as they are
-        match sym.STransform.Rotation with
-        | Degree0 | Degree180 -> sym.Component.H, sym.Component.W
-        | _ -> sym.Component.W, sym.Component.H
-
+    let h,w = getHAndW sym
     {TopLeft = sym.Pos; H = float(h) ; W = float(w)}
 
 /// Returns all the bounding boxes of all components in the model
@@ -712,6 +708,10 @@ let getCopiedSymbols (symModel: Model) : (ComponentId list) =
     symModel.CopiedSymbols
     |> Map.toList
     |> List.map fst
+
+/// Returns the port object associated with a given portId
+let getPort (symModel: Model) (portId: string) =
+    symModel.Ports[portId]
 
 /// Returns the string of a PortId
 let getPortIdStr (portId: PortId) = 
@@ -856,17 +856,18 @@ let initCopiedPorts (oldSymbol:Symbol) (newComp: Component) =
                 Map.add side newList currMap)
     portOrientation, portOrder
 
+
 /// Interface function to paste symbols. Is a function instead of a message because we want an output.
 /// Currently drag-and-drop.
 /// Pastes a list of symbols into the model and returns the new model and the id of the pasted modules.
-let pasteSymbols (symModel: Model) (newBasePos: XYPos) : (Model * ComponentId list) =
+let pasteSymbols (model: Model) (newBasePos: XYPos) : (Model * ComponentId list) =
     let addNewSymbol (basePos: XYPos) ((currSymbolModel, pastedIdsList) : Model * ComponentId List) (oldSymbol: Symbol): Model * ComponentId List =
         let newId = JSHelpers.uuid()
         let newPos = oldSymbol.Pos - basePos + newBasePos
         let compType = oldSymbol.Component.Type
         let newLabel = 
             compType
-            |> generateLabel { symModel with Symbols = currSymbolModel.Symbols}
+            |> generateLabel { model with Symbols = currSymbolModel.Symbols}
 
         let newComp = makeComp newPos compType newId newLabel
         let portOrientation, portOrder = initCopiedPorts oldSymbol newComp
@@ -888,16 +889,16 @@ let pasteSymbols (symModel: Model) (newBasePos: XYPos) : (Model * ComponentId li
         newModel, newPastedIdsList
         
     let oldSymbolsList =
-        symModel.CopiedSymbols
+        model.CopiedSymbols
         |> Map.toList
         |> List.map snd
 
     match oldSymbolsList with
-    | [] -> symModel, []
+    | [] -> model, []
     | _ -> 
         let baseSymbol = List.minBy (fun sym -> sym.Pos.X) oldSymbolsList
         let basePos = baseSymbol.Pos + { X = (float baseSymbol.Component.W) / 2.0; Y = (float baseSymbol.Component.H) / 2.0 }
-        ((symModel, []), oldSymbolsList) ||> List.fold (addNewSymbol basePos)
+        ((model, []), oldSymbolsList) ||> List.fold (addNewSymbol basePos)
  
 /// Returns the hostId of the port in model
 let getPortHostId (model: Model) portId =
