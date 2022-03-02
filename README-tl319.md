@@ -19,26 +19,6 @@ Changes to the types used in Buswire were decided as a team with the people work
 
 ## Analysis
 ### Bad function list
-My original function list consisted of the following functions:
-segmentsToVertices
-makeInitialWireVerticesList
-inferDirectionFromVertices
-xyVerticesToSegments
-issieVerticesToSegments
-extractConnection
-extractConnections
-onSegment
-orientation
-getAbsXY
-segmentIntersectsSegment
-makeSegPos
-distanceBetweenTwoPoints
-makeInitialSegmentsList
-renderSegment
-memoOf
-singleWireView
-MapToSortedList
-view
 
 **segmentsToVertices**
 The original documentation of this function was misleading, as it stated it converted a wire to a connection when in reality it was converting a segment list into a list of vertices. It also used List.mapi when List.map would have sufficed.
