@@ -678,7 +678,7 @@ let mDragUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
                     LastMousePos = mMsg.Pos
          }, Cmd.ofMsg CheckAutomaticScrolling
     | InitialiseMoving _ ->
-        let movingWires = BusWire.getConnectedWires model.Wire model.SelectedComponents
+        let movingWires = BusWire.getConnectedWireIds model.Wire model.SelectedComponents
         let newModel, cmd = moveSymbols model mMsg
         newModel, Cmd.batch [ cmd; wireCmd (BusWire.ResetJumps movingWires) ]
     | MovingSymbols | DragAndDrop ->
@@ -751,7 +751,7 @@ let mUpUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> = // mMsg is curr
         // Reset Movement State in Model
         match model.ErrorComponents with 
         | [] ->
-            let movingWires = BusWire.getConnectedWires model.Wire model.SelectedComponents
+            let movingWires = BusWire.getConnectedWireIds model.Wire model.SelectedComponents
             {model with
                 // BoundingBoxes = Symbol.getBoundingBoxes model.Wire.Symbol 
                 Action = Idle
@@ -762,7 +762,7 @@ let mUpUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> = // mMsg is curr
                 AutomaticScrolling = false },
             wireCmd (BusWire.MakeJumps movingWires)
         | _ ->
-            let movingWires = BusWire.getConnectedWires model.Wire model.SelectedComponents
+            let movingWires = BusWire.getConnectedWireIds model.Wire model.SelectedComponents
             {model with
                 BoundingBoxes = model.LastValidBoundingBoxes 
                 Action = Idle
@@ -836,7 +836,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
     | ToggleGrid ->
         {model with ShowGrid = not model.ShowGrid}, Cmd.none
     | KeyPress DEL ->
-        let wiresConnectedToComponents = BusWire.getConnectedWires model.Wire model.SelectedComponents
+        let wiresConnectedToComponents = BusWire.getConnectedWireIds model.Wire model.SelectedComponents
         // Ensure there are no duplicate deletions by using a Set
         let wireUnion =
             Set.union (Set.ofList wiresConnectedToComponents) (Set.ofList model.SelectedWires)
@@ -1044,20 +1044,20 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
         model,
         Cmd.batch [
             symbolCmd (Symbol.RotateLeft model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
-            //wireCmd (BusWire.Rotate model.SelectedComponents)
+            wireCmd (BusWire.Rotate model.SelectedComponents)
         ]
     | Rotate Right ->
         model,
         Cmd.batch [
             symbolCmd (Symbol.RotateRight model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
-            //wireCmd (BusWire.Rotate model.SelectedComponents)
+            wireCmd (BusWire.Rotate model.SelectedComponents)
         ]
 
     | Flip ->
         model,
         Cmd.batch [
             symbolCmd (Symbol.Flip model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
-            //wireCmd (BusWire.Flip model.SelectedComponents)
+            wireCmd (BusWire.Rotate model.SelectedComponents)
         ]
                 
     // ---------------------------- Issie Messages ---------------------------- //

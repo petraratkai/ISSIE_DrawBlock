@@ -11,6 +11,7 @@ Section 2 on my file is lines : 678-1510
 I am also responsible for lines 
 * 215-264 (function initPortOrientation)
 * 365-439 (functions getSymbolPortOrientation, getHAndW, getPortBaseOffset, isMuxSel, getMuxSelOffset, getPortPos)
+* In Sheet lines 351-358 (getWireBBox function)
 
 Also wrote the updated types and the documentation for them (lines 20-106)
 
