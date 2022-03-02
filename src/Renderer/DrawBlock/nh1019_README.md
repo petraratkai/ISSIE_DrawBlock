@@ -14,6 +14,7 @@ Section 3 on my file is lines : 1371-1808
 * Deleted `getPortIdsOfWires` - it wasn't used anywhere
 * Removed the use of `abs` everywhere as it was no longer needed with the type changes in `Segment` 
 * `DragWire` in `update` was changed slightly to use `getSegmentOrientation` instead of segment coordinates
+* Option to change `WireType` (options being `Jump`, `Radial`, `Modern`) implemented using messages triggered by clicking an option in the Edit menu
 * Rest of the functions in this section generally have good names
 
 #### Bad Function list
@@ -29,12 +30,11 @@ Section 3 on my file is lines : 1371-1808
 * The parameter `style` on l. 1724 is not ideal, however the more logical suggestion of `type` is a keyword, and `style` should quickly make sense in the given context.
 * `processConWidths` in `BusWidths` (part of `update`) is also not a good name but its only parameter (`connWidths: ConnectionsWidth`) gives it enough context so we do not need to rename.
 
-
 ### Analysis of how/why code works
 
 * makeAllJumps (l. 1371-1429) needed to be quite heavily refactored as it used many types which had been changed. Our segments had no direction, start position, or end position fields, so these had to be found within the function using helper functions. The following changes were made:
     * Removed `h.Dir` and wrote the boolean helper function `verticalSeg` which uses `getSegmentOrientation` to determine whether the current segment is vertical or not.
-    * If the wires intersect, `jumps` is updated - `foldOverSegs innerFold (segStart, segEnd) wire'` apply this process to every segment in the given wire
+    * If the wires intersect, `jumps` is updated - the expression `foldOverSegs innerFold (segStart, segEnd) wire'` applies this process to every segment in the given wire
     * The pattern match expression is essentially the same as that used in the original
     * Finally, `foldOverSegs` is used once more to apply the whole process to the wire being iterated over in the outer loop - `newWX` is updated every time it needs to be and the function finally returns the `model` with `newWX` as its `Wires`
 
