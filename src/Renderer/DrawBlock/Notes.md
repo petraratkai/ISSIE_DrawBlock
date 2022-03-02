@@ -1,4 +1,4 @@
-﻿Analysis - Symbol 1
+﻿#Analysis - Symbol 1
 
 Rotation:
 In rotation, I decided to make two functions rotateSymbolLeft and rotateSymbolRight. These two functions take a symbol and a rotateby parameter that determines how many degrees 
