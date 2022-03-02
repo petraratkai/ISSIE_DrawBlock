@@ -691,8 +691,12 @@ let singleWireJumpView props =
                     DominantBaseline = "middle";
             }
         let textString = if props.StrokeWidthP = 1 then "" else string props.StrokeWidthP //Only print width > 1
-        makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
-    
+        match props.OutputPortEdge with 
+        | Symbol.Top -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | Symbol.Bottom -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y+7.0) (textString) textParameters
+        | Symbol.Right -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | Symbol.Left -> makeText (props.OutputPortLocation.X-20.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+
     g [] ([ renderWireWidthText ] @ renderedSegmentList)
 
 ///Function used to render a single wire if the display type is modern
@@ -726,7 +730,12 @@ let singleWireModernView props =
                     DominantBaseline = "middle";
             }
         let textString = if props.StrokeWidthP = 1 then "" else string props.StrokeWidthP //Only print width > 1
-        makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        match props.OutputPortEdge with 
+        | Symbol.Top -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | Symbol.Bottom -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y+7.0) (textString) textParameters
+        | Symbol.Right -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | Symbol.Left -> makeText (props.OutputPortLocation.X-20.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+
     g [] ([ renderWireWidthText ] @ renderedSegmentList)
 
 ///Function used to render a single wire if the display type is radial
@@ -779,7 +788,11 @@ let singleWireRadialView props =
                     DominantBaseline = "middle";
             }
         let textString = if props.StrokeWidthP = 1 then "" else string props.StrokeWidthP //Only print width > 1
-        makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        match props.OutputPortEdge with 
+        | Symbol.Top -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | Symbol.Bottom -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y+7.0) (textString) textParameters
+        | Symbol.Right -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | Symbol.Left -> makeText (props.OutputPortLocation.X-20.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
 
     g [] ([ renderWireWidthText ] @ [renderedSVGPath])
 
@@ -816,7 +829,7 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
                             key = match wire.Id with | ConnectionId s -> s
                             AbsSegments = getAbsSegments wire
                             ColorP = wire.Color
-                            StrokeWidthP = wire.Width
+                            StrokeWidthP = wire.Width //To test the display of bit width text we can manually change this value, as the function to change it is not correctly implemented in section 3.
                             OutputPortEdge = outputPortEdge
                             OutputPortLocation = outputPortLocation
                             DisplayType = wire.Type
@@ -825,7 +838,7 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
                     //singleWire_View as section 3 has not yet implemented the model.Type properly
                     match  model.Type with    
                     | Radial -> singleWireRadialView props
-                    | Jump -> singleWireRadialView props
+                    | Jump -> singleWireJumpView props
                     | Modern -> singleWireModernView props
             )
     TimeHelpers.instrumentInterval "WirePrepareProps" rStart ()
