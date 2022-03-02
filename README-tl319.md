@@ -14,37 +14,37 @@ Changes to the types used in Buswire were decided as a team with the people work
 ## Code Quality
 
 **Highlights**
-* renderRadialWire: The rendering of a single wire for display type, I believe that the creation of a single react element that renders the entire wire is a particularly elegant and efficient solution.
-* The AbsSegments type is particularly useful for rendering each wire. This type is suitable for each different type of rendering (radial, modern, jump) and provides a useful conversion from the overall relative segment implementation. 
+* The renderRadialWire function is particularly elegant as it creates a single react element for the entire wire, instead of segment by segment.
+* The AbsSegments type is particularly useful for rendering wires, as it is suitable for each different type of rendering (radial, modern, jump). It also provides a logical conversion from the overall relative segment implementation that is compatible with the generation of react elements. 
 
 ## Analysis
 ### Bad function list
 
-**segmentsToVertices**
+**segmentsToVertices**:
 The original documentation of this function was misleading, as it stated it converted a wire to a connection when in reality it was converting a segment list into a list of vertices. It also used List.mapi when List.map would have sufficed.
 
-**inferDirectionFromVertices**
+**inferDirectionFromVertices**:
 This function had no documentation whatsoever.
 
-**xyVerticesToSegments**
+**xyVerticesToSegments**:
 This function was made overcomplicated by the requirement for wires to have 7 segments. This meant that instead of simply the first and last segment of a wire being undraggable additional checks had to be done to decide whether any other segments were undraggable.
 
-**issieVerticesToSegments**
+**issieVerticesToSegments**:
 The documentation of this function was again misleading, as it stated it converted an issie Connection to a wire, when it reality it was converting it to a segment list.
 
-**onSegment**, **orientation**
+**onSegment**, **orientation**:
 Both functions are global when they are only used in one other function and could very easily be a subfunction as both are very small.
 
-**segmentIntersectsSegment**
+**segmentIntersectsSegment**:
 The implementation of this function is very poor. Because of using negative position values to indicate the routing method of a segment it forces the function to get the absolute value. This is obviously problematic as it limits everything to being in the top right quadrant in order to work properly. Finally it would also be simpler to find whether two segments by simply finding the theoretical intersection point (as segments can only be horizontal or vertical), and then checking whether that point lies between the coordinates.
 
-**makeSegPos**
+**makeSegPos**:
 Similar problems to onSegment and orientation, very small function that could be defined locally without causing significant clutter in the code.
 
-**renderSegment**
+**renderSegment**:
 This function could have been simplified significantly by breaking up subsections of its functionality into external functions, as it is currently relatively unreadable. Furthermore its implementation could be significantly improved by using List.Map etc as opposed to repeatedly appending.
 
-**singleWireView**, **view**
+**singleWireView**, **view**:
 Both functions are nearly entirely undocumented, this is especially bad as these two functions dictate the rendering and so their ease of use and understanding are critical.
 
 ### Other problems
