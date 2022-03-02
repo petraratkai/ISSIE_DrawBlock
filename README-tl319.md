@@ -14,9 +14,8 @@ Changes to the types used in Buswire were decided as a team with the people work
 ## Code Quality
 
 **Highlights**
-* The rendering of a single wire for display type, I believe that the creation of a single react element that renders the entire is a particularly elegant and efficienet solution.
+* renderRadialWire :The rendering of a single wire for display type, I believe that the creation of a single react element that renders the entire wire is a particularly elegant and efficient solution.
 * The AbsSegments type is particularly useful for rendering each wire. This type is suitable for each different type of rendering (radial, modern, jump) and provides a useful conversion from the overall relative segment implementation. 
-* Name and division of functionality for each rendering function
 
 ## Analysis
 ### Bad function list

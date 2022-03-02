@@ -264,10 +264,10 @@ let segmentsToVertices (segList:Segment list) (wire:Wire) =
 /// this function returns a list of wire vertices
 let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (portOrientation : Symbol.Edge) = 
     let xStart, yStart, xEnd, yEnd = wireStartPos.X, wireStartPos.Y, wireEndPos.X, wireEndPos.Y
-    match xStart - xEnd < 0 with
-    | true -> 
-        match yStart - yEnd < 0 with
-        | true -> 
+    match xStart - xEnd < 0 with 
+    | true -> //Right of startpos
+        match yStart - yEnd < 0 with 
+        | true -> //Below startpos
             match portOrientation with
             | Symbol.Top  ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
@@ -301,7 +301,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd-Wire.stickLength/2.; Y = yEnd}; 
                     {X = xEnd-Wire.stickLength/2.; Y = yEnd}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
-        | false -> 
+        | false -> //Above startpos
             match portOrientation with
             | Symbol.Bottom ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
@@ -335,9 +335,9 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd-Wire.stickLength/2.; Y = yEnd}; 
                     {X = xEnd-Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
-    | false-> 
+    | false-> //left of startpos
         match yStart - yEnd < 0 with
-        | true ->
+        | true -> //below startpos
             match portOrientation with
             | Symbol.Bottom ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
@@ -373,7 +373,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd-Wire.stickLength/2.; Y = yEnd}; 
                     {X = xEnd-Wire.stickLength/2.; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
-        | false ->
+        | false -> //above startpos
             match portOrientation with
             | Symbol.Top ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.stickLength/2.; Y = yStart}; //Stick horizontal
@@ -428,6 +428,18 @@ let xyVerticesToSegments connId (xyVerticesList: XYPos list) =
                         true
             })
 
+
+/// Given the coordinates of two port locations that correspond
+/// to the endpoints of a wire, as well as the orientation of the final port
+/// this function returns a list of Segment(s).
+let makeInitialSegmentsList (hostId : ConnectionId) (startPos : XYPos) (endPos : XYPos) (portOrientation : Symbol.Edge) : list<Segment> =
+    let xyPairs = makeInitialWireVerticesList startPos endPos portOrientation
+    xyPairs
+    |> xyVerticesToSegments hostId 
+
+
+//----------------------interface to Issie-----------------------//
+
 /// Convert a (possibly legacy) issie Connection stored as a list of vertices to Wire
 let issieVerticesToSegments 
         (connId) 
@@ -442,16 +454,6 @@ let issieVerticesToSegments
     makeSegmentsFromVertices xyVerticesList
 
 
-/// Given the coordinates of two port locations that correspond
-/// to the endpoints of a wire, as well as the orientation of the final port
-/// this function returns a list of Segment(s).
-let makeInitialSegmentsList (hostId : ConnectionId) (startPos : XYPos) (endPos : XYPos) (portOrientation : Symbol.Edge) : list<Segment> =
-    let xyPairs = makeInitialWireVerticesList startPos endPos portOrientation
-    xyPairs
-    |> xyVerticesToSegments hostId 
-
-
-//----------------------interface to Issie-----------------------//
 /// This function is given a ConnectionId and it
 /// converts the corresponding BusWire.Wire type to a
 /// Connection type, offering an interface
@@ -499,11 +501,17 @@ type WireRenderProps =
     }
 
 ///Function to create the SVG command required to path the entire wire if the display type is radial
-let renderRadialWire (state : (string * Orientation)) (segmentpair :AbsSegment * AbsSegment)= 
-    let startFirstSegment = fst(segmentpair).Start
-    let endFirstSegment = fst(segmentpair).End
-    let startSecondSegment = snd(segmentpair).Start
-    let endSecondSegment = snd(segmentpair).End
+let renderRadialWire (state : (string * Orientation)) (segmentpair : {| First : AbsSegment; Second :AbsSegment|}) =
+    
+    let startFirstSegment = segmentpair.First.Start
+    let endFirstSegment = segmentpair.First.End
+    let startSecondSegment = segmentpair.Second.Start
+    let endSecondSegment = segmentpair.Second.End
+    
+    let makeCommandString xStart yStart sweepflag xEnd yEnd : string =
+        $"L {xStart} {yStart} A 5 5, 45, 0, {sweepflag}, {xEnd} {yEnd}" 
+
+    //Checking if horizontal followed by length 0 vertical
     if startFirstSegment.X = endFirstSegment.X && 
        startFirstSegment.X = startSecondSegment.X &&
        startFirstSegment.X = endSecondSegment.X then
@@ -512,6 +520,7 @@ let renderRadialWire (state : (string * Orientation)) (segmentpair :AbsSegment *
             (fst(state)+current, Vertical)
         else 
             (fst(state)+current, Horizontal)
+    //Checking if vertical followed by length 0 horizontal
     else if startFirstSegment.Y = endFirstSegment.Y && 
             startFirstSegment.Y = startSecondSegment.Y && 
             startFirstSegment.Y = endSecondSegment.Y then
@@ -520,45 +529,38 @@ let renderRadialWire (state : (string * Orientation)) (segmentpair :AbsSegment *
             (fst(state)+current, Vertical)
         else 
             (fst(state)+current, Horizontal)           
+    
     else
         if snd(state) = Horizontal then
             if startFirstSegment.X - endFirstSegment.X > 0 then
                 if startSecondSegment.Y - endSecondSegment.Y > 0 then
-                    let (current :string) =  sprintf "L %f %f A %i %i, %i, %i, %i, %f %f" (endFirstSegment.X+5.) (endFirstSegment.Y) 5 5 45 0 1 (startSecondSegment.X) (startSecondSegment.Y-5.)
-                    let next = fst(state) + current
-                    (next, Vertical)
+                    let current:string = makeCommandString (endFirstSegment.X+5.) endFirstSegment.Y 1 startSecondSegment.X (startSecondSegment.Y-5.)
+                    ((fst(state)+current), Vertical)
                 else
-                    let (current :string) =  sprintf "L %f %f A %i %i, %i, %i, %i, %f %f" (endFirstSegment.X+5.) (endFirstSegment.Y) 5 5 45 0 0 (startSecondSegment.X) (startSecondSegment.Y+5.)
-                    let next = fst(state) + current
-                    (next, Vertical)
+                    let current:string  =  makeCommandString (endFirstSegment.X+5.) endFirstSegment.Y 0 startSecondSegment.X (startSecondSegment.Y+5.)
+                    ((fst(state)+current), Vertical)
             else
                 if startSecondSegment.Y - endSecondSegment.Y > 0 then
-                    let (current :string) =  sprintf "L %f %f A %i %i, %i, %i, %i, %f %f"(endFirstSegment.X-5.) (endFirstSegment.Y) 5 5 45 0 0 (startSecondSegment.X) (startSecondSegment.Y-5.)
-                    let next = fst(state) + current
-                    (next, Vertical)
+                    let current:string =  makeCommandString (endFirstSegment.X-5.)endFirstSegment.Y 0 startSecondSegment.X (startSecondSegment.Y-5.)
+                    ((fst(state)+current), Vertical)
                 else
-                    let (current :string) =  sprintf "L %f %f A %i %i, %i, %i, %i, %f %f" (endFirstSegment.X-5.) (endFirstSegment.Y) 5 5 0 0 1 (startSecondSegment.X) (startSecondSegment.Y+5.)
-                    let next = fst(state) + current
-                    (next, Vertical)
+                    let current:string = makeCommandString (endFirstSegment.X-5.) endFirstSegment.Y 1 startSecondSegment.X (startSecondSegment.Y+5.)
+                    ((fst(state)+current), Vertical)
         else
             if startFirstSegment.Y - endFirstSegment.Y > 0 then
                 if startSecondSegment.X - endSecondSegment.X > 0 then
-                    let (current :string) =  sprintf "L %f %f A %i %i, %i, %i, %i, %f %f"(endFirstSegment.X) (endFirstSegment.Y+5.) 5 5 0 0 0 (startSecondSegment.X-5.) (startSecondSegment.Y)
-                    let next = fst(state) + current
-                    (next, Horizontal)
+                    let current :string =  makeCommandString endFirstSegment.X (endFirstSegment.Y+5.) 0 (startSecondSegment.X-5.) startSecondSegment.Y
+                    ((fst(state)+current), Horizontal)
                 else
-                    let (current :string) =  sprintf "L %f %f A %i %i, %i, %i, %i, %f %f" (endFirstSegment.X) (endFirstSegment.Y+5.) 5 5 0 0 1 (startSecondSegment.X+5.) (startSecondSegment.Y)
-                    let next = fst(state) + current
-                    (next, Horizontal)
+                    let current :string =  makeCommandString endFirstSegment.X (endFirstSegment.Y+5.) 1 (startSecondSegment.X+5.) startSecondSegment.Y
+                    ((fst(state)+current), Horizontal)
             else
                 if startSecondSegment.X - endSecondSegment.X > 0 then
-                    let (current :string) =  sprintf "L %f %f A %i %i, %i, %i, %i, %f %f"(endFirstSegment.X) (endFirstSegment.Y-5.) 5 5 0 0 1 (startSecondSegment.X-5.) (startSecondSegment.Y)
-                    let next = fst(state) + current
-                    (next, Horizontal)
+                    let current :string =  makeCommandString endFirstSegment.X (endFirstSegment.Y-5.)  1 (startSecondSegment.X-5.) startSecondSegment.Y
+                    ((fst(state)+current), Horizontal)
                 else
-                    let (current :string) =  sprintf "L %f %f A %i %i, %i, %i, %i, %f %f" (endFirstSegment.X) (endFirstSegment.Y-5.) 5 5 0 0 0 (startSecondSegment.X+5.) (startSecondSegment.Y)
-                    let next = fst(state) + current
-                    (next, Horizontal) 
+                    let current :string =  makeCommandString endFirstSegment.X (endFirstSegment.Y-5.)  0 (startSecondSegment.X+5.) startSecondSegment.Y
+                    ((fst(state)+current), Horizontal)
 
 ///Function used to render a single wire if the display type is modern
 let renderModernSegment (param : {| AbsSegment : AbsSegment; Colour :string; Width : string|}) = 
@@ -748,6 +750,7 @@ let singleWireRadialView props =
     let radialPathCommands = fst(
         props.AbsSegments
         |> List.pairwise
+        |> List.map (fun x -> ( {| First = fst(x); Second = snd(x) |}))
         |> List.fold renderRadialWire (initialState) )
     let finalLineCommand = sprintf "L %f %f" lastVertex.X lastVertex.Y
     let fullPathCommand = radialPathCommands + finalLineCommand
@@ -822,7 +825,7 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
                     //singleWire_View as section 3 has not yet implemented the model.Type properly
                     match  model.Type with    
                     | Radial -> singleWireRadialView props
-                    | Jump -> singleWireJumpView props
+                    | Jump -> singleWireRadialView props
                     | Modern -> singleWireModernView props
             )
     TimeHelpers.instrumentInterval "WirePrepareProps" rStart ()
