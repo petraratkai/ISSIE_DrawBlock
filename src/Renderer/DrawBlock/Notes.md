@@ -1,4 +1,10 @@
-﻿#Analysis - Symbol 1
+﻿Analysis - Symbol
+==========
+Types
+----------
+Symbol -> struct that contains a Component, if component has ports maybe move out ports directly into symbol, not super neccessary
+
+Analysis - Symbol 1
 
 Rotation:
 In rotation, I decided to make two functions rotateSymbolLeft and rotateSymbolRight. These two functions take a symbol and a rotateby parameter that determines how many degrees 
