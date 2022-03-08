@@ -54,7 +54,6 @@ type Wire =
         Color: HighLightColor
         Width: int
         Segments: list<Segment>
-        Type : WireType
         StartPos : XYPos
         EndPos : XYPos
         InitialOrientation : Orientation
@@ -841,7 +840,7 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
                             StrokeWidthP = wire.Width //To test the display of bit width text we can manually change this value, as the function to change it is not correctly implemented in section 3.
                             OutputPortEdge = outputPortEdge
                             OutputPortLocation = outputPortLocation
-                            DisplayType = wire.Type
+                            DisplayType = model.Type
                         }
                     //To test other display types need to change 2nd match to the relevant 
                     //singleWire____View as section 3 has not yet implemented the model.Type properly
@@ -1517,7 +1516,6 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                 Color = HighLightColor.DarkSlateGrey
                 Width = 1
                 Segments = []
-                Type = model.Type
                 StartPos = { X = 0; Y = 0 }
                 EndPos = { X = 0; Y = 0 }
                 InitialOrientation = Horizontal
@@ -1731,7 +1729,6 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                               Color = HighLightColor.DarkSlateGrey
                               Width = 1
                               Segments = segments
-                              Type = model.Type
                               StartPos = Symbol.getInputPortLocation model.Symbol inputId
                               EndPos = Symbol.getOutputPortLocation model.Symbol outputId
                               InitialOrientation = Symbol.getInputPortOrientation model.Symbol inputId |> getOrientation
@@ -1748,13 +1745,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
         { model with Wires = newWX }, Cmd.ofMsg (MakeJumps connIds)
 
     | UpdateWireType (style: WireType) ->
-        let updateStyle =
-            match style with
-            | Jump -> model.Wires |> Map.map (fun id w -> {w with Type = Jump})
-            | Radial -> model.Wires |> Map.map (fun id w -> {w with Type = Radial})
-            | Modern -> model.Wires |> Map.map (fun id w -> {w with Type = Modern})
-
-        { model with Wires = updateStyle }, Cmd.none
+        { model with Type = style }, Cmd.none
 
     | Rotate (componentIds: ComponentId list) ->
         let updatedWireEntries = 

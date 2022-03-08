@@ -433,13 +433,6 @@ let inline getPortPosEdgeGap (ct: ComponentType) =
 let getSymbolPortOrientation (sym: Symbol) (port: Port): Edge =
     let portId = port.Id
     sym.PortOrientation[portId]
-
-    | _ ->
-        match portSide with
-        | Left -> portCorner + portSpacing * float(index+1)
-        | Top -> portCorner - portSpacing * float(index+1)
-        | Right -> portCorner - portSpacing * float(index+1) 
-        | Bottom -> portCorner + portSpacing * float(index+1)
     
 /// Returns the height and width of a symbol
 let getHAndW sym =
@@ -941,7 +934,7 @@ let pasteSymbols (model: Model) (newBasePos: XYPos) : (Model * ComponentId list)
         let compType = oldSymbol.Component.Type
         let newLabel = 
             compType
-            |> generateLabel { symModel with Symbols = currSymbolModel.Symbols}
+            |> generateLabel { model with Symbols = currSymbolModel.Symbols}
         let newComp = makeComponent newPos compType newId newLabel
         let orientation = defaultPortOrientation newComp
         let newSymbol =

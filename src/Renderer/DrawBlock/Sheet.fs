@@ -91,9 +91,6 @@ type RotateMsg =
 type WireTypeMsg =
     | Jump | Radial | Modern
 
-type RotateMsg =
-    | Right | Left
-
 type Msg =
     | Wire of BusWire.Msg
     | KeyPress of KeyboardMsg
@@ -1066,23 +1063,23 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             symbolCmd (Symbol.Flip model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
             wireCmd (BusWire.Rotate model.SelectedComponents)
         ]
-    (*| WireType Jump ->
+    | WireType Jump ->
         model,
         Cmd.batch [
-            wireCmd (BusWire.WireType Jump)
+            wireCmd (BusWire.UpdateWireType BusWire.Jump)
         ]
 
     | WireType Radial ->
         model,
         Cmd.batch [
-            wireCmd (BusWire.WireType Radial)
+            wireCmd (BusWire.UpdateWireType BusWire.Radial)
         ]
        
     | WireType Modern ->
         model,
         Cmd.batch [
-            wireCmd (BusWire.WireType Modern)
-        ]*)
+            wireCmd (BusWire.UpdateWireType BusWire.Modern)
+        ]
                 
     // ---------------------------- Issie Messages ---------------------------- //
 
