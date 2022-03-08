@@ -255,6 +255,7 @@ let logSegmentsInModel (model: Model) (wireSegmentIdPairs: (ConnectionId * Segme
 //---------------------------------------------------------------------------------//
 
 /// Converts a segment list into a list of vertices
+/// Needs wire for starting position
 let segmentsToVertices (segList:Segment list) (wire:Wire) = 
     ((wire.StartPos, wire.InitialOrientation),segList)
     ||> List.scan(fun (currPos, currOrientation) seg ->
@@ -271,7 +272,7 @@ let segmentsToVertices (segList:Segment list) (wire:Wire) =
 /// this function returns a list of wire vertices
 let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (portOrientation : Symbol.Edge) = 
     let xStart, yStart, xEnd, yEnd = wireStartPos.X, wireStartPos.Y, wireEndPos.X, wireEndPos.Y
-    match xStart - xEnd < 0 with 
+    match xStart - xEnd + 20. < 0 with //add 20 to prevent issues in the case that the ports are directly on in line with one another
     | true -> //Right of startpos
         match yStart - yEnd < 0 with 
         | true -> //Below startpos
@@ -429,7 +430,7 @@ let xyVerticesToSegments connId (xyVerticesList: XYPos list) =
                 IntersectCoordinateList = [] ; // To test jump and modern wire types need to manually insert elements into this list.
                 Mode = Auto
                 Draggable =
-                    if i = 0 || i = xyVerticesList.Length - 2 then
+                    if i = 0 || i = xyVerticesList.Length - 2 then //First and Last should not be draggable
                         false
                     else
                         true
@@ -447,7 +448,7 @@ let makeInitialSegmentsList (hostId : ConnectionId) (startPos : XYPos) (endPos :
 
 //----------------------interface to Issie-----------------------//
 
-/// Convert a (possibly legacy) issie Connection stored as a list of vertices to Wire
+/// Convert a (possibly legacy) issie Connection stored as a list of vertices to a list of segments
 let issieVerticesToSegments 
         (connId) 
         (verticesList: list<float*float>) =
@@ -507,7 +508,8 @@ type WireRenderProps =
         DisplayType : WireType
     }
 
-///Function to create the SVG command required to path the entire wire if the display type is radial
+///Creates the SVG command string required to render the wire 
+/// (apart from the final "nub") with a radial display type 
 let renderRadialWire (state : (string * Orientation)) (segmentpair : {| First : AbsSegment; Second :AbsSegment|}) =
     
     let startFirstSegment = segmentpair.First.Start
@@ -569,7 +571,7 @@ let renderRadialWire (state : (string * Orientation)) (segmentpair : {| First : 
                     let current :string =  makeCommandString endFirstSegment.X (endFirstSegment.Y-5.)  0 (startSecondSegment.X+5.) startSecondSegment.Y
                     ((fst(state)+current), Horizontal)
 
-///Function used to render a single wire if the display type is modern
+///Renders a single segment in the display type of modern
 let renderModernSegment (param : {| AbsSegment : AbsSegment; Colour :string; Width : string|}) = 
     let startVertex = param.AbsSegment.Start
     let endVertex = param.AbsSegment.End
@@ -599,7 +601,7 @@ let renderModernSegment (param : {| AbsSegment : AbsSegment; Colour :string; Wid
     else
         [makeLine startVertex.X startVertex.Y endVertex.X endVertex.Y lineParameters]
         
-///Function used to render a single segment if the display type is jump
+///Renders a single segment in the display type of jump
 let renderJumpSegment (param : {| AbsSegment : AbsSegment; Colour :string; Width : string|}) = 
     let startVertex = param.AbsSegment.Start
     let endVertex = param.AbsSegment.End
@@ -698,8 +700,12 @@ let singleWireJumpView props =
                     DominantBaseline = "middle";
             }
         let textString = if props.StrokeWidthP = 1 then "" else string props.StrokeWidthP //Only print width > 1
-        makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
-    
+        match props.OutputPortEdge with 
+        | Symbol.Top -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | Symbol.Bottom -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y+7.0) (textString) textParameters
+        | Symbol.Right -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | Symbol.Left -> makeText (props.OutputPortLocation.X-20.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+
     g [] ([ renderWireWidthText ] @ renderedSegmentList)
 
 ///Function used to render a single wire if the display type is modern
@@ -733,7 +739,12 @@ let singleWireModernView props =
                     DominantBaseline = "middle";
             }
         let textString = if props.StrokeWidthP = 1 then "" else string props.StrokeWidthP //Only print width > 1
-        makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        match props.OutputPortEdge with 
+        | Symbol.Top -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | Symbol.Bottom -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y+7.0) (textString) textParameters
+        | Symbol.Right -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | Symbol.Left -> makeText (props.OutputPortLocation.X-20.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+
     g [] ([ renderWireWidthText ] @ renderedSegmentList)
 
 ///Function used to render a single wire if the display type is radial
@@ -786,7 +797,11 @@ let singleWireRadialView props =
                     DominantBaseline = "middle";
             }
         let textString = if props.StrokeWidthP = 1 then "" else string props.StrokeWidthP //Only print width > 1
-        makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        match props.OutputPortEdge with 
+        | Symbol.Top -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | Symbol.Bottom -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y+7.0) (textString) textParameters
+        | Symbol.Right -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | Symbol.Left -> makeText (props.OutputPortLocation.X-20.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
 
     g [] ([ renderWireWidthText ] @ [renderedSVGPath])
 
@@ -823,17 +838,21 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
                             key = match wire.Id with | ConnectionId s -> s
                             AbsSegments = getAbsSegments wire
                             ColorP = wire.Color
-                            StrokeWidthP = wire.Width
+                            StrokeWidthP = wire.Width //To test the display of bit width text we can manually change this value, as the function to change it is not correctly implemented in section 3.
                             OutputPortEdge = outputPortEdge
                             OutputPortLocation = outputPortLocation
                             DisplayType = wire.Type
                         }
                     //To test other display types need to change 2nd match to the relevant 
-                    //singleWire_View as section 3 has not yet implemented the model.Type properly
+                    //singleWire____View as section 3 has not yet implemented the model.Type properly
+                    //currently the model.Type is always Jump
                     match  model.Type with    
                     | Radial -> singleWireRadialView props
-                    | Jump -> singleWireRadialView props
+                    | Jump -> singleWireJumpView props
                     | Modern -> singleWireModernView props
+
+                    //Testing radial
+                    //
             )
     TimeHelpers.instrumentInterval "WirePrepareProps" rStart ()
     let symbols = Symbol.view model.Symbol (Symbol >> dispatch)
