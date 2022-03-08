@@ -267,8 +267,7 @@ let makeText (posX: float) (posY: float) (displayedText: string) (textParameters
                 FontWeight textParameters.FontWeight
                 FontSize textParameters.FontSize
                 Fill textParameters.Fill
-                UserSelect textParameters.UserSelect
-                
+                UserSelect textParameters.UserSelect 
             ]
         ] [str <| sprintf "%s" (displayedText)]
 
