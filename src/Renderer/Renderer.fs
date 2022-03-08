@@ -161,6 +161,7 @@ let editMenu dispatch =
     let sheetDispatch sMsg = dispatch (Sheet sMsg)
     let dispatch = Sheet.KeyPress >> sheetDispatch
     let rotateDispatch = Sheet.Rotate >> sheetDispatch
+    let wireTypeDispatch = Sheet.WireType >> sheetDispatch
 
     jsOptions<MenuItemConstructorOptions> <| fun invisibleMenu ->
         invisibleMenu.``type`` <- Some MenuItemType.Submenu
@@ -177,7 +178,12 @@ let editMenu dispatch =
                makeElmItem "Delete"  (if isMac then "Backspace" else "delete") (fun () -> dispatch Sheet.KeyboardMsg.DEL)
                makeElmItem "Undo" "CmdOrCtrl+Z" (fun () -> dispatch Sheet.KeyboardMsg.CtrlZ)
                makeElmItem "Redo" "CmdOrCtrl+Y" (fun () -> dispatch Sheet.KeyboardMsg.CtrlY)
-               makeElmItem "Cancel" "ESC" (fun () -> dispatch Sheet.KeyboardMsg.ESC)|]
+               makeElmItem "Cancel" "ESC" (fun () -> dispatch Sheet.KeyboardMsg.ESC)
+               // Move these commands to view
+               makeElmItem "Jump" "CmdOrCtrl+Shift+J" (fun () -> wireTypeDispatch Sheet.WireTypeMsg.Jump)
+               makeElmItem "Radial" "CmdOrCtrl+Shift+R" (fun () -> wireTypeDispatch Sheet.WireTypeMsg.Radial)
+               makeElmItem "Modern" "CmdOrCtrl+Shift+M" (fun () -> wireTypeDispatch Sheet.WireTypeMsg.Modern)
+            |]
             |> ResizeArray
             |> U2.Case1
             |> Some
