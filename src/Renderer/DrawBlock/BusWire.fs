@@ -40,7 +40,7 @@ type Segment =
         Length : float
         HostId: ConnectionId
         /// List of x-coordinate values of segment jumps. Only used on horizontal segments.
-        IntersectCoordinateList: list<float * SegmentId>
+        IntersectOrJumpCoordinateList: list<float * SegmentId>
         Draggable : bool
         Mode : RoutingMode
     }
@@ -178,7 +178,7 @@ let logIntersectionMaps (model:Model) =
         let formatSegmentIntersections segments =
             segments
             |> List.collect (fun segment -> 
-                segment.IntersectCoordinateList
+                segment.IntersectOrJumpCoordinateList
                 |> List.map (fun (_, id) -> formatSegmentId id))
 
         model.Wires
@@ -426,7 +426,7 @@ let xyVerticesToSegments connId (xyVerticesList: XYPos list) =
                 Index = i
                 Length = xEnd-xStart+yEnd-yStart
                 HostId  = connId;
-                IntersectCoordinateList = [] ; // To test jump and modern wire types need to manually insert elements into this list.
+                IntersectOrJumpCoordinateList = [] ; // To test jump and modern wire types need to manually insert elements into this list.
                 Mode = Auto
                 Draggable =
                     if i = 0 || i = xyVerticesList.Length - 2 then
@@ -815,7 +815,7 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
                         |> List.map (fun x -> {X=fst(x); Y=snd(x)})
                         |> List.pairwise
                         |> List.zip wire.Segments
-                        |> List.map (fun x -> fst(snd(x)),snd(snd(x)), fst(x).IntersectCoordinateList)
+                        |> List.map (fun x -> fst(snd(x)),snd(snd(x)), fst(x).IntersectOrJumpCoordinateList)
                         |> List.map (fun (startVertex,endVertex,intersectList) -> {Start=startVertex; End=endVertex; IntersectCoordinateList=intersectList})
                     
                     let props =
@@ -1382,7 +1382,7 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
     let changeJumps wid index jumps =
         let jumps = List.sortDescending jumps
         let changeSegment (segs : Segment List)=
-            List.mapi (fun i x -> if i <> index then x else { x with IntersectCoordinateList = jumps }) segs : Segment List
+            List.mapi (fun i x -> if i <> index then x else { x with IntersectOrJumpCoordinateList = jumps }) segs : Segment List
 
         newWX <- Map.add wid { newWX[wid] with Segments = changeSegment newWX[wid].Segments } newWX
 
@@ -1421,7 +1421,7 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
                             foldOverSegs innerFold (segStart, segEnd) wire'
                             |> ignore
 
-                    match jumps, seg.IntersectCoordinateList with
+                    match jumps, seg.IntersectOrJumpCoordinateList with
                     | [], [] -> ()
                     | [ a ], [ b ] when a <> b -> changeJumps seg.HostId seg.Index jumps
                     | [], _ -> changeJumps seg.HostId seg.Index jumps
