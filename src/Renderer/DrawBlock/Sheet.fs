@@ -83,7 +83,7 @@ type SnapIndicator =
 
 /// For Keyboard messages
 type KeyboardMsg =
-    | CtrlS | CtrlC | CtrlV | CtrlZ | CtrlY | CtrlA | CtrlW | AltC | AltV | AltZ | AltShiftZ | ZoomIn | ZoomOut | DEL | ESC
+    | CtrlS | CtrlC | CtrlV | CtrlZ | CtrlY | CtrlA | CtrlW | AltC | AltV | AltZ | AltShiftZ | ZoomIn | ZoomOut | DEL | ESC 
 
 type RotateMsg =
     | Right | Left
@@ -118,6 +118,8 @@ type Msg =
     | SelectWires of ConnectionId list
     | SetSpinner of bool
     | Rotate of RotateMsg
+    | Flip
+    | WireType of WireTypeMsg
 
 
 // ------------------ Helper Functions that need to be before the Model type --------------------------- //
@@ -301,7 +303,7 @@ let boxUnion (box:BoundingBox) (box':BoundingBox) =
 let symbolToBB (symbol:Symbol.Symbol) =
     let co = symbol.Component
     {TopLeft = {X= float co.X; Y=float co.Y}; W=float (co.W); H=float (co.H)}
-
+    
 
 /// Inputs must also have W,H > 0.
 /// Maybe this should include wires as well?
@@ -323,7 +325,7 @@ let fitCircuitToWindowParas (model:Model) =
     let sBox =
         match boxOpt with
         | None -> {TopLeft = {X=100.; Y=100.}; W=100.; H=100.} // default if sheet is empty
-        | Some box ->
+        | Some box -> 
             {
                     TopLeft = box.TopLeft
                     W = box.W
@@ -344,9 +346,9 @@ let fitCircuitToWindowParas (model:Model) =
 let isBBoxAllVisible (bb: BoundingBox) =
     let lh,rh,top,bottom = getScreenEdgeCoords()
     let bbs = standardiseBox bb
-    lh < bb.TopLeft.Y &&
-    top < bb.TopLeft.X &&
-    bb.TopLeft.Y+bb.H < bottom &&
+    lh < bb.TopLeft.Y && 
+    top < bb.TopLeft.X && 
+    bb.TopLeft.Y+bb.H < bottom && 
     bb.TopLeft.X+bb.W < rh
 
 /// could be made more efficient, since segments contain redundant info
@@ -358,7 +360,7 @@ let getWireBBox (wire: BusWire.Wire) (model: Model) =
         let newLeft = min state.TopLeft.X segEnd.X
         {TopLeft={X=newTop; Y=newLeft}; W=newRight-newLeft; H=newBottom-newTop }
     BusWire.foldOverSegs updateBoundingBox {TopLeft = wire.StartPos; W=0; H=0;} wire
-
+    
 
 let isAllVisible (model: Model)(conns: ConnectionId list) (comps: ComponentId list) =
     let wVisible =
@@ -382,12 +384,12 @@ let isAllVisible (model: Model)(conns: ConnectionId list) (comps: ComponentId li
 /// Calculates if two bounding boxes intersect by comparing corner coordinates of each box
 let boxesIntersect (box1: BoundingBox) (box2: BoundingBox) =
     // Requires min and max since H & W can be negative, i.e. we don't know which corner is which automatically
-    // Boxes intersect if there is overlap in both x and y coordinates
+    // Boxes intersect if there is overlap in both x and y coordinates 
     min box1.TopLeft.X (box1.TopLeft.X + box1.W) < max box2.TopLeft.X (box2.TopLeft.X + box2.W)
     && min box2.TopLeft.X (box2.TopLeft.X + box2.W) < max box1.TopLeft.X (box1.TopLeft.X + box1.W)
     && min box1.TopLeft.Y (box1.TopLeft.Y + box1.H) < max box2.TopLeft.Y (box2.TopLeft.Y + box2.H)
     && min box2.TopLeft.Y (box2.TopLeft.Y + box2.H) < max box1.TopLeft.Y (box1.TopLeft.Y + box1.H)
-
+    
 /// Finds all components that touch a bounding box (which is usually the drag-to-select box)
 let findIntersectingComponents (model: Model) (box1: BoundingBox) =
     model.BoundingBoxes
@@ -442,7 +444,7 @@ let mouseOn (model: Model) (pos: XYPos) : MouseOn =
             match insideBox model.BoundingBoxes pos with
             | Some compId -> Component compId
             | None ->
-                match BusWire.getWireIfClicked model.Wire pos (5./model.Zoom) with
+                match BusWire.getClickedWire model.Wire pos (5./model.Zoom) with
                 | Some connId -> Connection connId
                 | None -> Canvas
 
@@ -505,7 +507,7 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
         let compId = model.SelectedComponents.Head
         let boundingBox = model.BoundingBoxes[compId]
         let x1, x2, y1, y2 = boundingBox.TopLeft.X, boundingBox.TopLeft.X + boundingBox.W, boundingBox.TopLeft.Y, boundingBox.TopLeft.Y + boundingBox.H
-
+        
         // printfn "%A" mMsg.Pos.X
         // printfn "%A" model.LastMousePos.X
 
@@ -661,7 +663,7 @@ let mDownUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
                 then model.SelectedComponents, model.SelectedWires //do not deselect if in toggle mode
                 else [], []
             // Start Creating Selection Box and Reset Selected Components
-            let initialiseSelection =
+            let initialiseSelection = 
                 {model.DragToSelectBox with TopLeft= {X=mMsg.Pos.X; Y=mMsg.Pos.Y}}
             {model with DragToSelectBox = initialiseSelection; Action = Selecting; SelectedComponents = newComponents; SelectedWires = newWires },
             Cmd.batch [ symbolCmd (Symbol.SelectSymbols newComponents)
@@ -680,7 +682,7 @@ let mDragUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
                     LastMousePos = mMsg.Pos
          }, Cmd.ofMsg CheckAutomaticScrolling
     | InitialiseMoving _ ->
-        let movingWires = BusWire.getConnectedWires model.Wire model.SelectedComponents
+        let movingWires = BusWire.getConnectedWireIds model.Wire model.SelectedComponents
         let newModel, cmd = moveSymbols model mMsg
         newModel, Cmd.batch [ cmd; wireCmd (BusWire.ResetJumps movingWires) ]
     | MovingSymbols | DragAndDrop ->
@@ -753,7 +755,7 @@ let mUpUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> = // mMsg is curr
         // Reset Movement State in Model
         match model.ErrorComponents with
         | [] ->
-            let movingWires = BusWire.getConnectedWires model.Wire model.SelectedComponents
+            let movingWires = BusWire.getConnectedWireIds model.Wire model.SelectedComponents
             {model with
                 // BoundingBoxes = Symbol.getBoundingBoxes model.Wire.Symbol
                 Action = Idle
@@ -764,7 +766,7 @@ let mUpUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> = // mMsg is curr
                 AutomaticScrolling = false },
             wireCmd (BusWire.MakeJumps movingWires)
         | _ ->
-            let movingWires = BusWire.getConnectedWires model.Wire model.SelectedComponents
+            let movingWires = BusWire.getConnectedWireIds model.Wire model.SelectedComponents
             {model with
                 BoundingBoxes = model.LastValidBoundingBoxes
                 Action = Idle
@@ -838,7 +840,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
     | ToggleGrid ->
         {model with ShowGrid = not model.ShowGrid}, Cmd.none
     | KeyPress DEL ->
-        let wiresConnectedToComponents = BusWire.getConnectedWires model.Wire model.SelectedComponents
+        let wiresConnectedToComponents = BusWire.getConnectedWireIds model.Wire model.SelectedComponents
         // Ensure there are no duplicate deletions by using a Set
         let wireUnion =
             Set.union (Set.ofList wiresConnectedToComponents) (Set.ofList model.SelectedWires)
@@ -1046,15 +1048,39 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
         model,
         Cmd.batch [
             symbolCmd (Symbol.RotateLeft model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
-            //wireCmd (BusWire.Rotate model.SelectedComponents)
+            wireCmd (BusWire.Rotate model.SelectedComponents)
         ]
     | Rotate Right ->
         model,
         Cmd.batch [
             symbolCmd (Symbol.RotateRight model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
-            //wireCmd (BusWire.Rotate model.SelectedComponents)
+            wireCmd (BusWire.Rotate model.SelectedComponents)
         ]
 
+    | Flip ->
+        model,
+        Cmd.batch [
+            symbolCmd (Symbol.Flip model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
+            wireCmd (BusWire.Rotate model.SelectedComponents)
+        ]
+    | WireType Jump ->
+        model,
+        Cmd.batch [
+            wireCmd (BusWire.UpdateWireType BusWire.Jump)
+        ]
+
+    | WireType Radial ->
+        model,
+        Cmd.batch [
+            wireCmd (BusWire.UpdateWireType BusWire.Radial)
+        ]
+       
+    | WireType Modern ->
+        model,
+        Cmd.batch [
+            wireCmd (BusWire.UpdateWireType BusWire.Modern)
+        ]
+                
     // ---------------------------- Issie Messages ---------------------------- //
 
     | InitialiseCreateComponent (compType, lbl) ->

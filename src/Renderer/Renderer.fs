@@ -172,15 +172,18 @@ let editMenu dispatch =
                makeElmItem "Copy" "CmdOrCtrl+C" (fun () -> dispatch Sheet.KeyboardMsg.CtrlC)
                makeElmItem "Paste" "CmdOrCtrl+V" (fun () -> dispatch Sheet.KeyboardMsg.CtrlV)
                makeElmItem "Rotate Left" "CmdOrCtrl+L" (fun () -> rotateDispatch Sheet.RotateMsg.Left)
-               makeElmItem "Rotate right" "CmdOrCtrl+R" (fun () -> rotateDispatch Sheet.RotateMsg.Right)
+               makeElmItem "Rotate Right" "CmdOrCtrl+R" (fun () -> rotateDispatch Sheet.RotateMsg.Right)
+               makeElmItem "Flip Horizontally" "CmdOrCtrl+H" (fun () -> sheetDispatch Sheet.Flip)
                makeElmItem "Select All" "CmdOrCtrl+A" (fun () -> dispatch Sheet.KeyboardMsg.CtrlA)
                makeElmItem "Delete"  (if isMac then "Backspace" else "delete") (fun () -> dispatch Sheet.KeyboardMsg.DEL)
                makeElmItem "Undo" "CmdOrCtrl+Z" (fun () -> dispatch Sheet.KeyboardMsg.CtrlZ)
                makeElmItem "Redo" "CmdOrCtrl+Y" (fun () -> dispatch Sheet.KeyboardMsg.CtrlY)
-               makeElmItem "Cancel" "ESC" (fun () -> dispatch Sheet.KeyboardMsg.ESC)|]
-               makeElmItem "Jump" () (fun () -> dispatch Sheet.WireTypeMsg.Jump)
-               makeElmItem "Radial" () (fun () -> dispatch Sheet.WireTypeMsg.Radial)
-               makeElmItem "Modern" () (fun () -> dispatch Sheet.WireTypeMsg.Modern)
+               makeElmItem "Cancel" "ESC" (fun () -> dispatch Sheet.KeyboardMsg.ESC)
+               // Move these commands to view
+               makeElmItem "Jump" "CmdOrCtrl+Shift+J" (fun () -> wireTypeDispatch Sheet.WireTypeMsg.Jump)
+               makeElmItem "Radial" "CmdOrCtrl+Shift+R" (fun () -> wireTypeDispatch Sheet.WireTypeMsg.Radial)
+               makeElmItem "Modern" "CmdOrCtrl+Shift+M" (fun () -> wireTypeDispatch Sheet.WireTypeMsg.Modern)
+            |]
             |> ResizeArray
             |> U2.Case1
             |> Some

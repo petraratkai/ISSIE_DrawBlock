@@ -18,7 +18,7 @@ Changes
 - getOnePortLocationNew updated so that it is now O(logn) complexity instead of O(n), renaming it to getPortLocation
 - getInputPortLocation, getOutputPortLocation made them more efficient by using the new getPortLocation + simplified them by removing code duplication
 - getTwoPortLocations - now just uses getInputPortLocation and getOutputPortLocation
-- might make sense to only call getPortLocation
+- might make sense to only call  Location
 - getInputPortsPositionMap changed so that it only goes through the outputports once not twice
 - getInputPortsPositionMap changed so that it only goes through the outputports once not twice
 - can we change these such that there is no code duplication between them?

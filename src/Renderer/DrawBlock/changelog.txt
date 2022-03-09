@@ -1,0 +1,31 @@
+22/02/2022
+removed posAdd, posDiff and posOf as unecessary
+changed title to use match case and f string with error checking for buswidth < 1 (shouldn't happen)
+same as above for bustitle. only has one use case will see if it needs moving 
+added types to portList changed name to makePorts
+moved makePorts, roundToN, customToLength into makeComp as only used in there
+
+23/02/2022
+compSymbol -> componentSymbol
+changed drawing helpers to use XYPos where applicale
+
+27/02/2022
+changed portpos functions to work take symbol inputs instead
+refactored addText, addClock to use XYPos
+changed all of points in componentSymbol to use interpolated strings 
+
+28/02/2022
+Added symbol initiation for PortOrientation and PortOrder (findPortOrder, defaultPortOrientation)
+added member functions for rotating and flipping in sides and rotation
+
+01/02/2022
+got portPosition working for all given symbols
+changed all bottom ports to be input 0
+rotate symbol working to an extent. need to fix text position + mux rotations
+
+02/02/2022 
+changed portText to use portOrientation 
+changed function names to be more descriptive + changed function arguments that passed unecessary information i.e comp when only comp.Type is used in function
+
+
+
