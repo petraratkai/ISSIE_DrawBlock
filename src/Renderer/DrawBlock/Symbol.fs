@@ -442,7 +442,7 @@ let getHAndW sym =
 
 ///Returns the x offset of a side relative to the symbol orientation
 let getPortBaseOffset (sym: Symbol) (side: Edge): XYPos=
-    let h,w = getHAndW sym
+    let h,w = sym.Component.H,sym.Component.W
     match side with 
     | Right -> {X = w; Y = 0.0}
     | Left -> {X = 0.0; Y = 0.0}
@@ -453,9 +453,9 @@ let getPortBaseOffset (sym: Symbol) (side: Edge): XYPos=
 let isMuxSel (sym:Symbol) (side:Edge): bool =
         match (sym.Component.Type, sym.STransform.Rotation, side) with
         | (Mux2, Degree0, Bottom ) | (Demux2, Degree0, Bottom )-> true
-        | (Mux2,Degree90, Right) | (Demux2,Degree90, Right)-> true
+        | (Mux2,Degree90, Left) | (Demux2,Degree90, Left)-> true
         | (Mux2, Degree180, Top) | (Demux2, Degree180, Top) -> true
-        | (Mux2, Degree270, Left) | (Demux2, Degree270, Left)-> true
+        | (Mux2, Degree270, Right) | (Demux2, Degree270, Right)-> true
         | _ -> false
 
 
@@ -479,7 +479,7 @@ let getPortPos (sym: Symbol) (port: Port) : XYPos =
     let gap = getPortPosEdgeGap sym.Component.Type 
     let baseOffset = getPortBaseOffset sym side  //offset of the side component is on
     let baseOffset' = baseOffset + getMuxSelOffset sym side
-    let h,w = getHAndW sym
+    let h,w = sym.Component.H,sym.Component.W
     match side with
     | Left ->
         let yOffset = (float(h))* (( index + gap )/( float( ports.Length ) + 2.0*gap - 1.0))
