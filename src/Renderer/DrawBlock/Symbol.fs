@@ -636,8 +636,8 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
     (drawPorts comp.OutputPorts showOutputPorts symbol)
     |> List.append (drawPorts comp.InputPorts showInputPorts symbol)
     |> List.append (drawPortsText (comp.InputPorts @ comp.OutputPorts) (portNames comp.Type) symbol)
-    |> List.append (addComponentLabel comp.H comp.W 5. (getComponentLabel comp.Type) "bold" "14px" symbol.STransform.Rotation) 
-    |> List.append (addComponentLabel comp.H comp.W -20. comp.Label  "normal" "16px" symbol.STransform.Rotation)
+    |> List.append (addComponentLabel h w 5. (getComponentLabel comp.Type) "bold" "14px" symbol.STransform.Rotation) 
+    |> List.append (addComponentLabel h w -20. comp.Label  "normal" "16px" symbol.STransform.Rotation)
     |> List.append (additions)
     |> List.append (createBiColorPolygon points colour outlineColour opacity strokeWidth)
 
