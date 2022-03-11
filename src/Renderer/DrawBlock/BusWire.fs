@@ -1409,18 +1409,13 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
         |> Map.toArray
         |> Array.map (fun (_wid, w) -> w)
 
-    let verticalSeg (segStart: XYPos) (segEnd: XYPos): bool =
-            match getSegmentOrientation segStart segEnd with
-            | Vertical -> true
-            | Horizontal -> false
-
 
     for w1 in 0 .. wires.Length - 1 do
         let wire = wires[w1]
         if not (Array.contains wire.Id wiresWithNoJumpsA) then
             // Call folder function
             let findJumpsForSegment (segStart: XYPos) (segEnd: XYPos) (_state) (seg: Segment) =
-                if not (verticalSeg segStart segEnd) then
+                if getSegmentOrientation segStart segEnd = Horizontal then
                     let mutable jumps: (float * SegmentId) list = []
                     for w2 in 0 .. wires.Length - 1 do
                         let wire' = wires[w2]
@@ -1428,14 +1423,14 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
                             // Execute other folder function
                             //horizontalStart and horizontalEnd refer to the segStart and segEnd of the wire in the outer loop
                             let innerFold (segStart: XYPos) (segEnd: XYPos) (horizontalStart: XYPos, horizontalEnd: XYPos) (seg: Segment) =
-                                if verticalSeg segStart segEnd then
+                                if getSegmentOrientation segStart segEnd = Vertical then
                                     let x, x1, x2 = segStart.X, horizontalStart.X, horizontalEnd.X
                                     let y, y1, y2 = segStart.Y, horizontalStart.Y, horizontalEnd.Y
                                     let xhi, xlo = max x1 x2, min x1 x2
                                     let yhi, ylo = max y1 y2, min y1 y2
 
                                     if x < xhi - 5. && x > xlo + 5. && y < yhi - 5. && y > ylo + 5. then
-                                        jumps <- (x, seg.Id) :: jumps
+                                        jumps <- (x, seg.Id) :: jumps // This is wrong? stores absolute x position of the jump over distance along the wire
                                 (horizontalStart, horizontalEnd)
                             foldOverSegs innerFold (segStart, segEnd) wire'
                             |> ignore
