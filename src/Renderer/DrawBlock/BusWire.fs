@@ -39,8 +39,8 @@ type Segment =
         Index: int
         Length : float
         HostId: ConnectionId
-        /// List of x-coordinate values of segment jumps. Only used on horizontal segments.
-        IntersectOrJumpCoordinateList: list<float * SegmentId>
+        /// List of offsets along a segment where jumps or intersects occur. Matches the sign of Length. Only used on horizontal segments.
+        IntersectOrJumpList: list<float * SegmentId>
         Draggable : bool
         Mode : RoutingMode
     }
@@ -177,7 +177,7 @@ let logIntersectionMaps (model:Model) =
         let formatSegmentIntersections segments =
             segments
             |> List.collect (fun segment -> 
-                segment.IntersectOrJumpCoordinateList
+                segment.IntersectOrJumpList
                 |> List.map (fun (_, id) -> formatSegmentId id))
 
         model.Wires
@@ -426,7 +426,7 @@ let xyVerticesToSegments connId (xyVerticesList: XYPos list) =
                 Index = i
                 Length = xEnd-xStart+yEnd-yStart
                 HostId  = connId;
-                IntersectOrJumpCoordinateList = [] ; // To test jump and modern wire types need to manually insert elements into this list.
+                IntersectOrJumpList = [] ; // To test jump and modern wire types need to manually insert elements into this list.
                 Mode = Auto
                 Draggable =
                     if i = 0 || i = xyVerticesList.Length - 2 then //First and Last should not be draggable
@@ -829,7 +829,7 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
                         |> List.map (fun x -> {X=fst(x); Y=snd(x)})
                         |> List.pairwise
                         |> List.zip wire.Segments
-                        |> List.map (fun x -> fst(snd(x)),snd(snd(x)), fst(x).IntersectOrJumpCoordinateList)
+                        |> List.map (fun x -> fst(snd(x)),snd(snd(x)), fst(x).IntersectOrJumpList)
                         |> List.map (fun (startVertex,endVertex,intersectList) -> {Start=startVertex; End=endVertex; IntersectCoordinateList=intersectList})
                     
                     let props =
@@ -1393,62 +1393,67 @@ let moveWire (wire: Wire) (displacement: XYPos) =
 //--------------------NH1019 CODE SECTION BEGINS-------------------------------------//
 //---------------------------------------------------------------------------------//
 
-let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
-    let mutable newWX = model.Wires
-    // Arrays are faster to check than lists
-    let wiresWithNoJumpsA = List.toArray wiresWithNoJumps
-    let changeJumps wid index jumps =
-        let jumps = List.sortDescending jumps
-        let changeSegment (segs : Segment List)=
-            List.mapi (fun i x -> if i <> index then x else { x with IntersectOrJumpCoordinateList = jumps }) segs : Segment List
+/// Returns an updated wireMap with the IntersectOrJumpList of targetSeg replaced by jumps
+let updateSegmentJumps targetSeg jumps wireMap =
+    let wId = targetSeg.HostId
+    let target = targetSeg.Index
+    let changeSegment (segs : Segment List) =
+        List.map (fun seg -> if seg.Index <> target then seg else { seg with IntersectOrJumpList = jumps }) segs
 
-        newWX <- Map.add wid { newWX[wid] with Segments = changeSegment newWX[wid].Segments } newWX
+    wireMap
+    |> Map.add wId { wireMap[wId] with Segments = changeSegment wireMap[wId].Segments }
+
+/// Used as a folder in foldOverSegs. Finds all jump offsets in a wire for the segment defined in the state
+let findJumpIntersects (segStart: XYPos) (segEnd: XYPos) (state: {| Start: XYPos; End: XYPos; Jumps: (float * SegmentId) list |}) (seg: Segment) =
+    if getSegmentOrientation segStart segEnd = Vertical then
+        let xVStart, xHStart, xHEnd = segStart.X, state.Start.X, state.End.X
+        let yVStart, yVEnd, yHEnd = segStart.Y, segEnd.Y, state.End.Y
+        let xhi, xlo = max xHStart xHEnd, min xHStart xHEnd
+        let yhi, ylo = max yVStart yVEnd, min yVStart yVEnd
+
+        if xVStart < xhi  && xVStart > xlo  && yHEnd < yhi && yHEnd > ylo then
+            {| state with Jumps = (abs(xVStart - xHStart), seg.Id) :: state.Jumps |}
+        else
+            state
+    else
+        state
+
+/// Returns a model with all the jumps updated
+let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
+    let wiresWithNoJumpsA = List.toArray wiresWithNoJumps // Arrays are faster to check than lists - is this even worth it?
 
     let wires =
         model.Wires
         |> Map.toArray
-        |> Array.map (fun (_wid, w) -> w)
+        |> Array.map snd
 
+    let updateJumpsInWire (segStart: XYPos) (segEnd: XYPos) (wireMap: Map<ConnectionId, Wire>) (seg: Segment) : Map<ConnectionId, Wire> =
+        if getSegmentOrientation segStart segEnd = Horizontal then
+            ([], wires)
+            ||> Array.fold (fun jumps wire -> 
+                if not (Array.contains wire.Id wiresWithNoJumpsA) then
+                    foldOverSegs findJumpIntersects {| Start = segStart; End = segEnd; Jumps = [] |} wire
+                    |> (fun res -> res.Jumps)
+                    |> List.append jumps
+                else
+                    jumps)
+            |> (fun jumps -> 
+                if jumps <> seg.IntersectOrJumpList then
+                    updateSegmentJumps seg jumps wireMap
+                else 
+                    wireMap)
+        else
+            wireMap
 
-    for w1 in 0 .. wires.Length - 1 do
-        let wire = wires[w1]
-        if not (Array.contains wire.Id wiresWithNoJumpsA) then
-            // Call folder function
-            let findJumpsForSegment (segStart: XYPos) (segEnd: XYPos) (_state) (seg: Segment) =
-                if getSegmentOrientation segStart segEnd = Horizontal then
-                    let mutable jumps: (float * SegmentId) list = []
-                    for w2 in 0 .. wires.Length - 1 do
-                        let wire' = wires[w2]
-                        if not (Array.contains wire'.Id wiresWithNoJumpsA) then
-                            // Execute other folder function
-                            //horizontalStart and horizontalEnd refer to the segStart and segEnd of the wire in the outer loop
-                            let innerFold (segStart: XYPos) (segEnd: XYPos) (horizontalStart: XYPos, horizontalEnd: XYPos) (seg: Segment) =
-                                if getSegmentOrientation segStart segEnd = Vertical then
-                                    let xVStart, xVEnd, xHStart, xHEnd = segStart.X, segEnd.X, horizontalStart.X, horizontalEnd.X
-                                    let yVStart, yVEnd, yHStart, yHEnd = segStart.Y, segEnd.Y, horizontalStart.Y, horizontalEnd.Y
-                                    let xhi, xlo = max xHStart xHEnd, min xHStart xHEnd
-                                    let yhi, ylo = max yVStart yVEnd, min yVStart yVEnd
-
-                                    if xVStart < xhi  && xVStart > xlo  && yHEnd < yhi && yHEnd > ylo then           //y < yhi+1.  && y > ylo-1.  then
-                                        jumps <- (abs(xVStart - xHStart), seg.Id) :: jumps // This is wrong? stores absolute x position of the jump over distance along the wire
-                                (horizontalStart, horizontalEnd)
-                            foldOverSegs innerFold (segStart, segEnd) wire'
-                            |> ignore
-
-                    match jumps, seg.IntersectOrJumpCoordinateList with
-                    | [], [] -> ()
-                    | [ a ], [ b ] when a <> b -> changeJumps seg.HostId seg.Index jumps
-                    | [], _ -> changeJumps seg.HostId seg.Index jumps
-                    | _, [] -> // in this case we need to sort the jump list
-                        changeJumps seg.HostId seg.Index (List.sort jumps)
-                    | newJumps, oldJ ->
-                        let newJ = List.sort newJumps
-                        if newJ <> oldJ then changeJumps seg.HostId seg.Index newJumps else ()
-            foldOverSegs findJumpsForSegment () wire
-
-    { model with Wires = newWX}
+    let wiresWithJumps = 
+        (model.Wires, wires)
+        ||> Array.fold (fun map wire ->
+            if not (Array.contains wire.Id wiresWithNoJumpsA) then
+                foldOverSegs updateJumpsInWire map wire
+            else
+                map)
     
-
+    { model with Wires = wiresWithJumps}
 
 let updateWireSegmentJumps (wireList: list<ConnectionId>) (wModel: Model) : Model =
     let startT = TimeHelpers.getTimeMs()
