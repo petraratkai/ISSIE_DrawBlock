@@ -232,6 +232,7 @@ module CommonTypes
         InputLabels: (string * int) list
         OutputLabels: (string * int) list
         IdToLabel: Map<string,string> //maps the unique port id to the label of the port
+        clocked: bool
     }
 
     type Memory = {
@@ -529,7 +530,22 @@ module CommonTypes
         InputLabels : (string * int) list
         /// Output port names, and port numbers in any created custom component
         OutputLabels : (string * int) list
+
+        clocked : bool //might not need it
     }
+
+    /// Returns true if a component is clocked
+    let isClocked (comp: Component) =
+        match comp.Type with
+        | Custom x ->
+            x.clocked
+        | DFF | DFFE | Register _ | RegisterE _ | RAM _ | ROM _ ->
+            true
+        | _ -> false
+
+    /// Returns whether any of a list of components are clocked
+    let canvasStateClocked (canvas: CanvasState) :bool =
+        fst canvas |> List.exists isClocked
 
     /// Type for an open project which represents a complete design.
     /// ProjectPath is directory containing project files.
