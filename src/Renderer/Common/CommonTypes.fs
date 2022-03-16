@@ -230,7 +230,8 @@ module CommonTypes
         Name: string
         // Tuples with (label * connection width).
         InputLabels: (string * int) list
-        OutputLabels: (string * int) list 
+        OutputLabels: (string * int) list
+        IdToLabel: Map<string,string> //maps the unique port id to the label of the port
     }
 
     type Memory = {
