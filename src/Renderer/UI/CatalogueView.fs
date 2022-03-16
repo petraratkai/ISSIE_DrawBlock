@@ -38,6 +38,8 @@ let private makeCustom styles model dispatch (loadedComponent: LoadedComponent) 
             Name = loadedComponent.Name
             InputLabels = FilesIO.getOrderedCompLabels (Input 0) canvas
             OutputLabels = FilesIO.getOrderedCompLabels (Output 0) canvas
+            IdToLabel = Map.empty
+            clocked = loadedComponent.clocked
         }
         
         Sheet (Sheet.InitialiseCreateComponent (custom, "")) |> dispatch
