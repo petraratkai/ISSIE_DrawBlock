@@ -1536,39 +1536,42 @@ let getPosIndex (sym: Symbol) (pos: XYPos) (edge: Edge): int =
         -1 * int (pos'.X * (float (ports.Length + 1) + 2.0*gap - 1.0) / float(w) - float( ports.Length + 1) + 1.0 - gap - 0.5)
 
 let updatePortPos (sym:Symbol) (pos:XYPos) (portId: string) : Symbol =
-    let oldPortOrder, oldPortOrientation = sym.PortOrder, sym.PortOrientation
-    match getCloseByEdge sym pos with
-    | None -> 
-        printfn "not on edge"
-        {sym with MovingPort = None}
-    | Some edge -> 
-        printfn $"{edge}"
-        //printfn $"{getPosIndex sym pos edge}"
-        let newPortOrientation = oldPortOrientation |> Map.add portId edge //nothing else to do
-        let oldEdge = oldPortOrientation[portId]
-        let newPortIdx = getPosIndex sym pos edge
-        let oldIdx = oldPortOrder[oldEdge] |> List.findIndex (fun el -> el = portId)
+    match sym.Component.Type with
+    | Custom x ->
+        let oldPortOrder, oldPortOrientation = sym.PortOrder, sym.PortOrientation
+        match getCloseByEdge sym pos with
+        | None -> 
+            printfn "not on edge"
+            {sym with MovingPort = None}
+        | Some edge -> 
+            printfn $"{edge}"
+            //printfn $"{getPosIndex sym pos edge}"
+            let newPortOrientation = oldPortOrientation |> Map.add portId edge //nothing else to do
+            let oldEdge = oldPortOrientation[portId]
+            let newPortIdx = getPosIndex sym pos edge
+            let oldIdx = oldPortOrder[oldEdge] |> List.findIndex (fun el -> el = portId)
         
-        let newPortIdx' =
-            if edge = oldEdge && oldIdx < newPortIdx then newPortIdx - 1
-            else if newPortIdx > oldPortOrder[edge].Length then oldPortOrder[edge].Length
-            else newPortIdx
-        printfn $"{newPortIdx'}"
-        let oldPortOrder' =
-            oldPortOrder 
-            |> Map.add oldEdge (oldPortOrder[oldEdge] |> List.filter (fun el -> el <> portId))
-        printfn $"portlstLen: {oldPortOrder'[edge].Length}"
-        let newPortOrder = 
-            oldPortOrder'
-            |> Map.add edge (oldPortOrder'[edge] |> List.insertAt newPortIdx' portId) // to do then get index and insert at index
-        let newSym =
-            {sym with 
-                MovingPort = None;
-                PortOrientation = newPortOrientation;
-                PortOrder = newPortOrder}
-        let scaledH, scaledW = autoScaleHAndW newSym
-        {newSym with
-            Component={newSym.Component with H=scaledH; W = scaledW}}
+            let newPortIdx' =
+                if edge = oldEdge && oldIdx < newPortIdx then newPortIdx - 1
+                else if newPortIdx > oldPortOrder[edge].Length then oldPortOrder[edge].Length
+                else newPortIdx
+            printfn $"{newPortIdx'}"
+            let oldPortOrder' =
+                oldPortOrder 
+                |> Map.add oldEdge (oldPortOrder[oldEdge] |> List.filter (fun el -> el <> portId))
+            printfn $"portlstLen: {oldPortOrder'[edge].Length}"
+            let newPortOrder = 
+                oldPortOrder'
+                |> Map.add edge (oldPortOrder'[edge] |> List.insertAt newPortIdx' portId) // to do then get index and insert at index
+            let newSym =
+                {sym with 
+                    MovingPort = None;
+                    PortOrientation = newPortOrientation;
+                    PortOrder = newPortOrder}
+            let scaledH, scaledW = autoScaleHAndW newSym
+            {newSym with
+                Component={newSym.Component with H=scaledH; W = scaledW}}
+    | _ -> {sym with MovingPort = None;}
 
         
 /// Update function which displays symbols
