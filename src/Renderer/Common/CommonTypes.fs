@@ -230,7 +230,8 @@ module CommonTypes
         Name: string
         // Tuples with (label * connection width).
         InputLabels: (string * int) list
-        OutputLabels: (string * int) list 
+        OutputLabels: (string * int) list
+        IdToLabel: Map<string,string> //maps the unique port id to the label of the port
     }
 
     type Memory = {
@@ -305,6 +306,22 @@ module CommonTypes
         | AsyncROM1 _ -> AsyncROM1
         | _ -> failwithf $"Can't get memory type from {cType}"
 
+    // --------------- Types needed for symbol ---------------- //
+    /// Represents the rotation of a symbol in degrees, Degree0 is the default symbol rotation.
+    /// Angle is anticlockwise
+    type Rotation = | Degree0 | Degree90 | Degree180 | Degree270
+    
+    /// Stores the rotation and the flip of the symbol, flipped false by default
+    type STransform = {Rotation: Rotation; flipped: bool}
+    
+    /// Represents the sides of a component
+    type Edge = | Top | Bottom | Left | Right
+    
+    type SymbolInfo = {
+        STransform: STransform
+        PortOrientation: Map<string, Edge>
+        PortOrder: Map<Edge, string list>
+    }
 
     /// JSComponent mapped to F# record.
     /// Id uniquely identifies the component within a sheet.
@@ -319,6 +336,7 @@ module CommonTypes
         Y : int
         H : int
         W : int
+        SymbolInfo : SymbolInfo
     }
 
     /// JSConnection mapped to F# record.
