@@ -243,3 +243,4 @@ docsrc/tools/FSharp.Formatting.svclog
 *.fs.js
 *.fs.js.map
 
+*.dgm

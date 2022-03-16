@@ -41,6 +41,7 @@ type CurrentAction =
     | Idle
     // ------------------------------ Issie Actions ---------------------------- //
     | InitialisedCreateComponent of ComponentType * string
+    | MovingPort of portId: string//?? should it have the port id?
 
 type UndoAction =
     | MoveBackSymbol of CommonTypes.ComponentId List * XYPos
@@ -120,6 +121,7 @@ type Msg =
     | Rotate of RotateMsg
     | Flip
     | WireType of WireTypeMsg
+    | MovePort of MouseT //different from mousemsg because ctrl pressed too
 
 
 // ------------------ Helper Functions that need to be before the Model type --------------------------- //
@@ -605,12 +607,25 @@ let mDownUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
     | _ ->
         match (mouseOn model mMsg.Pos) with
         | InputPort (portId, portLoc) ->
-            {model with Action = ConnectingInput portId; ConnectPortsLine = portLoc, mMsg.Pos; TmpModel=Some model},
-            symbolCmd Symbol.ShowAllOutputPorts
+            if not model.Toggle then
+                {model with Action = ConnectingInput portId; ConnectPortsLine = portLoc, mMsg.Pos; TmpModel=Some model},
+                symbolCmd Symbol.ShowAllOutputPorts
+            else
+                let  portIdstr = match portId with | InputPortId x -> x
+                {model with Action = MovingPort portIdstr}
+                , symbolCmd (Symbol.MovePort (portIdstr, mMsg.Pos))
+
         | OutputPort (portId, portLoc) ->
-            {model with Action = ConnectingOutput portId; ConnectPortsLine = portLoc, mMsg.Pos; TmpModel=Some model},
-            symbolCmd Symbol.ShowAllInputPorts
+            if not model.Toggle then
+                {model with Action = ConnectingOutput portId; ConnectPortsLine = portLoc, mMsg.Pos; TmpModel=Some model},
+                symbolCmd Symbol.ShowAllInputPorts
+            else
+                let  portIdstr = match portId with | OutputPortId x -> x
+                {model with Action = MovingPort portIdstr}
+                , symbolCmd (Symbol.MovePort (portIdstr, mMsg.Pos))
+
         | Component compId ->
+
             let msg, action =
                 if model.IsWaveSim then
                     ToggleNet ([Symbol.extractComponent model.Wire.Symbol compId], []), Idle
@@ -719,8 +734,10 @@ let mDragUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
                     LastMousePos = mMsg.Pos
                     ScrollingLastMousePos = {Pos=mMsg.Pos;Move=mMsg.Movement} }
         , Cmd.ofMsg CheckAutomaticScrolling
-    | _ -> model, Cmd.none
 
+    | MovingPort portId->
+        model, symbolCmd (Symbol.MovePort (portId, mMsg.Pos))
+    | _ -> model, Cmd.none
 /// Mouse Up Update, can have: finished drag-to-select, pressed on a component, finished symbol movement, connected a wire between ports
 let mUpUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> = // mMsg is currently un-used, but kept for future possibilities
     let newModel =
@@ -791,6 +808,8 @@ let mUpUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> = // mMsg is curr
                            appendUndoList model.UndoList newModel , []
             else Cmd.none , model.UndoList , model.RedoList
         { model with Action = Idle; TargetPortId = ""; UndoList = undoList ; RedoList = redoList ; AutomaticScrolling = false  }, cmd
+    | MovingPort portId ->
+        {model with Action = Idle}, symbolCmd (Symbol.MovePortDone (portId, mMsg.Pos))
     | _ -> model, Cmd.none
 
 /// Mouse Move Update, looks for nearby components and looks if mouse is on a port
@@ -852,8 +871,9 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
                     symbolCmd (Symbol.DeleteSymbols model.SelectedComponents)
                     Cmd.ofMsg UpdateBoundingBoxes ]
     | KeyPress CtrlS -> // For Demo, Add a new square in upper left corner
+        printfn "saving symbols"
         { model with BoundingBoxes = Symbol.getBoundingBoxes model.Wire.Symbol; UndoList = appendUndoList model.UndoList model ; RedoList = []},
-        Cmd.batch [ symbolCmd (Symbol.AddSymbol ({X = 50.0; Y = 50.0}, And, "test 1")); Cmd.ofMsg UpdateBoundingBoxes ] // Need to update bounding boxes after adding a symbol.
+        Cmd.batch [ symbolCmd (Symbol.AddSymbol ({X = 50.0; Y = 50.0}, And, "test 1")); Cmd.ofMsg UpdateBoundingBoxes; symbolCmd Symbol.SaveSymbols ] // Need to update bounding boxes after adding a symbol.
     | KeyPress AltShiftZ ->
         TimeHelpers.printStats()
         model, Cmd.none
