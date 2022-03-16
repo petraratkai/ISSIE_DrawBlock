@@ -1530,7 +1530,6 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
         newModel, Cmd.ofMsg BusWidths
 
     | BusWidths ->
-
         let processConWidths (connWidths: ConnectionsWidth) =
             let addWireWidthFolder (wireMap: Map<ConnectionId, Wire>) _ wire  =
                 let width =
@@ -1561,22 +1560,19 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                         | x -> failwithf $"What? wire found with input port {x} other than 0 or 1 connecting to MergeWires"
                     | _ -> m
 
-            let newWX = ((Map.empty, model.Wires) ||> Map.fold addWireWidthFolder)
+            let newWires = ((Map.empty, model.Wires) ||> Map.fold addWireWidthFolder)
 
             let symbolsWithWidths =
-                (model.Symbol.Symbols, newWX) ||> Map.fold addSymbolWidthFolder
+                (model.Symbol.Symbols, newWires) ||> Map.fold addSymbolWidthFolder
 
             { model with
-                Wires = newWX; 
+                Wires = newWires; 
                 Notifications = None;
                 ErrorWires=[];
                 Symbol = {model.Symbol with Symbols = symbolsWithWidths}
             }, Cmd.none
 
-
-
-        let canvasState = (Symbol.extractComponents model.Symbol, extractConnections model )
-
+        let canvasState = (Symbol.extractComponents model.Symbol, extractConnections model)
 
         match BusWidthInferer.inferConnectionsWidth canvasState with
         | Ok connWidths ->
@@ -1589,7 +1585,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
         { model with CopiedWires = copiedWires }, Cmd.none
 
     | ErrorWires (connectionIds : list<ConnectionId>) ->
-        let newWX =
+        let newWires =
             model.Wires
             |> Map.map
                 (fun id wire ->
@@ -1600,10 +1596,10 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                     else wire
                 )
 
-        {model with Wires = newWX ; ErrorWires = connectionIds}, Cmd.none
+        {model with Wires = newWires ; ErrorWires = connectionIds}, Cmd.none
 
     | SelectWires (connectionIds : list<ConnectionId>) -> //selects all wires in connectionIds, and also deselects all other wires
-        let newWX =
+        let newWires =
             model.Wires
             |> Map.map
                 (fun id wire ->
@@ -1618,14 +1614,14 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                         {wire with Color = HighLightColor.DarkSlateGrey}
                 )
 
-        {model with Wires = newWX}, Cmd.none
+        {model with Wires = newWires}, Cmd.none
 
     | DeleteWires (connectionIds : list<ConnectionId>) ->
         let newModel = resetWireSegmentJumps (connectionIds) (model)
-        let newWX =
+        let newWires =
              newModel.Wires
              |> Map.filter (fun id wire -> not (List.contains id connectionIds))
-        {newModel with Wires = newWX}, Cmd.ofMsg BusWidths
+        {newModel with Wires = newWires}, Cmd.ofMsg BusWidths
 
     | DragWire (connId : ConnectionId, mMsg: MouseT) ->
         match mMsg.Op with
@@ -1647,9 +1643,9 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                     | Vertical -> mMsg.Pos.X - segStart.X
 
                 let newWire = moveSegment model seg distanceToMove 
-                let newWX = Map.add seg.HostId newWire model.Wires
+                let newWires = Map.add seg.HostId newWire model.Wires
 
-                {model with Wires = newWX}, Cmd.none
+                {model with Wires = newWires}, Cmd.none
             else
                 model, Cmd.none
 
@@ -1694,7 +1690,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
             abs (abs pos.X - abs (fst vertex)) < epsilon &&
             abs (abs pos.Y - abs (snd vertex)) < epsilon
             |> (fun b -> if not b then printf $"Bad wire endpoint match on {pos} {vertex}"; b else b)
-        let newWX =
+        let newWires =
             conns
             |> List.map ( fun conn ->
                             let inputId = InputPortId conn.Target.Id
@@ -1743,7 +1739,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
             conns
             |> List.map (fun conn -> ConnectionId conn.Id)
 
-        { model with Wires = newWX }, Cmd.ofMsg (MakeJumps connIds)
+        { model with Wires = newWires }, Cmd.ofMsg (MakeJumps connIds)
 
     | UpdateWireType (style: WireType) ->
         { model with Type = style }, Cmd.none
