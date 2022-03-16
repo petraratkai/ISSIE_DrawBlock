@@ -68,8 +68,6 @@ type Model =
     {
         Symbol: Symbol.Model
         Wires: Map<ConnectionId, Wire>
-        FromVerticalToHorizontalSegmentIntersections: Map<SegmentId, list<ConnectionId*SegmentId>>
-        FromHorizontalToVerticalSegmentIntersections: Map<SegmentId, list<ConnectionId*SegmentId>>
         CopiedWires: Map<ConnectionId, Wire> 
         SelectedSegment: SegmentId
         LastMousePos: XYPos
@@ -182,13 +180,9 @@ let logIntersectionMaps (model:Model) =
 
         model.Wires
         |> Map.toList
-        |> List.map (fun (_, wire) -> 
-            sprintf $"Wire: {formatSegmentIntersections wire.Segments}")
+        |> List.map (fun (wId, wire) -> 
+            sprintf $"Wire {formatWireId wId}: {formatSegmentIntersections wire.Segments}")
 
-    printfn "\n------------------\nFromHorizontalToVerticalSegmentIntersections:"
-    printfn $"{formatIntersectionMap model.FromHorizontalToVerticalSegmentIntersections}"
-    printfn "FromVerticalToHorizontalSegmentIntersections:"
-    printfn $"{formatIntersectionMap model.FromVerticalToHorizontalSegmentIntersections}"
     printfn $"Intersections"
     printfn $"{intersections}"
     printfn "---- --------------"
@@ -872,8 +866,6 @@ let init () =
     let symbols,_ = Symbol.init()
     {   
         Wires = Map.empty;
-        FromVerticalToHorizontalSegmentIntersections = Map.empty;
-        FromHorizontalToVerticalSegmentIntersections = Map.empty;
         Symbol = symbols; 
         CopiedWires = Map.empty; 
         SelectedSegment = SegmentId(""); 
@@ -1448,10 +1440,7 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
     let wiresWithJumps = 
         (model.Wires, wires)
         ||> Array.fold (fun map wire ->
-            if not (Array.contains wire.Id wiresWithNoJumpsA) then
-                foldOverSegs updateJumpsInWire map wire
-            else
-                map)
+                foldOverSegs updateJumpsInWire map wire)
     
     { model with Wires = wiresWithJumps}
 
