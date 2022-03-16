@@ -15,15 +15,7 @@ open System.Text.RegularExpressions
 let GridSize = 30 
 
 /// ---------- SYMBOL TYPES ---------- ///
-/// Represents the rotation of a symbol in degrees, Degree0 is the default symbol rotation.
-/// Angle is anticlockwise
-type Rotation = | Degree0 | Degree90 | Degree180 | Degree270
 
-/// Stores the rotation and the flip of the symbol, flipped false by default
-type STransform = {Rotation: Rotation; flipped: bool}
-
-/// Represents the sides of a component
-type Edge = | Top | Bottom | Left | Right
 
 /// Wraps around the input and output port id types
 type PortId = | InputId of InputPortId | OutputId of OutputPortId
@@ -107,6 +99,7 @@ type Msg =
     | Flip of compList: ComponentId list
     | MovePort of portId: string * move: XYPos
     | MovePortDone of portId: string * move: XYPos
+    | SaveSymbols
 
 
 // ----- helper functions for titles ----- //
@@ -307,7 +300,7 @@ let autoScaleHAndW (sym:Symbol) : (int*int) =
 
 /// helper function to initialise each type of component
 let makeComponent (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) : Component =
-
+    let defaultSTransform = {Rotation = Degree0; flipped = false}
     // function that helps avoid dublicate code by initialising parameters that are the same for all component types and takes as argument the others
     //let portOrientation, portOrder = initPortOrientation comp
     let makeComponent' (n, nout, h, w) label : Component=
@@ -336,6 +329,7 @@ let makeComponent (pos: XYPos) (comptype: ComponentType) (id:string) (label:stri
             Y = int (pos.Y - float h / 2.0) 
             H = h 
             W = w
+            SymbolInfo = { STransform=defaultSTransform; PortOrder = Map.empty; PortOrientation=Map.empty}
         }
     
     // match statement for each component type. the output is a 4-tuple that is used as an input to makecomponent (see below)
@@ -1301,14 +1295,15 @@ let inline createSymbol prevSymbols comp =
               Moving = false
               InWidth0 = None
               InWidth1 = None
-              STransform = {Rotation= Degree0; flipped= false}
-              PortOrientation = portOrientation
-              PortOrder = portOrder
+              STransform = comp.SymbolInfo.STransform
+              PortOrientation = comp.SymbolInfo.PortOrientation
+              PortOrder = comp.SymbolInfo.PortOrder
               MovingPort = None
             }
 
 /// Given a model and a list of components, it creates and adds the symbols containing the specified components and returns the updated model.
 let inline loadComponents model comps=
+    printfn "loading components"
     let symbolMap =
         (model.Symbols, comps) ||> List.fold createSymbol
     
@@ -1692,10 +1687,25 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
         printfn $"PortPos{getPortPos oldSymbol model.Ports[portId]}"
         let newSymbol = updatePortPos oldSymbol pos portId
         {model with Symbols = Map.add newSymbol.Id newSymbol model.Symbols}, Cmd.none
+    | SaveSymbols ->
+        let getSymbolInfo symbol = 
+            { STransform = symbol.STransform; PortOrientation = symbol.PortOrientation; PortOrder = symbol.PortOrder }
+        //need to store STransform in the component for reloading and stuffs
         
+        let storeSymbolInfo _ symbol =
+            let h,w = getHAndW symbol
+            {
+                symbol with Component =  {   symbol.Component with SymbolInfo = getSymbolInfo symbol }
+            }
+        let newSymbols = Map.map storeSymbolInfo model.Symbols
+        {model with Symbols = newSymbols} , Cmd.none
 // ----------------------interface to Issie----------------------------- //
 let extractComponent (symModel: Model) (sId:ComponentId) : Component = 
-    symModel.Symbols[sId].Component
+    let symbol = symModel.Symbols[sId]
+    let getSymbolInfo symbol = 
+        { STransform = symbol.STransform; PortOrientation = symbol.PortOrientation; PortOrder = symbol.PortOrder }
+    let h,w = getHAndW symbol
+    {symbol.Component with SymbolInfo = getSymbolInfo symbol; X =int(symbol.Pos.X); Y = int(symbol.Pos.Y) }
 
 let extractComponents (symModel: Model) : Component list =
     symModel.Symbols

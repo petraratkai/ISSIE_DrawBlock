@@ -269,21 +269,21 @@ let segmentsToVertices (segList:Segment list) (wire:Wire) =
 /// Given the coordinates of two port locations that correspond
 /// to the endpoints of a wire, as well as the final port orientation 
 /// this function returns a list of wire vertices
-let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (portOrientation : Symbol.Edge) = 
+let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (portOrientation : Edge) = 
     let xStart, yStart, xEnd, yEnd = wireStartPos.X, wireStartPos.Y, wireEndPos.X, wireEndPos.Y
     match xStart - xEnd + 20. < 0 with //add 20 to prevent issues in the case that the ports are directly on in line with one another
     | true -> //Right of startpos
         match yStart - yEnd < 0 with 
         | true -> //Below startpos
             match portOrientation with
-            | Symbol.Top  ->  [{X = xStart; Y = yStart};
+            | CommonTypes.Top  ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xEnd; Y = yStart};
                     {X = xEnd; Y = yEnd-5.0}; 
                     {X = xEnd; Y = yEnd-5.0};// Length 0 horizontal
                     {X = xEnd; Y = yEnd}] // Stick vertical
-            | Symbol.Right ->  [{X = xStart; Y = yStart};
+            | CommonTypes.Right ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xEnd+20.; Y = yStart};
@@ -291,7 +291,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd+Wire.nubLength; Y = yEnd}; 
                     {X = xEnd+Wire.nubLength; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
-            | Symbol.Bottom->  [{X = xStart; Y = yStart};
+            | CommonTypes.Bottom->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = (xEnd+xStart)/2.; Y = yStart};
@@ -300,7 +300,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd; Y = yEnd+Wire.nubLength}; 
                     {X = xEnd; Y = yEnd+Wire.nubLength}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
-            | Symbol.Left ->  [{X = xStart; Y = yStart};
+            | CommonTypes.Left ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = (xEnd+xStart)/2.; Y = yStart};
@@ -310,14 +310,14 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd; Y = yEnd}] //Stick vertical
         | false -> //Above startpos
             match portOrientation with
-            | Symbol.Bottom ->  [{X = xStart; Y = yStart};
+            | CommonTypes.Bottom ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xEnd; Y = yStart};
                     {X = xEnd; Y = yEnd+Wire.nubLength}; 
                     {X = xEnd; Y = yEnd+Wire.nubLength}; //Length 0 hortizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
-            | Symbol.Right ->  [{X = xStart; Y = yStart};
+            | CommonTypes.Right ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xEnd+20.; Y = yStart};
@@ -325,7 +325,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd+Wire.nubLength; Y = yEnd}; 
                     {X = xEnd+Wire.nubLength; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
-            | Symbol.Top ->  [{X = xStart; Y = yStart};
+            | CommonTypes.Top ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = (xEnd+xStart)/2.; Y = yStart};
@@ -334,7 +334,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd; Y = yEnd-Wire.nubLength}; 
                     {X = xEnd; Y = yEnd-Wire.nubLength}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
-            | Symbol.Left ->  [{X = xStart; Y = yStart};
+            | CommonTypes.Left ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = (xEnd+xStart)/2.; Y = yStart};
@@ -346,7 +346,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
         match yStart - yEnd < 0 with
         | true -> //below startpos
             match portOrientation with
-            | Symbol.Bottom ->  [{X = xStart; Y = yStart};
+            | CommonTypes.Bottom ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xStart+Wire.nubLength+10.; Y = yStart}; //Small horizontal for dragging  
@@ -355,7 +355,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd; Y = yEnd+Wire.nubLength}; 
                     {X = xEnd; Y = yEnd+Wire.nubLength}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
-            | Symbol.Right ->  [{X = xStart; Y = yStart};
+            | CommonTypes.Right ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xStart+Wire.nubLength+10.; Y = yStart}; //Small horizontal for dragging
@@ -363,14 +363,14 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd+Wire.nubLength; Y = yEnd}; 
                     {X = xEnd+Wire.nubLength; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
-            | Symbol.Top ->  [{X = xStart; Y = yStart};
+            | CommonTypes.Top ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = (yStart+yEnd)/2.}; //Length 0 vertical
                     {X = xEnd; Y = (yStart+yEnd)/2.};
                     {X = xEnd; Y = yEnd-Wire.nubLength}; 
                     {X = xEnd; Y = yEnd-Wire.nubLength}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
-            | Symbol.Left ->  [{X = xStart; Y = yStart};
+            | CommonTypes.Left ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xStart+Wire.nubLength+10.; Y = yStart}; //Small horizontal for dragging
@@ -382,14 +382,14 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd; Y = yEnd}] //Stick horizontal
         | false -> //above startpos
             match portOrientation with
-            | Symbol.Top ->  [{X = xStart; Y = yStart};
+            | CommonTypes.Top ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yEnd-20.}; //Length 0 vertical
                     {X = xEnd; Y = yEnd-20.};
                     {X = xEnd; Y = yEnd-Wire.nubLength}; 
                     {X = xEnd; Y = yEnd-Wire.nubLength}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
-            | Symbol.Right ->  [{X = xStart; Y = yStart};
+            | CommonTypes.Right ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xStart+Wire.nubLength+10.; Y = yStart}; //Small horizontal for dragging
@@ -397,14 +397,14 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd+Wire.nubLength; Y = yEnd}; 
                     {X = xEnd+Wire.nubLength; Y = yEnd}; //Lenght 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
-            | Symbol.Bottom ->  [{X = xStart; Y = yStart};
+            | CommonTypes.Bottom ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = (yStart+yEnd)/2.}; //Length 0 vertical
                     {X = xEnd; Y = (yStart+yEnd)/2.};
                     {X = xEnd; Y = yEnd-Wire.nubLength}; 
                     {X = xEnd; Y = yEnd-Wire.nubLength}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
-            | Symbol.Left ->  [{X = xStart; Y = yStart};
+            | CommonTypes.Left ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xStart+Wire.nubLength+10.; Y = yStart}; //Small horizontal for dragging
@@ -439,7 +439,7 @@ let xyVerticesToSegments connId (xyVerticesList: XYPos list) =
 /// Given the coordinates of two port locations that correspond
 /// to the endpoints of a wire, as well as the orientation of the final port
 /// this function returns a list of Segment(s).
-let makeInitialSegmentsList (hostId : ConnectionId) (startPos : XYPos) (endPos : XYPos) (portOrientation : Symbol.Edge) : list<Segment> =
+let makeInitialSegmentsList (hostId : ConnectionId) (startPos : XYPos) (endPos : XYPos) (portOrientation : Edge) : list<Segment> =
     let xyPairs = makeInitialWireVerticesList startPos endPos portOrientation
     xyPairs
     |> xyVerticesToSegments hostId 
@@ -502,7 +502,7 @@ type WireRenderProps =
         AbsSegments: list<AbsSegment>
         ColorP: HighLightColor
         StrokeWidthP: int
-        OutputPortEdge : Symbol.Edge
+        OutputPortEdge : Edge
         OutputPortLocation: XYPos
         DisplayType : WireType
     }
@@ -700,10 +700,10 @@ let singleWireJumpView props =
             }
         let textString = if props.StrokeWidthP = 1 then "" else string props.StrokeWidthP //Only print width > 1
         match props.OutputPortEdge with 
-        | Symbol.Top -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
-        | Symbol.Bottom -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y+7.0) (textString) textParameters
-        | Symbol.Right -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
-        | Symbol.Left -> makeText (props.OutputPortLocation.X-20.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | CommonTypes.Top -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | CommonTypes.Bottom -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y+7.0) (textString) textParameters
+        | CommonTypes.Right -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | CommonTypes.Left -> makeText (props.OutputPortLocation.X-20.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
 
     g [] ([ renderWireWidthText ] @ renderedSegmentList)
 
@@ -739,10 +739,10 @@ let singleWireModernView props =
             }
         let textString = if props.StrokeWidthP = 1 then "" else string props.StrokeWidthP //Only print width > 1
         match props.OutputPortEdge with 
-        | Symbol.Top -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
-        | Symbol.Bottom -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y+7.0) (textString) textParameters
-        | Symbol.Right -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
-        | Symbol.Left -> makeText (props.OutputPortLocation.X-20.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | CommonTypes.Top -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | CommonTypes.Bottom -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y+7.0) (textString) textParameters
+        | CommonTypes.Right -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | CommonTypes.Left -> makeText (props.OutputPortLocation.X-20.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
 
     g [] ([ renderWireWidthText ] @ renderedSegmentList)
 
@@ -797,10 +797,10 @@ let singleWireRadialView props =
             }
         let textString = if props.StrokeWidthP = 1 then "" else string props.StrokeWidthP //Only print width > 1
         match props.OutputPortEdge with 
-        | Symbol.Top -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
-        | Symbol.Bottom -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y+7.0) (textString) textParameters
-        | Symbol.Right -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
-        | Symbol.Left -> makeText (props.OutputPortLocation.X-20.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | CommonTypes.Top -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | CommonTypes.Bottom -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y+7.0) (textString) textParameters
+        | CommonTypes.Right -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | CommonTypes.Left -> makeText (props.OutputPortLocation.X-20.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
 
     g [] ([ renderWireWidthText ] @ [renderedSVGPath])
 
@@ -1150,7 +1150,7 @@ let moveSegment (model:Model) (seg:Segment) (distance:float) =
 
 /// Contains geometric information of a port
 type PortInfo = {
-    Edge: Symbol.Edge
+    Edge: Edge
     Position: XYPos
 }
 
@@ -1159,12 +1159,12 @@ let genPortInfo edge position =
     { Edge = edge; Position = position }
 
 /// Returns an edge rotated 90 degrees anticlockwise
-let rotate90Edge (edge: Symbol.Edge) = 
+let rotate90Edge (edge: Edge) = 
     match edge with
-    | Symbol.Top -> Symbol.Left
-    | Symbol.Left -> Symbol.Bottom
-    | Symbol.Bottom -> Symbol.Right
-    | Symbol.Right -> Symbol.Top
+    | CommonTypes.Top -> CommonTypes.Left
+    | CommonTypes.Left -> CommonTypes.Bottom
+    | CommonTypes.Bottom -> CommonTypes.Right
+    | CommonTypes.Right -> CommonTypes.Top
 
 /// Returns a port rotated 90 degrees anticlockwise about the origin
 let rotate90Port (port: PortInfo) =
@@ -1194,7 +1194,7 @@ let rotateSegments90 initialOrientation =
     >> List.map rotateSegment
 
 /// Returns a version of the start and destination ports rotated until the start edge matches the target edge.
-let rec rotateStartDest (target: Symbol.Edge) ((start, dest): PortInfo * PortInfo) = 
+let rec rotateStartDest (target: Edge) ((start, dest): PortInfo * PortInfo) = 
     if start.Edge = target then
         (start, dest)
     else
@@ -1202,14 +1202,14 @@ let rec rotateStartDest (target: Symbol.Edge) ((start, dest): PortInfo * PortInf
 
 
 /// Gets a wire orientation given a port edge
-let getOrientation (edge: Symbol.Edge) = 
+let getOrientation (edge: Edge) = 
     match edge with
-    | Symbol.Top | Symbol.Bottom -> Vertical
-    | Symbol.Left | Symbol.Right -> Horizontal
+    | CommonTypes.Top | CommonTypes.Bottom -> Vertical
+    | CommonTypes.Left | CommonTypes.Right -> Horizontal
 
 /// Returns an anonymous record containing the starting symbol edge of a wire and its segment list that has been 
 /// rotated to a target symbol edge.
-let rec rotateSegments (target: Symbol.Edge) (wire: {| edge: Symbol.Edge; segments: Segment list |}) =
+let rec rotateSegments (target: Edge) (wire: {| edge: Edge; segments: Segment list |}) =
     if wire.edge = target then
         {| edge = wire.edge; segments = wire.segments |}
     else
@@ -1235,13 +1235,13 @@ let autoroute (model: Model) (wire: Wire) : Wire =
     
     // Normalise the routing problem to reduce the number of cases in makeInitialSegmentsList
     let normalisedStart, normalisedEnd = 
-        rotateStartDest Symbol.Right (startPort, destPort)
+        rotateStartDest CommonTypes.Right (startPort, destPort)
 
     let initialSegments =
         makeInitialSegmentsList wire.Id normalisedStart.Position normalisedEnd.Position normalisedEnd.Edge
 
     let segments =
-        {| edge = Symbol.Right
+        {| edge = CommonTypes.Right
            segments = initialSegments |}
         |> rotateSegments startEdge // Rotate the segments back to original orientation
         |> (fun wire -> wire.segments)

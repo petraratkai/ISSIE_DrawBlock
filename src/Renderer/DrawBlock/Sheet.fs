@@ -871,8 +871,9 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
                     symbolCmd (Symbol.DeleteSymbols model.SelectedComponents)
                     Cmd.ofMsg UpdateBoundingBoxes ]
     | KeyPress CtrlS -> // For Demo, Add a new square in upper left corner
+        printfn "saving symbols"
         { model with BoundingBoxes = Symbol.getBoundingBoxes model.Wire.Symbol; UndoList = appendUndoList model.UndoList model ; RedoList = []},
-        Cmd.batch [ symbolCmd (Symbol.AddSymbol ({X = 50.0; Y = 50.0}, And, "test 1")); Cmd.ofMsg UpdateBoundingBoxes ] // Need to update bounding boxes after adding a symbol.
+        Cmd.batch [ symbolCmd (Symbol.AddSymbol ({X = 50.0; Y = 50.0}, And, "test 1")); Cmd.ofMsg UpdateBoundingBoxes; symbolCmd Symbol.SaveSymbols ] // Need to update bounding boxes after adding a symbol.
     | KeyPress AltShiftZ ->
         TimeHelpers.printStats()
         model, Cmd.none
