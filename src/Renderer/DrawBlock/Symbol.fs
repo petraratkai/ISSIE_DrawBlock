@@ -512,9 +512,9 @@ let private addText (pos: XYPos) name alignment weight size =
 let private addComponentLabel height width yOffset name weight size rotation = 
     match rotation with 
     | Degree0 -> addText {X = (float width/2.); Y = yOffset} name "middle" weight size
-    | Degree90 -> addText {X = float width + 5.; Y = float height/2. + yOffset} name "start" weight size
+    | Degree270 -> addText {X = float width + 5.; Y = float height/2. + yOffset} name "start" weight size
     | Degree180 -> addText {X = float width/2.; Y = float height - yOffset - 15.} name "middle" weight size
-    | Degree270 -> addText {X = -5.; Y = float height/2. + yOffset} name "end" weight size
+    | Degree90 -> addText {X = -5.; Y = float height/2. + yOffset} name "end" weight size
 
 /// Generate circles on ports
 let private portCircles (pos: XYPos) = 
@@ -668,7 +668,7 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
             | Degree90 -> sprintf $""               
             | Degree180 -> sprintf $"0,0 0,{h} {0.6*float(w)},{h} {0.8*float(w)},{0.7*float(h)} {w},{0.7*float(h)} {w},{0.3*float(h)} {0.8*float(w)},{0.3*float(h)} {0.6*float(w)},0"
             | Degree270 -> sprintf $"0,0 0,{float(h)*0.6} {0.3*float(w)},{float(h)*0.8} {float(w)*0.3},{h} {float(w)*0.7},{h} {float(w)*0.7},{float(h)*0.8} {w},{float(h)*0.6} {w},0"
-        | _ -> sprintf $"0,{comp.H} {comp.W},{comp.H} {comp.W},0 0,0"
+        | _ -> sprintf $"0,{h} {w},{h} {w},0 0,0"
     
     
 
