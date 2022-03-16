@@ -221,6 +221,11 @@ let customToLength (lst : (string * int) list) =
     if List.isEmpty labelList then 0 //if a component has no inputs or outputs list max will fail
     else List.max labelList
 
+let customStringToLength (lst: string list) =
+    let labelLengths = List.map String.length lst
+    if List.isEmpty labelLengths then 0
+    else List.max labelLengths
+
 //---------------------------------------------------------------------------------//
 //--------------------PR2518 CODE SECTION STARTS-------------------------------------//
 //---------------------------------------------------------------------------------//
@@ -272,18 +277,61 @@ let initPortOrientation (comp: Component) =
 //--------------------PR2518 CODE SECTION ENDS-------------------------------------//
 //---------------------------------------------------------------------------------//
 
-// helper function to initialise each type of component
+let autoScaleHAndW (sym:Symbol) : (int*int) =
+    //height same as before, just take max of left and right
+        match sym.Component.Type with
+        | Custom comp ->
+            let convertIdsToLbls currMap edge idList =
+                let lblLst = List.map (fun id -> comp.IdToLabel[id]) idList
+                Map.add edge lblLst currMap
+            let portLabels = 
+                (Map.empty, sym.PortOrder) 
+                ||> Map.fold convertIdsToLbls
+            let h = GridSize + GridSize * max (List.length portLabels[Left]) (List.length portLabels[Right])
+            let maxLeftLength, maxRightLength = customStringToLength portLabels[Left], customStringToLength portLabels[Right]
+            //need to check the sum of the lengths of top and bottom
+            let topLength = customStringToLength portLabels[Top] 
+            let bottomLength = customStringToLength portLabels[Bottom]
+            printfn $"{topLength}, {GridSize}"
+            printfn $""
+            let maxW = 
+                [(maxLeftLength + maxRightLength + sym.Component.Label.Length)*GridSize/5; (List.length portLabels[Top] + 1)* max (topLength*GridSize/5)GridSize; (List.length portLabels[Bottom]+ 1)*max (bottomLength*GridSize/5) GridSize]
+                |> (fun lst -> printfn $"{lst}"; lst)
+                |> List.max 
+            let scaledW = roundToN GridSize (maxW ) //Divide by 5 is just abitrary as otherwise the symbols would be too wide 
+            let w = max scaledW (GridSize * 4) //Ensures a minimum width if the labels are very small
+            max h (GridSize*2), w
+        | _ -> sym.Component.H, sym.Component.W
+    
+
+
+/// helper function to initialise each type of component
 let makeComponent (pos: XYPos) (comptype: ComponentType) (id:string) (label:string) : Component =
 
     // function that helps avoid dublicate code by initialising parameters that are the same for all component types and takes as argument the others
     //let portOrientation, portOrder = initPortOrientation comp
-    let makeComponent' (n, nout, h, w) label : Component=  
+    let makeComponent' (n, nout, h, w) label : Component=
+        let inputPorts = portLists n id PortType.Input
+        let outputPorts = portLists nout id PortType.Output
+        let comptype' =
+            match comptype with
+            | Custom x -> //have to create the port id to label mapping
+                let inputPortIdLabels = List.zip inputPorts x.InputLabels
+                let outputPortIdLabels = List.zip outputPorts x.OutputLabels
+                let inputMap =
+                    (Map.empty, inputPortIdLabels) 
+                    ||> List.fold (fun currMap (port,label) -> Map.add port.Id (fst label) currMap)
+                let finalMap =
+                    (inputMap, outputPortIdLabels)
+                    ||> List.fold (fun currMap (port, label) -> Map.add port.Id (fst label) currMap)
+                Custom {x with IdToLabel = finalMap}
+            | _ -> comptype
         {
             Id = id 
-            Type = comptype 
+            Type = comptype' 
             Label = label 
-            InputPorts = portLists n id PortType.Input 
-            OutputPorts  = portLists nout id PortType.Output 
+            InputPorts = inputPorts
+            OutputPorts  = outputPorts
             X  = int (pos.X - float w / 2.0) 
             Y = int (pos.Y - float h / 2.0) 
             H = h 
@@ -318,10 +366,10 @@ let makeComponent (pos: XYPos) (comptype: ComponentType) (id:string) (label:stri
         | DFFE -> ( 2  , 1, 3*GridSize  , 3*GridSize) 
         | Register (a) -> ( 1 , 1, 3*GridSize  , 4*GridSize )
         | RegisterE (a) -> ( 2 , 1, 3*GridSize  , 4*GridSize) 
-        | AsyncROM1 (a)  -> (  1 , 1, 3*GridSize  , 4*GridSize) 
-        | ROM1 (a) -> (   1 , 1, 3*GridSize  , 4*GridSize) 
-        | RAM1 (a) | AsyncRAM1 a -> ( 3 , 1, 3*GridSize  , 4*GridSize) 
-        | NbitsXor (n) -> (  2 , 1, 3*GridSize  , 4*GridSize) 
+        | AsyncROM1 (a)  -> (  1 , 1, 4*GridSize  , 5*GridSize) 
+        | ROM1 (a) -> (   1 , 1, 4*GridSize  , 5*GridSize) 
+        | RAM1 (a) | AsyncRAM1 a -> ( 3 , 1, 4*GridSize  , 5*GridSize) 
+        | NbitsXor (n) -> (  2 , 1, 4*GridSize  , 4*GridSize) 
         | NbitsAdder (n) -> (  3 , 2, 3*GridSize  , 4*GridSize) 
         | Custom x -> 
             let h = GridSize + GridSize * (List.max [List.length x.InputLabels; List.length x.OutputLabels])
@@ -1481,15 +1529,15 @@ let getPosIndex (sym: Symbol) (pos: XYPos) (edge: Edge): int =
     let baseOffset = getPortBaseOffset sym edge  //offset of the side component is on
     let pos' = pos - sym.Pos + baseOffset 
     let h,w = getHAndW sym
-    match edge with
-    | Left ->
+    match ports.Length, edge with
+    | 0, _ -> 0 
+    | _, Left ->
         int (pos'.Y * ( float( ports.Length + 1) + 2.0*gap - 1.0) / float(h)  - gap + 0.5)
-    | Right -> 
+    | _, Right -> 
         -1 * int (pos'.Y * ( float( ports.Length + 1 ) + 2.0*gap - 1.0) / float(h) + 1.0 - gap - float( ports.Length + 1) - 0.5)
-
-    | Bottom -> 
+    | _, Bottom -> 
         int (pos'.X * (float (ports.Length + 1) + 2.0*gap - 1.0) / (float(w)) - gap + 0.5)
-    | Top ->
+    | _, Top ->
         -1 * int (pos'.X * (float (ports.Length + 1) + 2.0*gap - 1.0) / float(w) - float( ports.Length + 1) + 1.0 - gap - 0.5)
 
 let updatePortPos (sym:Symbol) (pos:XYPos) (portId: string) : Symbol =
@@ -1500,7 +1548,7 @@ let updatePortPos (sym:Symbol) (pos:XYPos) (portId: string) : Symbol =
         {sym with MovingPort = None}
     | Some edge -> 
         printfn $"{edge}"
-        printfn $"{getPosIndex sym pos edge}"
+        //printfn $"{getPosIndex sym pos edge}"
         let newPortOrientation = oldPortOrientation |> Map.add portId edge //nothing else to do
         let oldEdge = oldPortOrientation[portId]
         let newPortIdx = getPosIndex sym pos edge
@@ -1508,17 +1556,24 @@ let updatePortPos (sym:Symbol) (pos:XYPos) (portId: string) : Symbol =
         
         let newPortIdx' =
             if edge = oldEdge && oldIdx < newPortIdx then newPortIdx - 1
+            else if newPortIdx > oldPortOrder[edge].Length then oldPortOrder[edge].Length
             else newPortIdx
+        printfn $"{newPortIdx'}"
         let oldPortOrder' =
             oldPortOrder 
             |> Map.add oldEdge (oldPortOrder[oldEdge] |> List.filter (fun el -> el <> portId))
+        printfn $"portlstLen: {oldPortOrder'[edge].Length}"
         let newPortOrder = 
             oldPortOrder'
             |> Map.add edge (oldPortOrder'[edge] |> List.insertAt newPortIdx' portId) // to do then get index and insert at index
-        {sym with 
-            MovingPort = None;
-            PortOrientation = newPortOrientation;
-            PortOrder = newPortOrder} 
+        let newSym =
+            {sym with 
+                MovingPort = None;
+                PortOrientation = newPortOrientation;
+                PortOrder = newPortOrder}
+        let scaledH, scaledW = autoScaleHAndW newSym
+        {newSym with
+            Component={newSym.Component with H=scaledH; W = scaledW}}
 
         
 /// Update function which displays symbols
