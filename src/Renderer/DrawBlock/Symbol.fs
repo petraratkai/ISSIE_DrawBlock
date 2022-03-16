@@ -506,9 +506,9 @@ let private addText (pos: XYPos) name alignment weight size =
 let private addComponentLabel height width yOffset name weight size rotation = 
     match rotation with 
     | Degree0 -> addText {X = (float width/2.); Y = yOffset} name "middle" weight size
-    | Degree90 -> addText {X = float width + 5.; Y = float height/2. + yOffset} name "start" weight size
+    | Degree270 -> addText {X = float width + 5.; Y = float height/2. + yOffset} name "start" weight size
     | Degree180 -> addText {X = float width/2.; Y = float height - yOffset - 15.} name "middle" weight size
-    | Degree270 -> addText {X = -5.; Y = float height/2. + yOffset} name "end" weight size
+    | Degree90 -> addText {X = -5.; Y = float height/2. + yOffset} name "end" weight size
 
 /// Generate circles on ports
 let private portCircles (pos: XYPos) = 
@@ -526,7 +526,8 @@ let private portText (pos: XYPos) name edge =
     let align = 
             match edge with
             | Right -> "end"
-            | _ -> "start"
+            | Left -> "start"
+            | _ -> "middle"
     (addText pos' name align "normal" "12px")
 
 /// Print the name of each port 
@@ -586,8 +587,9 @@ let addHorizontalColorLine posX1 posX2 posY opacity (color:string) = // TODO: Li
 let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float)= 
     let comp = symbol.Component
     let h,w = getHAndW symbol
-    let halfW = comp.W/2
-    let halfH = (comp.H)/2
+    let halfW = w/2
+    let halfH = h/2
+    let rotation = symbol.STransform.Rotation
 
 
     let mergeSplitLine posX1 posX2 posY msb lsb =
@@ -599,56 +601,78 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
         addHorizontalColorLine posX1 posX2 (posY*float(h)) opacity colour @
         addText {X = float((posX1 + posX2)/2); Y = (posY*float(h)-11.)} text "middle" "bold" "9px"
 
-
-
     let points =            // Points that specify each symbol 
         match comp.Type with
-        | Input _ -> (sprintf "%i,%i %i,%i %f,%i %i,%i %f,%i" 0 0 0 h (float(w)*(0.66)) h w halfH (float(w)*(0.66)) 0)
-        | Constant1 _ -> (sprintf "%i,%i %i,%i %i,%i" 0 comp.H halfW halfH 0 0)
-        | IOLabel -> (sprintf "%f,%i %i,%i %f,%i %f,%i %i,%i %f,%i"  (float(w)*(0.33)) 0 0 halfH (float(w)*(0.33)) h (float(w)*(0.66)) h w halfH (float(w)*(0.66)) 0)
-        | Output _ -> (sprintf "%f,%i %i,%i %f,%i %i,%i %i,%i" (float(w)*(0.2)) 0 0 halfH (float(w)*(0.2)) h w h w 0)
-        | Viewer _ -> (sprintf "%f,%i %i,%i %f,%i %i,%i %i,%i" (float(w)*(0.2)) 0 0 halfH (float(w)*(0.2)) h w h w 0)
-        | MergeWires -> (sprintf "%i,%f %i,%f " halfW ((1.0/6.0)*float(h)) halfW ((5.0/6.0)*float(h)))
-        | SplitWire _ ->  (sprintf "%i,%f %i,%f " halfW ((1.0/6.0)*float(h)) halfW ((5.0/6.0)*float(h)))
-        | Demux2 when symbol.STransform.flipped = false -> 
-            match symbol.STransform. Rotation with
-            | Degree0 | Degree180 ->
-                (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
-            | Degree90 ->
-                (sprintf "%i,%i %i,%i %f,%i %f,%i" 0 0 w 0  (float(w)*0.8) h (float(w)*0.2)  h)
-            | Degree270 ->
-                (sprintf "%f,%i %f,%i %i,%i %i,%i" (float(w)*0.2) 0 (float(w)*0.8) 0 w h 0 h)
-        | Demux2 when symbol.STransform.flipped ->
-            match symbol.STransform.Rotation with 
-            | Degree0 | Degree180 -> 
-                (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
-            | Degree90 ->
-                (sprintf "%f,%i %f,%i  %i,%i %i,%i" (float(w)*0.2) 0 (float(w)*0.8) 0 w h 0 h )
-            | Degree270 ->
-                (sprintf "%i,%i %i,%i  %f,%i %f,%i" 0 0 w 0 (float(w)*0.8) h (float(w)*0.2 ) h)
-        | Mux2 when symbol.STransform.flipped = false-> 
-            match symbol.STransform.Rotation with 
-            | Degree0 | Degree180 -> 
-                (sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
-            | Degree90 ->
-                (sprintf "%f,%i %f,%i  %i,%i %i,%i" (float(w)*0.2) 0 (float(w)*0.8) 0 w h 0 h )
-            | Degree270 ->
-                (sprintf "%i,%i %i,%i  %f,%i %f,%i" 0 0 w 0 (float(w)*0.8) h (float(w)*0.2 ) h)
-        | Mux2 ->
-            match symbol.STransform. Rotation with
-            | Degree0 | Degree180 ->
-                (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
-            | Degree90 ->
-                (sprintf "%i,%i %i,%i %f,%i %f,%i" 0 0 w 0  (float(w)*0.8) h (float(w)*0.2)  h)
-            | Degree270 ->
-                (sprintf "%f,%i %f,%i %i,%i %i,%i" (float(w)*0.2) 0 (float(w)*0.8) 0 w h 0 h)
+        | Input _ -> 
+            match rotation with
+            | Degree0 -> sprintf $"0,0 0,{h} {float(w*4)/5.},{h} {w},{halfH} {float(w*4)/5.},0"
+            | Degree90 -> sprintf $"{halfW},0 0,{float(h)/5.} 0,{h} {w},{h} {w},{float(h)/5.}"
+            | Degree180 -> sprintf $"{float(w)/5.},0 0,{halfH} {float(w)/5.},{h} {w},{h} {w},0"
+            | Degree270 -> sprintf $"0,0 0,{float(4*h)/5.} {halfW},{h} {w},{float(4*h)/5.} {w},0"
+        | Output _ -> 
+            match rotation with
+            | Degree0 -> sprintf $"{float(w)/5.},0 0,{halfH} {float(w)/5.},{h} {w},{h} {w},0"
+            | Degree90 -> sprintf $"0,0 0,{float(4*h)/5.} {halfW},{h} {w},{float(4*h)/5.} {w},0"
+            | Degree180 -> sprintf $"0,0 0,{h} {float(w*4)/5.},{h} {w},{halfH} {float(w*4)/5.},0"
+            | Degree270 -> sprintf $"{halfW},0 0,{float(h)/5.} 0,{h} {w},{h} {w},{float(h)/5.}"
+
+        | Constant1 _ -> 
+            match rotation with
+            | Degree0 -> sprintf $"{w},{halfH} {halfW},{halfH} 0,{h} 0,0 {halfW},{halfH}"
+            | Degree90 -> sprintf $"{halfW},0 {halfW},{halfH} 0,{h} {w},{h} {halfW},{halfH}"
+            | Degree180 -> sprintf $"0,{halfH} {halfW},{halfH} {w},0 {w},{h} {halfW},{halfH}"
+            | Degree270 -> sprintf $"{halfW},{h} {halfW},{halfH} 0,0 {w},0 {halfW},{halfH}"      
+        
+        | IOLabel ->
+            match rotation with
+            | Degree0 | Degree180 -> sprintf $"{float(w)/3.},0 0,{halfH} {float(w)/3.},{h} {float(w*2)/3.},{h} {w},{halfH} {float(w*2)/3.},0"
+            | Degree90 | Degree270 -> sprintf $"{halfW},0 0,{float(h)/3.} 0,{float(2*h)/3.} {halfW},{h} {w},{float(h*2)/3.} {w},{float(h)/3.}"
+            //| Degree180 -> sprintf $"{float(w)/3.},0 0,{halfH} {float(w)/3.},{h} {float(w*2)/3.},{h} {w},{halfH} {float(w*2)/3.},0"
+            //| Degree270 -> sprintf $"{halfW},0 0,{float(h)/3.} 0,{float(2*h)/3.} {halfW},{h} {w},{float(h*2)/3.} {w},{float(h)/3.}"
+        | Viewer _ ->
+            match rotation with
+            | Degree0 -> sprintf $"{float(w)/5.},0 0,{halfH} {float(w)/5.},{h} {w},{h} {w},0"
+            | Degree90 -> sprintf $"0,0 0,{float(4*h)/5.} {halfW},{h} {w},{float(4*h)/5.} {w},0"
+            | Degree180 -> sprintf $"0,0 0,{h} {float(w*4)/5.},{h} {w},{halfH} {float(w*4)/5.},0"
+            | Degree270 -> sprintf $"{halfW},0 0,{float(h)/5.} 0,{h} {w},{h} {w},{float(h)/5.}"
+
+         
+        | MergeWires -> sprintf $"{halfW},{float(h)/6.} {halfW},{float(5*h)/6.}"
+        | SplitWire _ -> sprintf $"{halfW},{float(h)/6.} {halfW},{float(5*h)/6.}"
         // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
-        | BusSelection _ |BusCompare _ -> (sprintf "%i,%i %i,%i %f,%i %f,%f %i,%f %i,%f %f,%f %f,%i ")0 0 0 h (0.6*float(w)) h (0.8*float(w)) (0.7*float(h)) w (0.7*float(h)) w (0.3*float(h)) (0.8*float(w)) (0.3*float(h)) (0.6*float(w)) 0
-        | _ -> (sprintf "%i,%i %i,%i %i,%i %i,%i" 0 h w h w 0 0 0)
+        | Demux2 ->
+            match rotation with
+            | Degree0 -> sprintf $"0,{float(h)/5.} 0,{float(h)*0.8} {w},{h} {w},0"
+            | Degree90 -> sprintf $"0,0 {w},0 {float(w)*0.8},{h} {float(w)*0.2},{h}"
+            | Degree180 -> sprintf $"0,0 {w},{float(h)/5.} {w},{float(h)*0.8} 0,{h}"
+            | Degree270 -> sprintf $"{float(w)*0.2},0 {float(w)*0.8},0 {w},{h} 0,{h}"
+        | Mux2 ->
+            match rotation with 
+            | Degree0 -> sprintf $"0,0 {w},{float(h)/5.} {w},{float(h)*0.8} 0,{h}"
+            | Degree90 -> sprintf $"{float(w)*0.2},0 {float(w)*0.8},0 {w},{h} 0,{h}"               
+            | Degree180 -> sprintf $"0,{float(h)/5.} 0,{float(h)*0.8} {w},{h} {w},0"
+            | Degree270 -> sprintf $"0,0 {w},0 {float(w)*0.8},{h} {float(w)*0.2},{h}"
+
+        // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
+        // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
+
+        | BusSelection _ |BusCompare _ -> 
+            match rotation with 
+            | Degree0 -> sprintf $"0,0 0,{h} {0.6*float(w)},{h} {0.8*float(w)},{0.7*float(h)} {w},{0.7*float(h)} {w},{0.3*float(h)} {0.8*float(w)},{0.3*float(h)} {0.6*float(w)},0"
+            | Degree90 -> sprintf $""               
+            | Degree180 -> sprintf $"0,0 0,{h} {0.6*float(w)},{h} {0.8*float(w)},{0.7*float(h)} {w},{0.7*float(h)} {w},{0.3*float(h)} {0.8*float(w)},{0.3*float(h)} {0.6*float(w)},0"
+            | Degree270 -> sprintf $"0,0 0,{float(h)*0.6} {0.3*float(w)},{float(h)*0.8} {float(w)*0.3},{h} {float(w)*0.7},{h} {float(w)*0.7},{float(h)*0.8} {w},{float(h)*0.6} {w},0"
+        | _ -> sprintf $"0,{h} {w},{h} {w},0 0,0"
+    
+    
+
+
+
+
     let additions =       // Helper function to add certain characteristics on specific symbols (inverter, enables, clocks)
         match comp.Type with
-        | Constant1 (_,_,txt) -> (addHorizontalLine halfW w (float(halfH)) opacity @ addText {X = float(halfW-5); Y = float(h-8)} txt "middle" "normal" "12px")
+        //| Constant1 (_,_,txt) -> (addHorizontalLine halfW w (float(halfH)) opacity @ addText {X = float(halfW-5); Y = float(h-8)} txt "middle" "normal" "12px")
         | Nand | Nor | Xnor |Not -> (addInvertor w halfH colour opacity)
         | MergeWires -> 
             let lo, hi = 
