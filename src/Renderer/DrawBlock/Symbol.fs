@@ -711,6 +711,7 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
         | Input (x) -> (addText {X = float(w/2)-5.; Y = (float(h)/2.7)-3.} (title "" x) "middle" "normal" "12px")
         | Output (x) -> (addText {X = float(w/2); Y = (float(h)/2.7)-3.} (title "" x) "middle" "normal" "12px")
         | Viewer (x) -> (addText {X = float(w/2); Y = (float(h)/2.7)-1.25} (title "" x) "middle" "normal" "9px")
+        | _ when isClocked comp -> addClock {X = 0.; Y = h} colour opacity
         | _ -> []
 
     let outlineColour, strokeWidth =
@@ -1063,12 +1064,13 @@ let getCopiedSymbol model portId =
 /// ComponentIds at same index in both list 1 and list 2 need to be of the same ComponentType.
 /// CompIds1 need to be in model.CopiedSymbols.
 /// Assumes ports are in the same order in equivalent symbols
-let getEquivalentCopiedPorts (model: Model) (copiedIds: ComponentId list) (pastedIds: ComponentId list) (InputPortId copiedInputPort, OutputPortId copiedOutputPort) =
+(*let getEquivalentCopiedPorts (model: Model) (copiedIds: ComponentId list) (pastedIds: ComponentId list) (InputPortId copiedInputPort, OutputPortId copiedOutputPort) =
     let getPastedSymbol copiedPort =
         ComponentId (getPortHostId model copiedPort)
         |> tryGetPastedEl copiedIds pastedIds
         |> Option.map (fun id -> model.Symbols[id])
-
+    printfn $"{model.Ports}"
+    printfn $"{copiedInputPort}"
     let copiedInSymbol = getCopiedSymbol model copiedInputPort
     let copiedOutSymbol = getCopiedSymbol model copiedOutputPort
     let copiedInPortIds, copiedOutPortIds = getPortIds copiedInSymbol copiedOutSymbol
@@ -1081,7 +1083,37 @@ let getEquivalentCopiedPorts (model: Model) (copiedIds: ComponentId list) (paste
         let equivInPorts = tryGetPastedEl copiedInPortIds pastedInPortIds copiedInputPort
         let equivOutPorts = tryGetPastedEl copiedOutPortIds pastedOutPortIds copiedOutputPort 
         mergeOptions (equivInPorts, equivOutPorts)
-    | _ -> None
+    | _ -> None*)
+let getEquivalentCopiedPorts (model: Model) (copiedIds) (pastedIds) (InputPortId copiedInputPort, OutputPortId copiedOutputPort) =
+    let findEquivalentPorts compId1 compId2 =
+        let copiedComponent = model.CopiedSymbols[compId1].Component
+        let pastedComponent = model.Symbols[compId2].Component // TODO: These can be different for an output gate for some reason.
+        
+        let tryFindEquivalentPort (copiedPorts: Port list) (pastedPorts: Port list) targetPort =
+            if copiedPorts.Length = 0 || pastedPorts.Length = 0
+            then None
+            else
+                match List.tryFindIndex ( fun (port: Port) -> port.Id = targetPort ) copiedPorts with
+                | Some portIndex -> 
+
+                    Some pastedPorts[portIndex].Id // Get the equivalent port in pastedPorts. Assumes ports at the same index are the same (should be the case unless copy pasting went wrong).
+                | _ -> None
+        
+        let pastedInputPortId = tryFindEquivalentPort copiedComponent.InputPorts pastedComponent.InputPorts copiedInputPort
+        let pastedOutputPortId = tryFindEquivalentPort copiedComponent.OutputPorts pastedComponent.OutputPorts copiedOutputPort
+    
+        pastedInputPortId, pastedOutputPortId
+        
+    let foundPastedPorts =
+        List.zip copiedIds pastedIds
+        |> List.map (fun (compId1, compId2) -> findEquivalentPorts compId1 compId2)
+    
+    let foundPastedInputPort = List.collect (function | Some a, _ -> [a] | _ -> []) foundPastedPorts
+    let foundPastedOutputPort = List.collect (function | _, Some b -> [b] | _ -> []) foundPastedPorts
+    
+    match foundPastedInputPort, foundPastedOutputPort with 
+    | [pastedInputPort], [pastedOutputPort] -> Some (pastedInputPort, pastedOutputPort) 
+    | _ -> None // If either of source or target component of the wire was not copied then we discard the wire
 
 /// Creates and adds a symbol into model, returns the updated model and the component id
 let addSymbol (model: Model) pos compType lbl =
@@ -1322,6 +1354,7 @@ let inline createSymbol prevSymbols comp =
                 comp'.H,comp'.W
             else
                 comp.H, comp.W
+        printfn $"clocked: {isClocked comp}"
         prevSymbols
         |> Map.add (ComponentId comp.Id)
             { Pos = xyPos
@@ -1588,15 +1621,16 @@ let updatePortPos (sym:Symbol) (pos:XYPos) (portId: string) : Symbol =
             let oldEdge = oldPortOrientation[portId]
             let newPortIdx = getPosIndex sym pos edge
             let oldIdx = oldPortOrder[oldEdge] |> List.findIndex (fun el -> el = portId)
-        
-            let newPortIdx' =
-                if edge = oldEdge && oldIdx < newPortIdx then newPortIdx - 1
-                else if newPortIdx > oldPortOrder[edge].Length then oldPortOrder[edge].Length
-                else newPortIdx
-            printfn $"{newPortIdx'}"
+            
             let oldPortOrder' =
                 oldPortOrder 
                 |> Map.add oldEdge (oldPortOrder[oldEdge] |> List.filter (fun el -> el <> portId))
+            let newPortIdx' =
+                if newPortIdx > oldPortOrder'[edge].Length then oldPortOrder'[edge].Length
+                else if edge = oldEdge && oldIdx < newPortIdx then newPortIdx - 1
+                else newPortIdx
+            printfn $"{(newPortIdx, newPortIdx')}"
+            
             let newPortOrder = 
                 oldPortOrder'
                 |> Map.add edge (oldPortOrder'[edge] |> List.insertAt newPortIdx' portId) // to do then get index and insert at index
@@ -1719,26 +1753,28 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
         let newSymbol = updatePortPos oldSymbol pos portId
         {model with Symbols = Map.add newSymbol.Id newSymbol model.Symbols}, Cmd.none
     | SaveSymbols -> // want to add this message later, currently not used
-        let getSymbolInfo symbol = 
-            { STransform = symbol.STransform; PortOrientation = symbol.PortOrientation; PortOrder = symbol.PortOrder }
+        let getSymbolInfo symbol =
+            { STransform = symbol.STransform
+              PortOrientation = symbol.PortOrientation
+              PortOrder = symbol.PortOrder }
         //need to store STransform in the component for reloading and stuffs
-        
-        let storeSymbolInfo _ symbol =
-            {
-                symbol with Component =  {   symbol.Component with SymbolInfo = getSymbolInfo symbol }
-            }
-        let newSymbols = Map.map storeSymbolInfo model.Symbols
-        {model with Symbols = newSymbols} , Cmd.none
 
+        let storeSymbolInfo _ symbol =
+            { symbol with
+                Component =
+                    { symbol.Component with
+                        SymbolInfo = getSymbolInfo symbol
+                        X = int (symbol.Pos.X)
+                        Y = int (symbol.Pos.Y) } }
+
+        let newSymbols = Map.map storeSymbolInfo model.Symbols
+        { model with Symbols = newSymbols }, Cmd.none
 
 
 // ----------------------interface to Issie----------------------------- //
 let extractComponent (symModel: Model) (sId:ComponentId) : Component = 
     let symbol = symModel.Symbols[sId]
-    let getSymbolInfo symbol = 
-        { STransform = symbol.STransform; PortOrientation = symbol.PortOrientation; PortOrder = symbol.PortOrder }
-    let h,w = getHAndW symbol
-    {symbol.Component with SymbolInfo = getSymbolInfo symbol; X =int(symbol.Pos.X); Y = int(symbol.Pos.Y) }
+    symbol.Component
 
 let extractComponents (symModel: Model) : Component list =
     symModel.Symbols

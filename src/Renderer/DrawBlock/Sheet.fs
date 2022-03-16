@@ -122,6 +122,7 @@ type Msg =
     | Flip
     | WireType of WireTypeMsg
     | MovePort of MouseT //different from mousemsg because ctrl pressed too
+    | SaveSymbols
 
 
 // ------------------ Helper Functions that need to be before the Model type --------------------------- //
@@ -1083,6 +1084,8 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             symbolCmd (Symbol.Flip model.SelectedComponents) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
             wireCmd (BusWire.Rotate model.SelectedComponents)
         ]
+    | SaveSymbols ->
+        model, symbolCmd Symbol.SaveSymbols
     | WireType Jump ->
         model,
         Cmd.batch [
