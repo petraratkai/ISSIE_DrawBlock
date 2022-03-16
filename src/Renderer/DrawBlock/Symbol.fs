@@ -532,7 +532,8 @@ let private portText (pos: XYPos) name edge =
     let align = 
             match edge with
             | Right -> "end"
-            | _ -> "start"
+            | Left -> "start"
+            | _ -> "middle"
     (addText pos' name align "normal" "12px")
 
 /// Print the name of each port 
