@@ -125,6 +125,8 @@ let getPrefix compType =
     match compType with
     | Not | And | Or | Xor | Nand | Nor | Xnor -> "G"
     | Mux2 -> "MUX"
+    | Mux4 -> "MUX"
+    | Mux8 -> "MUX"
     | Demux2 -> "DM"
     | NbitsAdder _ -> "A"
     | NbitsXor _ -> "XOR"
@@ -178,14 +180,14 @@ let portNames (componentType:ComponentType)  = //(input port names, output port 
     | DFF -> (["D"]@["Q"])
     | DFFE -> (["D";"EN"]@["Q"])
     | Mux2 -> (["0"; "1";"SEL"]@["OUT"])
+    | Mux4 -> (["0"; "1"; "2"; "3" ;"SEL"]@["OUT"])
+    | Mux8 -> (["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7";"SEL"]@["OUT"])
     | Demux2 -> (["IN" ; "SEL"]@["0"; "1"])
     | NbitsXor _ -> (["P"; "Q"]@ ["Out"])
     | Custom x -> (List.map fst x.InputLabels)@ (List.map fst x.OutputLabels)
-    |_ -> ([]@[])
-   // |Mux4 -> (["0"; "1"; "2"; "3" ;"SEL"],["OUT"])
+    | _ -> ([]@[])
    // |Demux4 -> (["IN"; "SEL"],["0"; "1";"2"; "3";])
    // |Demux8 -> (["IN"; "SEL"],["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7"])
-   // |Mux8 -> (["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7";"SEL"],["OUT"])
    // |_ -> ([],[])
    // EXTENSION: Extra Components made that are not currently in Issie. Can be extended later by using this code as it is .
 
@@ -258,6 +260,10 @@ let initPortOrientation (comp: Component) =
     match comp.Type with //need to put some ports to different edges
     | Mux2 -> //need to remove select port from left and move to bottom
         movePortToBottom res 2
+    | Mux4 -> //need to remove select port from left and move to right
+        movePortToBottom res 4
+    | Mux8 ->
+        movePortToBottom res 8
     | NbitsAdder _ -> 
         movePortToBottom res 0
     | DFFE ->
@@ -359,8 +365,8 @@ let makeComponent (pos: XYPos) (comptype: ComponentType) (id:string) (label:stri
         | MergeWires -> ( 2 , 1, 2*GridSize ,  2*GridSize) 
         | SplitWire (a) ->(  1 , 2 , 2*GridSize ,  2*GridSize) 
         | Mux2 -> ( 3  , 1, 3*GridSize ,  2*GridSize) 
-        // EXTENSION:    | Mux4 -> ( 5  , 1, 5*GridSize ,  2*GridSize)   
-        // EXTENSION:    | Mux8 -> ( 9  , 1, 7*GridSize ,  2*GridSize) 
+        | Mux4 -> ( 5  , 1, 5*GridSize ,  2*GridSize)   
+        | Mux8 -> ( 9  , 1, 7*GridSize ,  2*GridSize) 
         | Demux2 ->( 2  , 2, 3*GridSize ,  2*GridSize) 
         // EXTENSION:   | Demux4 -> ( 2  , 4, 150 ,  50) 
         // EXTENSION:    | Demux8 -> ( 2  , 8, 200 ,  50) 
@@ -451,10 +457,10 @@ let getPortBaseOffset (sym: Symbol) (side: Edge): XYPos=
 /// Returns true if an edge has the select port of a mux
 let isMuxSel (sym:Symbol) (side:Edge): bool =
         match (sym.Component.Type, sym.STransform.Rotation, side) with
-        | (Mux2, Degree0, Bottom ) | (Demux2, Degree0, Bottom )-> true
-        | (Mux2,Degree90, Right) | (Demux2,Degree90, Right)-> true
-        | (Mux2, Degree180, Top) | (Demux2, Degree180, Top) -> true
-        | (Mux2, Degree270, Left) | (Demux2, Degree270, Left)-> true
+        | (Mux2, Degree0, Bottom ) | (Mux4, Degree0, Bottom ) | (Mux8, Degree0, Bottom ) | (Demux2, Degree0, Bottom )-> true
+        | (Mux2,Degree90, Right) | (Mux4, Degree90, Right) | (Mux8, Degree90, Right) | (Demux2,Degree90, Right)-> true
+        | (Mux2, Degree180, Top) | (Mux4, Degree180, Top) | (Mux8, Degree180, Top) | (Demux2, Degree180, Top) -> true
+        | (Mux2, Degree270, Left) | (Mux4, Degree270, Left) | (Mux8, Degree270, Left) | (Demux2, Degree270, Left)-> true
         | _ -> false
 
 
@@ -650,7 +656,6 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
          
         | MergeWires -> sprintf $"{halfW},{float(h)/6.} {halfW},{float(5*h)/6.}"
         | SplitWire _ -> sprintf $"{halfW},{float(h)/6.} {halfW},{float(5*h)/6.}"
-        // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
         | Demux2 ->
             match rotation with
@@ -658,7 +663,7 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
             | Degree90 -> sprintf $"0,0 {w},0 {float(w)*0.8},{h} {float(w)*0.2},{h}"
             | Degree180 -> sprintf $"0,0 {w},{float(h)/5.} {w},{float(h)*0.8} 0,{h}"
             | Degree270 -> sprintf $"{float(w)*0.2},0 {float(w)*0.8},0 {w},{h} 0,{h}"
-        | Mux2 ->
+        | Mux2 | Mux4 | Mux8 ->
             match rotation with 
             | Degree0 -> sprintf $"0,0 {w},{float(h)/5.} {w},{float(h)*0.8} 0,{h}"
             | Degree90 -> sprintf $"{float(w)*0.2},0 {float(w)*0.8},0 {w},{h} 0,{h}"               
