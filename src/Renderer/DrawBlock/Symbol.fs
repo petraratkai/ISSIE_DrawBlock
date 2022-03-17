@@ -514,12 +514,13 @@ let private addText (pos: XYPos) name alignment weight size =
     [makeText pos.X pos.Y name text]
 
 /// to deal with additional component text such as label / symbols like &,1,=1
-let private addComponentLabel height width yOffset name weight size rotation = 
+let private addComponentLabel height width name weight size rotation = 
     match rotation with 
-    | Degree0 -> addText {X = (float width/2.); Y = yOffset} name "middle" weight size
-    | Degree270 -> addText {X = float width + 5.; Y = float height/2. + yOffset} name "start" weight size
-    | Degree180 -> addText {X = float width/2.; Y = float height - yOffset - 15.} name "middle" weight size
-    | Degree90 -> addText {X = -5.; Y = float height/2. + yOffset} name "end" weight size
+    | Degree0 -> addText {X = (float width/2.); Y = -20.} name "middle" weight size
+    | Degree270 -> addText {X = float width + 5.; Y = float height/2. - 7.} name "start" weight size
+    | Degree180 -> addText {X = float width/2.; Y = float height + 5.} name "middle" weight size
+    | Degree90 -> addText {X = -5.; Y = float height/2. - 7.} name "end" weight size
+
 
 /// Generate circles on ports
 let private portCircles (pos: XYPos) = 
@@ -529,10 +530,10 @@ let private portCircles (pos: XYPos) =
 let private portText (pos: XYPos) name edge =
     let pos' = 
             match edge with 
-            | Left -> pos + {X = 5.; Y = -5.}
-            | Top -> pos + {X = -5.; Y = 6.}
-            | Right -> pos + {X = -4.; Y = -8.}
-            | Bottom -> pos + {X = -5.; Y = -15.}
+            | Left -> pos + {X = 5.; Y = -6.}
+            | Top -> pos + {X = 0.; Y = 5.}
+            | Right -> pos + {X = -5.; Y = -6.}
+            | Bottom -> pos + {X = 0.; Y = -15.}
 
     let align = 
             match edge with
@@ -593,6 +594,30 @@ let addHorizontalColorLine posX1 posX2 posY opacity (color:string) = // TODO: Li
     [makePolygon points {defaultPolygon with Fill = "olcolor"; Stroke=outlineColor; StrokeWidth = "2.0"; FillOpacity = opacity}]
 
 
+let rotatePoints (points) (height:float) (width:float) (rotation:Rotation) : string = 
+    let centre = {X = width / 2.; Y = height / 2.}
+    let offset = 
+            match rotation with
+            | Degree0 | Degree180 -> centre
+            | Degree90 | Degree270 -> {X = centre.Y; Y = centre.X}
+
+    let relativeToCentre = List.map (fun x -> x - centre)
+    let rotateAboutCentre pointsIn = 
+        match rotation with
+        | Degree0   -> pointsIn
+        | Degree270 -> List.map (fun (pos:XYPos) -> {X = -pos.Y ; Y = pos.X}) pointsIn
+        | Degree180 -> List.map (fun (pos:XYPos) -> {X = -pos.X ; Y = -pos.Y}) pointsIn
+        | Degree90  -> List.map (fun (pos:XYPos) -> {X = pos.Y ; Y = -pos.X}) pointsIn
+
+    let relativeToTopLeft = List.map (fun x -> x + offset )
+    let toString = List.fold (fun state (pos:XYPos) -> state + (sprintf $" {pos.X},{pos.Y}")) "" 
+
+    points
+    |> relativeToCentre
+    |> rotateAboutCentre
+    |> relativeToTopLeft
+    |> toString
+
 
 /// --------------------------------------- SYMBOL DRAWING ------------------------------------------------------ ///   
 let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float)= 
@@ -600,8 +625,9 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
     let h,w = getHAndW symbol
     let halfW = w/2
     let halfH = h/2
+    let H = float comp.H
+    let W = float comp.W
     let rotation = symbol.STransform.Rotation
-
 
     let mergeSplitLine posX1 posX2 posY msb lsb =
         let text = 
@@ -609,81 +635,42 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
             | _, false -> ""
             | true, _ -> sprintf $"({msb})"
             | false, _ -> sprintf $"({msb}:{lsb})"
-        addHorizontalColorLine posX1 posX2 (posY*float(h)) opacity colour @
+        //addHorizontalColorLine posX1 posX2 (posY*float(h)) opacity colour @
         addText {X = float((posX1 + posX2)/2); Y = (posY*float(h)-11.)} text "middle" "bold" "9px"
 
     let points =            // Points that specify each symbol 
         match comp.Type with
         | Input _ -> 
-            match rotation with
-            | Degree0 -> sprintf $"0,0 0,{h} {float(w*4)/5.},{h} {w},{halfH} {float(w*4)/5.},0"
-            | Degree90 -> sprintf $"{halfW},0 0,{float(h)/5.} 0,{h} {w},{h} {w},{float(h)/5.}"
-            | Degree180 -> sprintf $"{float(w)/5.},0 0,{halfH} {float(w)/5.},{h} {w},{h} {w},0"
-            | Degree270 -> sprintf $"0,0 0,{float(4*h)/5.} {halfW},{h} {w},{float(4*h)/5.} {w},0"
+            rotatePoints [{X=0;Y=0};{X=0;Y=H};{X=W*4./5.;Y=H};{X=W;Y=H/2.};{X=W*0.8;Y=0}] H W rotation
         | Output _ -> 
-            match rotation with
-            | Degree0 -> sprintf $"{float(w)/5.},0 0,{halfH} {float(w)/5.},{h} {w},{h} {w},0"
-            | Degree90 -> sprintf $"0,0 0,{float(4*h)/5.} {halfW},{h} {w},{float(4*h)/5.} {w},0"
-            | Degree180 -> sprintf $"0,0 0,{h} {float(w*4)/5.},{h} {w},{halfH} {float(w*4)/5.},0"
-            | Degree270 -> sprintf $"{halfW},0 0,{float(h)/5.} 0,{h} {w},{h} {w},{float(h)/5.}"
-
+            rotatePoints [{X=W/5.;Y=0};{X=0;Y=H/2.};{X=W/5.;Y=H};{X=W;Y=H};{X=W;Y=0}] H W rotation 
         | Constant1 _ -> 
-            match rotation with
-            | Degree0 -> sprintf $"{w},{halfH} {halfW},{halfH} 0,{h} 0,0 {halfW},{halfH}"
-            | Degree90 -> sprintf $"{halfW},0 {halfW},{halfH} 0,{h} {w},{h} {halfW},{halfH}"
-            | Degree180 -> sprintf $"0,{halfH} {halfW},{halfH} {w},0 {w},{h} {halfW},{halfH}"
-            | Degree270 -> sprintf $"{halfW},{h} {halfW},{halfH} 0,0 {w},0 {halfW},{halfH}"      
-        
+            rotatePoints [{X=W;Y=H/2.};{X=W/2.;Y=H/2.};{X=0;Y=H};{X=0;Y=0};{X=W/2.;Y=H/2.}] H W rotation 
         | IOLabel ->
-            match rotation with
-            | Degree0 | Degree180 -> sprintf $"{float(w)/3.},0 0,{halfH} {float(w)/3.},{h} {float(w*2)/3.},{h} {w},{halfH} {float(w*2)/3.},0"
-            | Degree90 | Degree270 -> sprintf $"{halfW},0 0,{float(h)/3.} 0,{float(2*h)/3.} {halfW},{h} {w},{float(h*2)/3.} {w},{float(h)/3.}"
-            //| Degree180 -> sprintf $"{float(w)/3.},0 0,{halfH} {float(w)/3.},{h} {float(w*2)/3.},{h} {w},{halfH} {float(w*2)/3.},0"
-            //| Degree270 -> sprintf $"{halfW},0 0,{float(h)/3.} 0,{float(2*h)/3.} {halfW},{h} {w},{float(h*2)/3.} {w},{float(h)/3.}"
+            rotatePoints [{X=W/3.;Y=0};{X=0;Y=H/2.};{X=W/3.;Y=H};{X=W*0.66;Y=H};{X=W;Y=H/2.};{X=W*0.66;Y=0}] H W rotation
         | Viewer _ ->
-            match rotation with
-            | Degree0 -> sprintf $"{float(w)/5.},0 0,{halfH} {float(w)/5.},{h} {w},{h} {w},0"
-            | Degree90 -> sprintf $"0,0 0,{float(4*h)/5.} {halfW},{h} {w},{float(4*h)/5.} {w},0"
-            | Degree180 -> sprintf $"0,0 0,{h} {float(w*4)/5.},{h} {w},{halfH} {float(w*4)/5.},0"
-            | Degree270 -> sprintf $"{halfW},0 0,{float(h)/5.} 0,{h} {w},{h} {w},{float(h)/5.}"
+            rotatePoints [{X=W/5.;Y=0};{X=0;Y=H/2.};{X=W/5.;Y=H};{X=W;Y=H};{X=W;Y=0}] H W rotation
+        | MergeWires -> 
+            rotatePoints [{X=0;Y=H/6.};{X=W/2.;Y=H/6.};{X=W/2.;Y=H/2.};{X=W;Y=H/2.};{X=W/2.;Y=H/2.};{X=W/2.;Y=5.*H/6.};{X=0;Y=5.*H/6.};{X=W/2.;Y=5.*H/6.};{X=W/2.;Y=H/6.}] H W rotation
+            //sprintf $"{halfW},{float(h)/6.} {halfW},{float(5*h)/6.}"
+        | SplitWire _ -> 
+            rotatePoints [{X=W;Y=H/6.};{X=W/2.;Y=H/6.};{X=W/2.;Y=H/2.};{X=0;Y=H/2.};{X=W/2.;Y=H/2.};{X=W/2.;Y=5.*H/6.};{X=W;Y=5.*H/6.};{X=W/2.;Y=5.*H/6.};{X=W/2.;Y=H/6.}] H W rotation
+            //sprintf $"{halfW},{float(h)/6.} {halfW},{float(5*h)/6.}"
 
-         
-        | MergeWires -> sprintf $"{halfW},{float(h)/6.} {halfW},{float(5*h)/6.}"
-        | SplitWire _ -> sprintf $"{halfW},{float(h)/6.} {halfW},{float(5*h)/6.}"
         // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
         | Demux2 ->
-            match rotation with
-            | Degree0 -> sprintf $"0,{float(h)/5.} 0,{float(h)*0.8} {w},{h} {w},0"
-            | Degree90 -> sprintf $"0,0 {w},0 {float(w)*0.8},{h} {float(w)*0.2},{h}"
-            | Degree180 -> sprintf $"0,0 {w},{float(h)/5.} {w},{float(h)*0.8} 0,{h}"
-            | Degree270 -> sprintf $"{float(w)*0.2},0 {float(w)*0.8},0 {w},{h} 0,{h}"
+            rotatePoints [{X=0;Y=H/5.};{X=0;Y=H*0.8};{X=W;Y=H};{X=W;Y=0}] H W rotation
         | Mux2 ->
-            match rotation with 
-            | Degree0 -> sprintf $"0,0 {w},{float(h)/5.} {w},{float(h)*0.8} 0,{h}"
-            | Degree90 -> sprintf $"{float(w)*0.2},0 {float(w)*0.8},0 {w},{h} 0,{h}"               
-            | Degree180 -> sprintf $"0,{float(h)/5.} 0,{float(h)*0.8} {w},{h} {w},0"
-            | Degree270 -> sprintf $"0,0 {w},0 {float(w)*0.8},{h} {float(w)*0.2},{h}"
-
+            rotatePoints [{X=0;Y=0};{X=0;Y=H};{X=W;Y=H*0.8};{X=W;Y=H/5.}] H W rotation
         // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
         // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
-
         | BusSelection _ |BusCompare _ -> 
-            match rotation with 
-            | Degree0 -> sprintf $"0,0 0,{h} {0.6*float(w)},{h} {0.8*float(w)},{0.7*float(h)} {w},{0.7*float(h)} {w},{0.3*float(h)} {0.8*float(w)},{0.3*float(h)} {0.6*float(w)},0"
-            | Degree90 -> sprintf $""               
-            | Degree180 -> sprintf $"0,0 0,{h} {0.6*float(w)},{h} {0.8*float(w)},{0.7*float(h)} {w},{0.7*float(h)} {w},{0.3*float(h)} {0.8*float(w)},{0.3*float(h)} {0.6*float(w)},0"
-            | Degree270 -> sprintf $"0,0 0,{float(h)*0.6} {0.3*float(w)},{float(h)*0.8} {float(w)*0.3},{h} {float(w)*0.7},{h} {float(w)*0.7},{float(h)*0.8} {w},{float(h)*0.6} {w},0"
+            rotatePoints [{X=0;Y=0};{X=0;Y=H};{X=W*0.6;Y=H};{X=W*0.8;Y=H*0.7};{X=W;Y=H*0.7};{X=W;Y =H*0.3};{X=W*0.8;Y=H*0.3};{X=W*0.6;Y=0}] H W rotation      
         | _ -> sprintf $"0,{h} {w},{h} {w},0 0,0"
-    
-    
-
-
-
 
     let additions =       // Helper function to add certain characteristics on specific symbols (inverter, enables, clocks)
         match comp.Type with
-        //| Constant1 (_,_,txt) -> (addHorizontalLine halfW w (float(halfH)) opacity @ addText {X = float(halfW-5); Y = float(h-8)} txt "middle" "normal" "12px")
         | Nand | Nor | Xnor |Not -> (addInvertor w halfH colour opacity)
         | MergeWires -> 
             let lo, hi = 
@@ -724,8 +711,8 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
     (drawPorts comp.OutputPorts showOutputPorts symbol)
     |> List.append (drawPorts comp.InputPorts showInputPorts symbol)
     |> List.append (drawPortsText (comp.InputPorts @ comp.OutputPorts) (portNames comp.Type) symbol)
-    |> List.append (addComponentLabel h w 5. (getComponentLabel comp.Type) "bold" "14px" symbol.STransform.Rotation) 
-    |> List.append (addComponentLabel h w -20. comp.Label  "normal" "16px" symbol.STransform.Rotation)
+    |> List.append (addText {X = halfW; Y = float halfH - 7.} (getComponentLabel comp.Type) "middle" "bold" "14px")
+    |> List.append (addComponentLabel h w comp.Label "normal" "16px" symbol.STransform.Rotation)
     |> List.append (additions)
     |> List.append (createBiColorPolygon points colour outlineColour opacity strokeWidth)
 
