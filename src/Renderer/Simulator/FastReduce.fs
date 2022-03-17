@@ -263,6 +263,42 @@ let fastReduce (maxArraySize: int) (numStep: int) (isClockedReduction: bool) (co
 
         put0 out
         putW 0 bits0.Width
+    | Mux4 ->
+        let bits0, bits1, bits2, bits3, bitSelect = ins 0, ins 1, ins 2, ins 3, ins 4
+#if ASSERT
+        assertThat (bits0.Width = bits1.Width)
+        <| sprintf "Mux2 %s received two inputs with different widths: (%A) <> (%A)" comp.FullName bits0 bits1
+#endif
+        
+        let out =
+            match extractBit bitSelect with
+            | 0u -> bits0
+            | 1u -> bits1
+            | 2u -> bits2 
+            | 3u -> bits3
+
+        put0 out
+        putW 0 bits0.Width
+    | Mux8 ->
+        let bits0, bits1, bits2, bits3, bits4, bits5, bits6, bits7, bitSelect = ins 0, ins 1, ins 2, ins 3, ins 4, ins 5, ins 6, ins 7, ins 8
+#if ASSERT
+        assertThat (bits0.Width = bits1.Width)
+        <| sprintf "Mux2 %s received two inputs with different widths: (%A) <> (%A)" comp.FullName bits0 bits1
+#endif
+
+        let out =
+            match extractBit bitSelect with
+            | 0u -> bits0
+            | 1u -> bits1
+            | 2u -> bits2 
+            | 3u -> bits3
+            | 4u -> bits4
+            | 5u -> bits5
+            | 6u -> bits6 
+            | 7u -> bits7
+
+        put0 out
+        putW 0 bits0.Width
     | Demux2 ->
         let bitsIn, bitSelect = ins 0, ins 1
         let zeros = convertIntToFastData bitsIn.Width 0u

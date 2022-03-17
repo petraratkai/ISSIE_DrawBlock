@@ -530,7 +530,7 @@ let makeLoadedComponentFromCanvasData (canvas: CanvasState) filePath timeStamp w
             CanvasState = canvas
             InputLabels = inputs
             OutputLabels = outputs
-            clocked = false
+            clocked = canvasStateClocked canvas
         }
     ldc, ramChanges
 
