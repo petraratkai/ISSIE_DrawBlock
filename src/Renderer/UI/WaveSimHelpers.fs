@@ -623,7 +623,7 @@ let rec private findName (compIds: ComponentId Set) (sd: SimulationData) (net: N
                 [ { LabName = compLbl; BitLimits = 0, 0 } ] 
             | Input w | Output w | Constant1(w, _,_) | Constant(w,_) | Viewer w -> 
                 [ { LabName = compLbl; BitLimits = w - 1, 0 } ] 
-            | Demux2 -> 
+            | Demux2 | Demux4 -> 
                 [ { LabName = compLbl + "." + string outPortInt; BitLimits = 0, 0 } ]
             | NbitsXor w -> 
                 [ { LabName = compLbl; BitLimits = w - 1, 0 } ]

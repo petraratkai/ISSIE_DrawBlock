@@ -314,6 +314,32 @@ let fastReduce (maxArraySize: int) (numStep: int) (isClockedReduction: bool) (co
         put1 out1
         putW 0 w
         putW 1 w
+    | Demux4 ->
+        let bitsIn, bitSelect = ins 0, ins 1
+        let zeros = convertIntToFastData bitsIn.Width 0u
+
+        let out0, out1 =
+            if (extractBit bitSelect) = 0u then
+                bitsIn, zeros
+            else
+                zeros, bitsIn
+        
+        let out0, out1, out2, out3 = 
+            match extractBit bitSelect with
+            | 0u -> bitsIn, zeros, zeros, zeros
+            | 1u -> zeros, bitsIn, zeros, zeros
+            | 2u -> zeros, zeros, bitsIn, zeros
+            | 3u -> zeros, zeros, zeros, bitsIn
+
+        let w = bitsIn.Width
+        put0 out0
+        put1 out1
+        put2 out2
+        put3 out3
+        putW 0 w
+        putW 1 w
+        putW 2 w
+        putW 3 w
     | NbitsAdder numberOfBits ->
         let cin, A, B = ins 0, ins 1, ins 2
 
