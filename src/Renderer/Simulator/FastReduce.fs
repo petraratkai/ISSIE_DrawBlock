@@ -152,6 +152,18 @@ let fastReduce (maxArraySize: int) (numStep: int) (isClockedReduction: bool) (co
     /// Write current step output data for output port 4
     let inline put4 fd =
         comp.PutOutput(simStep) (OutputPortNumber 4) fd
+    
+    /// Write current step output data for output port 4
+    let inline put5 fd =
+        comp.PutOutput(simStep) (OutputPortNumber 5) fd
+    
+    /// Write current step output data for output port 4
+    let inline put6 fd =
+        comp.PutOutput(simStep) (OutputPortNumber 6) fd
+
+    /// Write current step output data for output port 4
+    let inline put7 fd =
+        comp.PutOutput(simStep) (OutputPortNumber 7) fd
 
     /// Write current State (used only for RAMs, DFFs and registers use previous cycle output as state)
     let inline putState state =
@@ -317,12 +329,6 @@ let fastReduce (maxArraySize: int) (numStep: int) (isClockedReduction: bool) (co
     | Demux4 ->
         let bitsIn, bitSelect = ins 0, ins 1
         let zeros = convertIntToFastData bitsIn.Width 0u
-
-        let out0, out1 =
-            if (extractBit bitSelect) = 0u then
-                bitsIn, zeros
-            else
-                zeros, bitsIn
         
         let out0, out1, out2, out3 = 
             match extractBit bitSelect with
@@ -340,6 +346,38 @@ let fastReduce (maxArraySize: int) (numStep: int) (isClockedReduction: bool) (co
         putW 1 w
         putW 2 w
         putW 3 w
+    | Demux8 ->
+        let bitsIn, bitSelect = ins 0, ins 1
+        let zeros = convertIntToFastData bitsIn.Width 0u
+        
+        let out0, out1, out2, out3, out4, out5, out6, out7 = 
+            match extractBit bitSelect with
+            | 0u -> bitsIn, zeros, zeros, zeros, zeros, zeros, zeros, zeros
+            | 1u -> zeros, bitsIn, zeros, zeros, zeros, zeros, zeros, zeros
+            | 2u -> zeros, zeros, bitsIn, zeros, zeros, zeros, zeros, zeros
+            | 3u -> zeros, zeros, zeros, bitsIn, zeros, zeros, zeros, zeros
+            | 4u -> zeros, zeros, zeros, zeros, bitsIn, zeros, zeros, zeros
+            | 5u -> zeros, zeros, zeros, zeros, zeros, bitsIn, zeros, zeros
+            | 6u -> zeros, zeros, zeros, zeros, zeros, zeros, bitsIn, zeros
+            | 7u -> zeros, zeros, zeros, zeros, zeros, zeros, zeros, bitsIn
+
+        let w = bitsIn.Width
+        put0 out0
+        put1 out1
+        put2 out2
+        put3 out3
+        put4 out4
+        put5 out5
+        put6 out6
+        put7 out7
+        putW 0 w
+        putW 1 w
+        putW 2 w
+        putW 3 w
+        putW 4 w
+        putW 5 w
+        putW 6 w
+        putW 7 w
     | NbitsAdder numberOfBits ->
         let cin, A, B = ins 0, ins 1, ins 2
 

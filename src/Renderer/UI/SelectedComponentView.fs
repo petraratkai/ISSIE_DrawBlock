@@ -296,6 +296,7 @@ let private makeDescription (comp:Component) model dispatch =
     | Mux8 -> div [] [ str "Multiplexer with eight inputs and one output." ]
     | Demux2 -> div [] [ str "Demultiplexer with one input and two outputs." ]
     | Demux4 -> div [] [ str "Demultiplexer with one input and four outputs." ]
+    | Demux8 -> div [] [ str "Demultiplexer with one input and eight outputs." ]
     | MergeWires -> div [] [ str "Merge two wires of width n and m into a single wire of width n+m." ]
     | SplitWire _ -> div [] [ str "Split a wire of width n+m into two wires of width n and m."]
     | NbitsAdder numberOfBits -> div [] [ str <| sprintf "%d bit(s) adder." numberOfBits ]
