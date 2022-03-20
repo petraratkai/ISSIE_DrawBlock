@@ -568,10 +568,6 @@ let createBiColorPolygon points colour strokeColor opacity strokeWidth=
     else   
         [makePolygon points {defaultPolygon with Fill = colour; FillOpacity = opacity; StrokeWidth = strokeWidth}]
 
-let addInvertor posX posY colour opacity =
-    let points = sprintf $"{posX},{posY},{posX+9.},{posY},{posX},{posY-8.}"
-    createPolygon points colour opacity
-
 let addClock (pos: XYPos) colour opacity =
     let points = sprintf $"{pos.X},{pos.Y-1.},{pos.X+8.},{pos.Y-7.},{pos.X},{pos.Y-13.}"
     createPolygon points colour opacity
@@ -593,9 +589,9 @@ let addHorizontalColorLine posX1 posX2 posY opacity (color:string) = // TODO: Li
     let outlineColor = outlineColor color
     [makePolygon points {defaultPolygon with Fill = "olcolor"; Stroke=outlineColor; StrokeWidth = "2.0"; FillOpacity = opacity}]
 
-
-let rotatePoints (points) (height:float) (width:float) (rotation:Rotation) : string = 
-    let centre = {X = width / 2.; Y = height / 2.}
+/// Takes points, height and width of original shape and returns the points for it given a rotation.
+let rotatePoints (points) (centre:XYPos) (rotation:Rotation) : string = 
+    //let centre = {X = width / 2.; Y = height / 2.}
     let offset = 
             match rotation with
             | Degree0 | Degree180 -> centre
@@ -627,7 +623,6 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
     let halfH = h/2
     let H = float comp.H
     let W = float comp.W
-    let rotation = symbol.STransform.Rotation
 
     let mergeSplitLine posX1 posX2 posY msb lsb =
         let text = 
@@ -638,40 +633,44 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
         //addHorizontalColorLine posX1 posX2 (posY*float(h)) opacity colour @
         addText {X = float((posX1 + posX2)/2); Y = (posY*float(h)-11.)} text "middle" "bold" "9px"
 
-    let points =            // Points that specify each symbol 
-        match comp.Type with
-        | Input _ -> 
-            rotatePoints [{X=0;Y=0};{X=0;Y=H};{X=W*4./5.;Y=H};{X=W;Y=H/2.};{X=W*0.8;Y=0}] H W rotation
-        | Output _ -> 
-            rotatePoints [{X=W/5.;Y=0};{X=0;Y=H/2.};{X=W/5.;Y=H};{X=W;Y=H};{X=W;Y=0}] H W rotation 
-        | Constant1 _ -> 
-            rotatePoints [{X=W;Y=H/2.};{X=W/2.;Y=H/2.};{X=0;Y=H};{X=0;Y=0};{X=W/2.;Y=H/2.}] H W rotation 
-        | IOLabel ->
-            rotatePoints [{X=W/3.;Y=0};{X=0;Y=H/2.};{X=W/3.;Y=H};{X=W*0.66;Y=H};{X=W;Y=H/2.};{X=W*0.66;Y=0}] H W rotation
-        | Viewer _ ->
-            rotatePoints [{X=W/5.;Y=0};{X=0;Y=H/2.};{X=W/5.;Y=H};{X=W;Y=H};{X=W;Y=0}] H W rotation
-        | MergeWires -> 
-            rotatePoints [{X=0;Y=H/6.};{X=W/2.;Y=H/6.};{X=W/2.;Y=H/2.};{X=W;Y=H/2.};{X=W/2.;Y=H/2.};{X=W/2.;Y=5.*H/6.};{X=0;Y=5.*H/6.};{X=W/2.;Y=5.*H/6.};{X=W/2.;Y=H/6.}] H W rotation
-            //sprintf $"{halfW},{float(h)/6.} {halfW},{float(5*h)/6.}"
-        | SplitWire _ -> 
-            rotatePoints [{X=W;Y=H/6.};{X=W/2.;Y=H/6.};{X=W/2.;Y=H/2.};{X=0;Y=H/2.};{X=W/2.;Y=H/2.};{X=W/2.;Y=5.*H/6.};{X=W;Y=5.*H/6.};{X=W/2.;Y=5.*H/6.};{X=W/2.;Y=H/6.}] H W rotation
-            //sprintf $"{halfW},{float(h)/6.} {halfW},{float(5*h)/6.}"
-
-        // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
-        // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
-        | Demux2 ->
-            rotatePoints [{X=0;Y=H/5.};{X=0;Y=H*0.8};{X=W;Y=H};{X=W;Y=0}] H W rotation
-        | Mux2 ->
-            rotatePoints [{X=0;Y=0};{X=0;Y=H};{X=W;Y=H*0.8};{X=W;Y=H/5.}] H W rotation
-        // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
-        // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
-        | BusSelection _ |BusCompare _ -> 
-            rotatePoints [{X=0;Y=0};{X=0;Y=H};{X=W*0.6;Y=H};{X=W*0.8;Y=H*0.7};{X=W;Y=H*0.7};{X=W;Y =H*0.3};{X=W*0.8;Y=H*0.3};{X=W*0.6;Y=0}] H W rotation      
-        | _ -> sprintf $"0,{h} {w},{h} {w},0 0,0"
+    /// Points that define the edges of the symbol
+    let points = 
+        let originalPoints =
+            match comp.Type with
+            | Input _ -> 
+                [{X=0;Y=0};{X=0;Y=H};{X=W*4./5.;Y=H};{X=W;Y=H/2.};{X=W*0.8;Y=0}] 
+            | Output _ -> 
+                [{X=W/5.;Y=0};{X=0;Y=H/2.};{X=W/5.;Y=H};{X=W;Y=H};{X=W;Y=0}]
+            | Constant1 _ -> 
+                [{X=W;Y=H/2.};{X=W/2.;Y=H/2.};{X=0;Y=H};{X=0;Y=0};{X=W/2.;Y=H/2.}]
+            | IOLabel ->
+                [{X=W/3.;Y=0};{X=0;Y=H/2.};{X=W/3.;Y=H};{X=W*0.66;Y=H};{X=W;Y=H/2.};{X=W*0.66;Y=0}]
+            | Viewer _ ->
+                [{X=W/5.;Y=0};{X=0;Y=H/2.};{X=W/5.;Y=H};{X=W;Y=H};{X=W;Y=0}]
+            | MergeWires -> 
+                [{X=0;Y=H/6.};{X=W/2.;Y=H/6.};{X=W/2.;Y=H/2.};{X=W;Y=H/2.};{X=W/2.;Y=H/2.};{X=W/2.;Y=5.*H/6.};{X=0;Y=5.*H/6.};{X=W/2.;Y=5.*H/6.};{X=W/2.;Y=H/6.}]
+            | SplitWire _ -> 
+                [{X=W;Y=H/6.};{X=W/2.;Y=H/6.};{X=W/2.;Y=H/2.};{X=0;Y=H/2.};{X=W/2.;Y=H/2.};{X=W/2.;Y=5.*H/6.};{X=W;Y=5.*H/6.};{X=W/2.;Y=5.*H/6.};{X=W/2.;Y=H/6.}]
+            // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
+            // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
+            | Demux2 ->
+                [{X=0;Y=H/5.};{X=0;Y=H*0.8};{X=W;Y=H};{X=W;Y=0}]
+            | Mux2 ->
+                [{X=0;Y=0};{X=0;Y=H};{X=W;Y=H*0.8};{X=W;Y=H/5.}]
+            | BusSelection _ |BusCompare _ -> 
+                [{X=0;Y=0};{X=0;Y=H};{X=W*0.6;Y=H};{X=W*0.8;Y=H*0.7};{X=W;Y=H*0.7};{X=W;Y =H*0.3};{X=W*0.8;Y=H*0.3};{X=W*0.6;Y=0}]
+            | Not | Nand | Nor | Xnor -> 
+                [{X=0;Y=0};{X=0;Y=H};{X=W;Y=H};{X=W;Y=H/2.};{X=W+9.;Y=H/2.};{X=W;Y=H/2.-8.};{X=W;Y=H/2.};{X=W;Y=0}]
+            | DFF | DFFE | Register _ | RegisterE _ | ROM1 _ |RAM1 _ | AsyncRAM1 _ -> 
+                [{X=0;Y=H-13.};{X=8.;Y=H-7.};{X=0;Y=H-1.};{X=0;Y=0};{X=W;Y=0};{X=W;Y=H};{X=0;Y=H}]
+            | Custom x when x.clocked -> 
+                [{X=0;Y=H-13.};{X=8.;Y=H-7.};{X=0;Y=H-1.};{X=0;Y=0};{X=W;Y=0};{X=W;Y=H};{X=0;Y=H}]
+            | _ -> 
+                [{X=0;Y=0};{X=0;Y=H};{X=W;Y=H};{X=W;Y=0}]
+        rotatePoints originalPoints {X=W/2.;Y=H/2.} symbol.STransform.Rotation
 
     let additions =       // Helper function to add certain characteristics on specific symbols (inverter, enables, clocks)
         match comp.Type with
-        | Nand | Nor | Xnor |Not -> (addInvertor w halfH colour opacity)
         | MergeWires -> 
             let lo, hi = 
                 match symbol.InWidth0, symbol.InWidth1  with 
@@ -690,15 +689,15 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
             mergeSplitLine halfW w (1./6.) midt 0 @ 
             mergeSplitLine halfW w (5./6.) msb midb @ 
             mergeSplitLine 0 halfW 0.5 msb 0
-        | DFF |DFFE -> (addClock {X = 0.; Y = h} colour opacity)
-        | Register _ |RegisterE _ -> (addClock {X=0.; Y = h} colour opacity)
-        | ROM1 _ |RAM1 _ | AsyncRAM1 _ -> (addClock {X = 0.; Y = h} colour opacity)
-        | BusSelection(x,y) -> (addText {X = (float(w/2)-5.); Y = ((float(h)/2.7)-2.)} (bustitle x y) "middle" "normal" "12px")
-        | BusCompare (_,y) -> (addText {X = (float(w/2)-6.); Y = (float(h)/2.7-1.)} ("=" + NumberHelpers.hex(int y)) "middle" "bold" "10px")
-        | Input (x) -> (addText {X = float(w/2)-5.; Y = (float(h)/2.7)-3.} (title "" x) "middle" "normal" "12px")
+        //| DFF | DFFE -> (addClock {X = 0.; Y = h} colour opacity)
+        //| Register _ |RegisterE _ -> (addClock {X=0.; Y = h} colour opacity)
+        //| ROM1 _ |RAM1 _ | AsyncRAM1 _ -> (addClock {X = 0.; Y = h} colour opacity)
+        | BusSelection(x,y) -> (addText {X = (float(w/2)); Y = ((float(h)/2.7)-2.)} (bustitle x y) "middle" "bold" "12px")
+        | BusCompare (_,y) -> (addText {X = (float(w/2)-2.); Y = (float(h)/2.7-1.)} ("=" + NumberHelpers.hex(int y)) "middle" "bold" "10px")
+        | Input (x) -> (addText {X = float(w/2); Y = (float(h)/2.7)-3.} (title "" x) "middle" "normal" "12px")
         | Output (x) -> (addText {X = float(w/2); Y = (float(h)/2.7)-3.} (title "" x) "middle" "normal" "12px")
         | Viewer (x) -> (addText {X = float(w/2); Y = (float(h)/2.7)-1.25} (title "" x) "middle" "normal" "9px")
-        | _ when isClocked comp -> addClock {X = 0.; Y = h} colour opacity
+        //| _ when isClocked comp -> addClock {X = 0.; Y = h} colour opacity
         | _ -> []
 
     let outlineColour, strokeWidth =
