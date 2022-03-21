@@ -279,6 +279,28 @@ let private calculateOutputPortsWidth
         | [_; Some n] when n <> 1 -> makeWidthInferErrorEqual 1 n [getConnectionIdForPort 1]
         | [_; _] -> Ok Map.empty // Keep on waiting.
         | _ -> failwithf "what? Impossible case in calculateOutputPortsWidth for: %A" comp.Type
+    | Demux4 ->
+        // Demux also allowes buses.
+        assertInputsSize inputConnectionsWidth 2 comp
+        match getWidthsForPorts inputConnectionsWidth [InputPortNumber 0; InputPortNumber 1] with
+        | [Some n; Some 2] | [Some n; None] ->
+            let out = Map.empty.Add (getOutputPortId comp 0, n)
+            let out = out.Add (getOutputPortId comp 1, n)
+            Ok out
+        | [_; Some n] when n <> 2 -> makeWidthInferErrorEqual 2 n [getConnectionIdForPort 1]
+        | [_; _] -> Ok Map.empty // Keep on waiting.
+        | _ -> failwithf "what? Impossible case in calculateOutputPortsWidth for: %A" comp.Type
+    | Demux8 ->
+        // Demux also allowes buses.
+        assertInputsSize inputConnectionsWidth 2 comp
+        match getWidthsForPorts inputConnectionsWidth [InputPortNumber 0; InputPortNumber 1] with
+        | [Some n; Some 3] | [Some n; None] ->
+            let out = Map.empty.Add (getOutputPortId comp 0, n)
+            let out = out.Add (getOutputPortId comp 1, n)
+            Ok out
+        | [_; Some n] when n <> 3 -> makeWidthInferErrorEqual 3 n [getConnectionIdForPort 1]
+        | [_; _] -> Ok Map.empty // Keep on waiting.
+        | _ -> failwithf "what? Impossible case in calculateOutputPortsWidth for: %A" comp.Type
     | NbitsAdder numberOfBits ->
         assertInputsSize inputConnectionsWidth 3 comp
         let okOutMap =

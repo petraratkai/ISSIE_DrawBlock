@@ -390,7 +390,11 @@ let getVerilogComponent (fs: FastSimulation) (fc: FastComponent) =
         |> function
         | Some n -> n
         | None -> failwithf "Can't find output width for output port %d of %A\n" opn fs.FComps[fid]
-
+    
+    let demuxOutput (outputPort: string) (selectPort: string) (w:int) = 
+        if outputPort = selectPort
+        then ins 0
+        else makeBits w (uint64 0)
 
     match fc.FType with
     | Viewer _ -> ""
@@ -428,6 +432,24 @@ let getVerilogComponent (fs: FastSimulation) (fc: FastComponent) =
 
         $"assign %s{outs 0} = %s{ins 1} ? {makeBits w (uint64 0)} : %s{ins 0};\n"
         + $"assign %s{outs 1} = %s{ins 1} ? %s{ins 0} : {makeBits w (uint64 0)};\n"
+    | Demux4 ->
+        let w = outW 0
+        
+        $"assign %s{outs 0} = %s{demuxOutput (outs 0) (ins 1) w};\n"
+        + $"assign %s{outs 1} = %s{demuxOutput (outs 1) (ins 1) w};\n"
+        + $"assign %s{outs 2} = %s{demuxOutput (outs 2) (ins 1) w};\n"
+        + $"assign %s{outs 3} = %s{demuxOutput (outs 3) (ins 1) w};\n"
+    | Demux8 ->
+        let w = outW 0
+        
+        $"assign %s{outs 0} = %s{demuxOutput (outs 0) (ins 1) w};\n"
+        + $"assign %s{outs 1} = %s{demuxOutput (outs 1) (ins 1) w};\n"
+        + $"assign %s{outs 2} = %s{demuxOutput (outs 2) (ins 1) w};\n"
+        + $"assign %s{outs 3} = %s{demuxOutput (outs 3) (ins 1) w};\n"
+        + $"assign %s{outs 4} = %s{demuxOutput (outs 4) (ins 1) w};\n"
+        + $"assign %s{outs 5} = %s{demuxOutput (outs 5) (ins 1) w};\n"
+        + $"assign %s{outs 6} = %s{demuxOutput (outs 6) (ins 1) w};\n"
+        + $"assign %s{outs 7} = %s{demuxOutput (outs 7) (ins 1) w};\n"
     | NbitsAdder n ->
         let cin = ins 0
         let a = ins 1

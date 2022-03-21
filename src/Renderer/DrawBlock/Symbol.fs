@@ -128,6 +128,8 @@ let getPrefix compType =
     | Mux4 -> "MUX"
     | Mux8 -> "MUX"
     | Demux2 -> "DM"
+    | Demux4 -> "DM-4"
+    | Demux8 -> "DM-8"
     | NbitsAdder _ -> "A"
     | NbitsXor _ -> "XOR"
     | DFF | DFFE -> "FF"
@@ -183,10 +185,11 @@ let portNames (componentType:ComponentType)  = //(input port names, output port 
     | Mux4 -> (["0"; "1"; "2"; "3" ;"SEL"]@["OUT"])
     | Mux8 -> (["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7";"SEL"]@["OUT"])
     | Demux2 -> (["IN" ; "SEL"]@["0"; "1"])
+    | Demux4 -> (["IN"; "SEL"]@["0"; "1";"2"; "3";])
+    | Demux8 -> (["IN"; "SEL"]@["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7"])
     | NbitsXor _ -> (["P"; "Q"]@ ["Out"])
     | Custom x -> (List.map fst x.InputLabels)@ (List.map fst x.OutputLabels)
     | _ -> ([]@[])
-   // |Demux4 -> (["IN"; "SEL"],["0"; "1";"2"; "3";])
    // |Demux8 -> (["IN"; "SEL"],["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7"])
    // |_ -> ([],[])
    // EXTENSION: Extra Components made that are not currently in Issie. Can be extended later by using this code as it is .
@@ -270,7 +273,7 @@ let initPortOrientation (comp: Component) =
         movePortToBottom res 1
     | RegisterE _ ->
         movePortToBottom res 1
-    | Demux2 ->
+    | Demux2 | Demux4 | Demux8 ->
         movePortToBottom res 1
     | _ -> res
 
@@ -368,8 +371,8 @@ let makeComponent (pos: XYPos) (comptype: ComponentType) (id:string) (label:stri
         | Mux4 -> ( 5  , 1, 5*GridSize ,  2*GridSize)   
         | Mux8 -> ( 9  , 1, 7*GridSize ,  2*GridSize) 
         | Demux2 ->( 2  , 2, 3*GridSize ,  2*GridSize) 
-        // EXTENSION:   | Demux4 -> ( 2  , 4, 150 ,  50) 
-        // EXTENSION:    | Demux8 -> ( 2  , 8, 200 ,  50) 
+        | Demux4 -> ( 2  , 4, 150 ,  50) 
+        | Demux8 -> ( 2  , 8, 200 ,  50) 
         | BusSelection (a, b) -> (  1 , 1, GridSize,  2*GridSize) 
         | BusCompare (a, b) -> ( 1 , 1, GridSize ,  2*GridSize) 
         | DFF -> (  1 , 1, 3*GridSize  , 3*GridSize) 
@@ -457,10 +460,10 @@ let getPortBaseOffset (sym: Symbol) (side: Edge): XYPos=
 /// Returns true if an edge has the select port of a mux
 let isMuxSel (sym:Symbol) (side:Edge): bool =
         match (sym.Component.Type, sym.STransform.Rotation, side) with
-        | (Mux2, Degree0, Bottom ) | (Mux4, Degree0, Bottom ) | (Mux8, Degree0, Bottom ) | (Demux2, Degree0, Bottom )-> true
-        | (Mux2,Degree90, Right) | (Mux4, Degree90, Right) | (Mux8, Degree90, Right) | (Demux2,Degree90, Right)-> true
-        | (Mux2, Degree180, Top) | (Mux4, Degree180, Top) | (Mux8, Degree180, Top) | (Demux2, Degree180, Top) -> true
-        | (Mux2, Degree270, Left) | (Mux4, Degree270, Left) | (Mux8, Degree270, Left) | (Demux2, Degree270, Left)-> true
+        | (Mux2, Degree0, Bottom ) | (Mux4, Degree0, Bottom ) | (Mux8, Degree0, Bottom ) | (Demux2, Degree0, Bottom ) | (Demux4, Degree0, Bottom ) | (Demux8, Degree0, Bottom ) -> true
+        | (Mux2,Degree90, Right) | (Mux4, Degree90, Right) | (Mux8, Degree90, Right) | (Demux2,Degree90, Right) | (Demux4,Degree90, Right) | (Demux8,Degree90, Right) -> true
+        | (Mux2, Degree180, Top) | (Mux4, Degree180, Top) | (Mux8, Degree180, Top) | (Demux2, Degree180, Top) | (Demux4, Degree180, Top) | (Demux8, Degree180, Top) -> true
+        | (Mux2, Degree270, Left) | (Mux4, Degree270, Left) | (Mux8, Degree270, Left) | (Demux2, Degree270, Left) | (Demux4, Degree270, Left) | (Demux8, Degree270, Left) -> true
         | _ -> false
 
 
@@ -656,8 +659,7 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
          
         | MergeWires -> sprintf $"{halfW},{float(h)/6.} {halfW},{float(5*h)/6.}"
         | SplitWire _ -> sprintf $"{halfW},{float(h)/6.} {halfW},{float(5*h)/6.}"
-        // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
-        | Demux2 ->
+        | Demux2 | Demux4 | Demux8 ->
             match rotation with
             | Degree0 -> sprintf $"0,{float(h)/5.} 0,{float(h)*0.8} {w},{h} {w},0"
             | Degree90 -> sprintf $"0,0 {w},0 {float(w)*0.8},{h} {float(w)*0.2},{h}"
@@ -669,9 +671,6 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
             | Degree90 -> sprintf $"{float(w)*0.2},0 {float(w)*0.8},0 {w},{h} 0,{h}"               
             | Degree180 -> sprintf $"0,{float(h)/5.} 0,{float(h)*0.8} {w},{h} {w},0"
             | Degree270 -> sprintf $"0,0 {w},0 {float(w)*0.8},{h} {float(w)*0.2},{h}"
-
-        // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
-        // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
 
         | BusSelection _ |BusCompare _ -> 
             match rotation with 
