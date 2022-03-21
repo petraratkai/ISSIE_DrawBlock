@@ -448,6 +448,7 @@ let getVerilogComponent (fs: FastSimulation) (fc: FastComponent) =
             | "1" -> ins 1 
             | "2" -> ins 2
             | "3" -> ins 3
+            | _ -> failwithf "Cannot happen"
 
         $"assign %s{outs 0} = %s{outputBit};\n"
     | Mux8 -> 
@@ -461,6 +462,7 @@ let getVerilogComponent (fs: FastSimulation) (fc: FastComponent) =
             | "5" -> ins 5 
             | "6" -> ins 6
             | "7" -> ins 7
+            | _ -> failwithf "Cannot happen"
 
         $"assign %s{outs 0} = %s{outputBit};\n"
     | BusSelection (outW, lsb) ->

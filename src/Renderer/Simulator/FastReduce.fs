@@ -25,6 +25,22 @@ let inline extractBit (fd: FData) : uint32 =
 #endif
     match fd.Dat with | Word n -> n | BigWord _ -> failwithf $"Can't extract 1 bit from BigWord data {fd.Dat} of width {fd.Width}"
 
+/// Assert that the FData only contain a single bit, and return such bit.
+let inline extractBit2 (fd: FData) : uint32 =
+#if ASSERTS
+    assertThat (fd.Width = 2)
+    <| sprintf "extractBit called with wireData: %A" fd
+#endif
+    match fd.Dat with | Word n -> n | BigWord _ -> failwithf $"Can't extract 2 bit from BigWord data {fd.Dat} of width {fd.Width}"
+
+/// Assert that the FData only contain a single bit, and return such bit.
+let inline extractBit3 (fd: FData) : uint32 =
+#if ASSERTS
+    assertThat (fd.Width = 3)
+    <| sprintf "extractBit called with wireData: %A" fd
+#endif
+    match fd.Dat with | Word n -> n | BigWord _ -> failwithf $"Can't extract 3 bit from BigWord data {fd.Dat} of width {fd.Width}"
+
 let inline packBit (bit: uint32) : FData = if bit = 0u then {Dat=Word 0u; Width = 1} else {Dat = Word 1u; Width = 1}
 
 
@@ -271,11 +287,12 @@ let fastReduce (maxArraySize: int) (numStep: int) (isClockedReduction: bool) (co
 #endif
         
         let out =
-            match extractBit bitSelect with
+            match extractBit2 bitSelect with
             | 0u -> bits0
             | 1u -> bits1
             | 2u -> bits2 
             | 3u -> bits3
+            | _ -> failwithf "Cannot happen"
 
         put0 out
         putW 0 bits0.Width
@@ -287,7 +304,7 @@ let fastReduce (maxArraySize: int) (numStep: int) (isClockedReduction: bool) (co
 #endif
 
         let out =
-            match extractBit bitSelect with
+            match extractBit3 bitSelect with
             | 0u -> bits0
             | 1u -> bits1
             | 2u -> bits2 
@@ -296,6 +313,7 @@ let fastReduce (maxArraySize: int) (numStep: int) (isClockedReduction: bool) (co
             | 5u -> bits5
             | 6u -> bits6 
             | 7u -> bits7
+            | _ -> failwithf "Cannot happen"
 
         put0 out
         putW 0 bits0.Width
