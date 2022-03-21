@@ -1064,26 +1064,6 @@ let getCopiedSymbol model portId =
 /// ComponentIds at same index in both list 1 and list 2 need to be of the same ComponentType.
 /// CompIds1 need to be in model.CopiedSymbols.
 /// Assumes ports are in the same order in equivalent symbols
-(*let getEquivalentCopiedPorts (model: Model) (copiedIds: ComponentId list) (pastedIds: ComponentId list) (InputPortId copiedInputPort, OutputPortId copiedOutputPort) =
-    let getPastedSymbol copiedPort =
-        ComponentId (getPortHostId model copiedPort)
-        |> tryGetPastedEl copiedIds pastedIds
-        |> Option.map (fun id -> model.Symbols[id])
-    printfn $"{model.Ports}"
-    printfn $"{copiedInputPort}"
-    let copiedInSymbol = getCopiedSymbol model copiedInputPort
-    let copiedOutSymbol = getCopiedSymbol model copiedOutputPort
-    let copiedInPortIds, copiedOutPortIds = getPortIds copiedInSymbol copiedOutSymbol
-
-    let pastedInSymbol = getPastedSymbol copiedInputPort
-    let pastedOutSymbol = getPastedSymbol copiedOutputPort
-    match pastedInSymbol, pastedOutSymbol with
-    | Some inSymbol, Some outSymbol ->
-        let pastedInPortIds, pastedOutPortIds = getPortIds inSymbol outSymbol
-        let equivInPorts = tryGetPastedEl copiedInPortIds pastedInPortIds copiedInputPort
-        let equivOutPorts = tryGetPastedEl copiedOutPortIds pastedOutPortIds copiedOutputPort 
-        mergeOptions (equivInPorts, equivOutPorts)
-    | _ -> None*)
 let getEquivalentCopiedPorts (model: Model) (copiedIds) (pastedIds) (InputPortId copiedInputPort, OutputPortId copiedOutputPort) =
     let findEquivalentPorts compId1 compId2 =
         let copiedComponent = model.CopiedSymbols[compId1].Component
