@@ -384,7 +384,8 @@ let makeComponent (pos: XYPos) (comptype: ComponentType) (id:string) (label:stri
             ( List.length x.InputLabels, List.length x.OutputLabels, h ,  w)
                 
     makeComponent' args label
-   
+
+
 // Function to generate a new symbol
 let createNewSymbol (pos: XYPos) (comptype: ComponentType) (label:string) =
     let id = JSHelpers.uuid ()
@@ -453,6 +454,8 @@ let isMuxSel (sym:Symbol) (side:Edge): bool =
         match (sym.Component.Type, sym.STransform.Rotation, side) with
         | (Mux2, Degree0, Bottom ) | (Demux2, Degree0, Bottom )-> true
         | (Mux2,Degree90, Right) | (Demux2,Degree90, Right)-> true
+        | (Mux2,Degree90, Left) | (Demux2,Degree90, Left)-> true
+        | (Mux2,Degree270, Right) | (Demux2,Degree270, Right)-> true
         | (Mux2, Degree180, Top) | (Demux2, Degree180, Top) -> true
         | (Mux2, Degree270, Left) | (Demux2, Degree270, Left)-> true
         | _ -> false
@@ -590,8 +593,7 @@ let addHorizontalColorLine posX1 posX2 posY opacity (color:string) = // TODO: Li
     [makePolygon points {defaultPolygon with Fill = "olcolor"; Stroke=outlineColor; StrokeWidth = "2.0"; FillOpacity = opacity}]
 
 /// Takes points, height and width of original shape and returns the points for it given a rotation.
-let rotatePoints (points) (centre:XYPos) (rotation:Rotation) : string = 
-    //let centre = {X = width / 2.; Y = height / 2.}
+let rotatePoints (points) (centre:XYPos) (rotation:Rotation) (flipped:bool) : string = 
     let offset = 
             match rotation with
             | Degree0 | Degree180 -> centre
@@ -607,22 +609,29 @@ let rotatePoints (points) (centre:XYPos) (rotation:Rotation) : string =
 
     let relativeToTopLeft = List.map (fun x -> x + offset )
     let toString = List.fold (fun state (pos:XYPos) -> state + (sprintf $" {pos.X},{pos.Y}")) "" 
+    let flipIfNecessary pts =
+        if not flipped then pts
+        else
+            match rotation with
+            | _ -> List.map (fun (point:XYPos) -> {X = -point.X; Y = point.Y}) pts
 
     points
     |> relativeToCentre
     |> rotateAboutCentre
+    |> flipIfNecessary
     |> relativeToTopLeft
     |> toString
 
 
 /// --------------------------------------- SYMBOL DRAWING ------------------------------------------------------ ///   
-let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float)= 
+let drawSymbol(symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float) = 
     let comp = symbol.Component
     let h,w = getHAndW symbol
     let halfW = w/2
     let halfH = h/2
     let H = float comp.H
     let W = float comp.W
+    let state = symbol.STransform
 
     let mergeSplitLine posX1 posX2 posY msb lsb =
         let text = 
@@ -634,7 +643,7 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
         addText {X = float((posX1 + posX2)/2); Y = (posY*float(h)-11.)} text "middle" "bold" "9px"
 
     /// Points that define the edges of the symbol
-    let points = 
+    let points =
         let originalPoints =
             match comp.Type with
             | Input _ -> 
@@ -667,7 +676,7 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
                 [{X=0;Y=H-13.};{X=8.;Y=H-7.};{X=0;Y=H-1.};{X=0;Y=0};{X=W;Y=0};{X=W;Y=H};{X=0;Y=H}]
             | _ -> 
                 [{X=0;Y=0};{X=0;Y=H};{X=W;Y=H};{X=W;Y=0}]
-        rotatePoints originalPoints {X=W/2.;Y=H/2.} symbol.STransform.Rotation
+        rotatePoints originalPoints {X=W/2.;Y=H/2.} symbol.STransform.Rotation symbol.STransform.flipped
 
     let additions =       // Helper function to add certain characteristics on specific symbols (inverter, enables, clocks)
         match comp.Type with
@@ -704,6 +713,14 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
         match comp.Type with
         | SplitWire _ | MergeWires -> outlineColor colour, "2.0"
         | _ -> "black", "1.0"
+    
+    let labelRotation = 
+        match state.flipped with
+        | true -> match state.Rotation with
+                     | Degree90 -> Degree270
+                     | Degree270 -> Degree90
+                     | _ -> state.Rotation
+        | false -> state.Rotation
    
     // Put everything together 
 
@@ -711,7 +728,7 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
     |> List.append (drawPorts comp.InputPorts showInputPorts symbol)
     |> List.append (drawPortsText (comp.InputPorts @ comp.OutputPorts) (portNames comp.Type) symbol)
     |> List.append (addText {X = halfW; Y = float halfH - 7.} (getComponentLabel comp.Type) "middle" "bold" "14px")
-    |> List.append (addComponentLabel h w comp.Label "normal" "16px" symbol.STransform.Rotation)
+    |> List.append (addComponentLabel h w comp.Label "normal" "16px" labelRotation)
     |> List.append (additions)
     |> List.append (createBiColorPolygon points colour outlineColour opacity strokeWidth)
 
@@ -737,7 +754,7 @@ let private renderSymbol =
         fun (props : RenderSymbolProps) ->
             let symbol = props.Symbol
             let ({X=fX; Y=fY}:XYPos) = symbol.Pos
-            g ([ Style [ Transform(sprintf $"translate({fX}px, {fY}px)") ] ]) (drawSymbol props.Symbol props.Symbol.Component symbol.Colour symbol.ShowInputPorts symbol.ShowOutputPorts symbol.Opacity)
+            g ([ Style [ Transform(sprintf $"translate({fX}px, {fY}px)") ] ]) (drawSymbol props.Symbol symbol.Colour symbol.ShowInputPorts symbol.ShowOutputPorts symbol.Opacity)
             
         , "Symbol"
         , equalsButFunctions
@@ -1457,7 +1474,9 @@ let rotateSymbolLeft (sym: Symbol) : Symbol =
             (Map.empty, [Top; Left; Bottom; Right]) ||> List.fold rotatePortListLeft
 
         let newSTransform = 
-            {sym.STransform with Rotation = rotateAngleLeft sym.STransform.Rotation}
+            match sym.STransform.flipped with
+            | true -> {sym.STransform with Rotation = rotateAngleRight sym.STransform.Rotation}
+            | false -> {sym.STransform with Rotation = rotateAngleLeft sym.STransform.Rotation}
 
         { sym with 
             Pos = newXY;
@@ -1485,7 +1504,10 @@ let rotateSymbolRight (sym: Symbol) : Symbol =
             (Map.empty, [Top; Left; Bottom; Right]) ||> List.fold rotatePortListRight
 
         let newSTransform = 
-            {sym.STransform with Rotation = rotateAngleRight sym.STransform.Rotation}
+            match sym.STransform.flipped with
+            | true -> {sym.STransform with Rotation = rotateAngleLeft sym.STransform.Rotation}
+            | false -> {sym.STransform with Rotation = rotateAngleRight sym.STransform.Rotation}
+
 
         { sym with 
             Pos = newXY;
@@ -1493,14 +1515,15 @@ let rotateSymbolRight (sym: Symbol) : Symbol =
             PortOrder = newPortOrder;
             STransform =newSTransform;  
         }
-/// Flips an angle horizontally
-let flipAngleHorizontal (rotation: Rotation): Rotation =
-    match rotation with
-    | Degree90 | Degree270 -> 
-        rotation
-        |> rotateAngleRight
-        |> rotateAngleRight
-    | _ -> rotation
+// /// Flips an angle horizontally
+// let flipAngleHorizontal (rotation: Rotation): Rotation =
+//     match rotation with
+//     // | Degree90 | Degree270 | _ -> 
+//     //     rotation
+//     //     |> rotateAngleRight
+//     //     |> rotateAngleRight
+//     | _ -> rotation
+// not needed
 
 /// Flips a side horizontally
 let flipSideHorizontal (edge: Edge) : Edge =
@@ -1528,7 +1551,7 @@ let flipSymbolHorizontal (sym:Symbol) : Symbol =
 
         let newSTransform = 
             {flipped= not sym.STransform.flipped;
-            Rotation= flipAngleHorizontal sym.STransform.Rotation}
+            Rotation= sym.STransform.Rotation}
 
         { sym with
             PortOrientation = newPortOrientation
@@ -1635,7 +1658,7 @@ let inline replaceSymbol (model: Model) (newSymbol: Symbol) (compId: ComponentId
     let newSymbolsWithChangedSymbol = symbolswithoutone.Add (compId, newSymbol)
     { model with Symbols = newSymbolsWithChangedSymbol }
 
-let inline transformSymbols transform model compList=
+let inline transformSymbols transform model compList =
     let transformedSymbols = 
         compList |> List.map (fun id-> transform model.Symbols[id])
     let newSymbolMap = 
