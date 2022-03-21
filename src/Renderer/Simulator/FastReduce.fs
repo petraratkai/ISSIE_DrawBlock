@@ -25,7 +25,7 @@ let inline extractBit (fd: FData) : uint32 =
 #endif
     match fd.Dat with | Word n -> n | BigWord _ -> failwithf $"Can't extract 1 bit from BigWord data {fd.Dat} of width {fd.Width}"
 
-/// Assert that the FData only contain a single bit, and return such bit.
+/// Assert that the FData contains two bit, and return such bit.
 let inline extractBit2 (fd: FData) : uint32 =
 #if ASSERTS
     assertThat (fd.Width = 2)
@@ -33,7 +33,7 @@ let inline extractBit2 (fd: FData) : uint32 =
 #endif
     match fd.Dat with | Word n -> n | BigWord _ -> failwithf $"Can't extract 2 bit from BigWord data {fd.Dat} of width {fd.Width}"
 
-/// Assert that the FData only contain a single bit, and return such bit.
+/// Assert that the FData contains three bits, and return such bit.
 let inline extractBit3 (fd: FData) : uint32 =
 #if ASSERTS
     assertThat (fd.Width = 3)
@@ -349,11 +349,12 @@ let fastReduce (maxArraySize: int) (numStep: int) (isClockedReduction: bool) (co
         let zeros = convertIntToFastData bitsIn.Width 0u
         
         let out0, out1, out2, out3 = 
-            match extractBit bitSelect with
+            match extractBit2 bitSelect with
             | 0u -> bitsIn, zeros, zeros, zeros
             | 1u -> zeros, bitsIn, zeros, zeros
             | 2u -> zeros, zeros, bitsIn, zeros
             | 3u -> zeros, zeros, zeros, bitsIn
+            | _ -> failwithf "Cannot happen"
 
         let w = bitsIn.Width
         put0 out0
@@ -369,7 +370,7 @@ let fastReduce (maxArraySize: int) (numStep: int) (isClockedReduction: bool) (co
         let zeros = convertIntToFastData bitsIn.Width 0u
         
         let out0, out1, out2, out3, out4, out5, out6, out7 = 
-            match extractBit bitSelect with
+            match extractBit3 bitSelect with
             | 0u -> bitsIn, zeros, zeros, zeros, zeros, zeros, zeros, zeros
             | 1u -> zeros, bitsIn, zeros, zeros, zeros, zeros, zeros, zeros
             | 2u -> zeros, zeros, bitsIn, zeros, zeros, zeros, zeros, zeros
@@ -378,6 +379,7 @@ let fastReduce (maxArraySize: int) (numStep: int) (isClockedReduction: bool) (co
             | 5u -> zeros, zeros, zeros, zeros, zeros, bitsIn, zeros, zeros
             | 6u -> zeros, zeros, zeros, zeros, zeros, zeros, bitsIn, zeros
             | 7u -> zeros, zeros, zeros, zeros, zeros, zeros, zeros, bitsIn
+            | _ -> failwithf "Cannot happen"
 
         let w = bitsIn.Width
         put0 out0

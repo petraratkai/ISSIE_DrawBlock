@@ -286,6 +286,8 @@ let private calculateOutputPortsWidth
         | [Some n; Some 2] | [Some n; None] ->
             let out = Map.empty.Add (getOutputPortId comp 0, n)
             let out = out.Add (getOutputPortId comp 1, n)
+            let out = out.Add (getOutputPortId comp 2, n)
+            let out = out.Add (getOutputPortId comp 3, n)
             Ok out
         | [_; Some n] when n <> 2 -> makeWidthInferErrorEqual 2 n [getConnectionIdForPort 1]
         | [_; _] -> Ok Map.empty // Keep on waiting.
@@ -297,6 +299,12 @@ let private calculateOutputPortsWidth
         | [Some n; Some 3] | [Some n; None] ->
             let out = Map.empty.Add (getOutputPortId comp 0, n)
             let out = out.Add (getOutputPortId comp 1, n)
+            let out = out.Add (getOutputPortId comp 2, n)
+            let out = out.Add (getOutputPortId comp 3, n)
+            let out = out.Add (getOutputPortId comp 4, n)
+            let out = out.Add (getOutputPortId comp 5, n)
+            let out = out.Add (getOutputPortId comp 6, n)
+            let out = out.Add (getOutputPortId comp 7, n)
             Ok out
         | [_; Some n] when n <> 3 -> makeWidthInferErrorEqual 3 n [getConnectionIdForPort 1]
         | [_; _] -> Ok Map.empty // Keep on waiting.
