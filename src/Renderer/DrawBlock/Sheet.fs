@@ -468,8 +468,9 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
 
         /// Checks for snap-to-grid in one dimension (x-coordinates or y-coordinates)
         /// Input / output is an anonymous record to deal with too many arguments otherwise
-        let checkForSnap1D (input: {| SnapInfo: LastSnap Option; Indicator: float Option; CurrMPos: float; LastMPos: float; Side1: float; Side2: float; PosDirection: float |}) =
 
+        let checkForSnap1D (input: {| SnapInfo: LastSnap Option; Indicator: float Option; CurrMPos: float; LastMPos: float; Side1: float; Side2: float; PosDirection: float; SymbolMargins: list<float*float> |}) =
+ 
             match input.SnapInfo with
             | Some { Pos = oldPos; SnapLength = previousSnap } -> // Already snapped, see if mouse is far enough to un-snap
                 if abs (input.CurrMPos - oldPos) > unSnapMargin
@@ -479,7 +480,7 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
                 let margins = [ (input.Side1 % gridSize), input.Side1
                                 ((input.Side1 % gridSize) - gridSize), input.Side1
                                 (input.Side2 % gridSize), input.Side2
-                                ((input.Side2 % gridSize) - gridSize), input.Side2 ]
+                                ((input.Side2 % gridSize) - gridSize), input.Side2 ] @ input.SymbolMargins
 
                 let getMarginWithDirection (sortedMargins: (float*float)list) (dir: float) =
                     if abs(fst(sortedMargins[0]) - fst(sortedMargins[1])) < 0.1 then
@@ -513,6 +514,21 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
         
         // printfn "%A" mMsg.Pos.X
         // printfn "%A" model.LastMousePos.X
+        let xMargins, yMargins =
+            let symbols = model.Wire.Symbol.Symbols
+            let extractSymbols lst id = 
+                match Map.tryFind id symbols with
+                | Some x -> lst @ [x]
+                | None -> lst
+            let nearbySymbols = List.fold extractSymbols [] model.NearbyComponents |> List.filter (fun (x:Symbol.Symbol) -> (not x.Moving) && (not (x.Id = compId))) 
+
+            let xLines = List.fold (fun lst (sym:Symbol.Symbol) -> lst @ [sym.Pos.X] @ [sym.Pos.X + float sym.Component.W]) [] nearbySymbols
+            let yLines = List.fold (fun lst (sym:Symbol.Symbol) -> lst @ [sym.Pos.Y] @ [sym.Pos.Y + float sym.Component.H]) [] nearbySymbols
+            
+            let xMarg = List.map (fun margin -> margin-x1, x1) xLines @ List.map (fun margin -> margin-x2, x2) xLines
+            let yMarg = List.map (fun margin -> margin-y1, y1) yLines @ List.map (fun margin -> margin-y2, y2) yLines
+            xMarg, yMarg
+
 
         let snapX = checkForSnap1D {| SnapInfo = model.Snap.XSnap
                                       Indicator = model.SnapIndicator.XLine
@@ -520,7 +536,8 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
                                       LastMPos = model.LastMousePos.X
                                       Side1 = x1
                                       Side2 = x2
-                                      PosDirection = (mMsg.Pos.X - model.LastMousePosForSnap.X)  |}
+                                      PosDirection = (mMsg.Pos.X - model.LastMousePosForSnap.X)  
+                                      SymbolMargins = xMargins|}
 
         let snapY = checkForSnap1D {| SnapInfo = model.Snap.YSnap
                                       Indicator = model.SnapIndicator.YLine
@@ -528,7 +545,8 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
                                       LastMPos = model.LastMousePos.Y
                                       Side1 = y1
                                       Side2 = y2
-                                      PosDirection = (mMsg.Pos.Y - model.LastMousePosForSnap.Y) |}
+                                      PosDirection = (mMsg.Pos.Y - model.LastMousePosForSnap.Y) 
+                                      SymbolMargins = yMargins|}
 
         let errorComponents  =
             if notIntersectingComponents model boundingBox compId then [] else [compId]

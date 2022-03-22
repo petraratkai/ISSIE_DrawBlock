@@ -592,7 +592,7 @@ let addHorizontalColorLine posX1 posX2 posY opacity (color:string) = // TODO: Li
     let outlineColor = outlineColor color
     [makePolygon points {defaultPolygon with Fill = "olcolor"; Stroke=outlineColor; StrokeWidth = "2.0"; FillOpacity = opacity}]
 
-/// Takes points, height and width of original shape and returns the points for it given a rotation.
+/// Takes points, height and width of original shape and returns the points for it given a rotation / flipped status.
 let rotatePoints (points) (centre:XYPos) (rotation:Rotation) (flipped:bool) : string = 
     let offset = 
             match rotation with
@@ -609,6 +609,9 @@ let rotatePoints (points) (centre:XYPos) (rotation:Rotation) (flipped:bool) : st
 
     let relativeToTopLeft = List.map (fun x -> x + offset )
     let toString = List.fold (fun state (pos:XYPos) -> state + (sprintf $" {pos.X},{pos.Y}")) "" 
+    
+    /// Flips the points, needed some hacks to avoid saving transformations somewhere / saving current points
+    /// Also can't guarantee it will work if there are changes to rotation / flip with funkier shapes
     let flipIfNecessary pts =
         if not flipped then pts
         else
@@ -624,7 +627,7 @@ let rotatePoints (points) (centre:XYPos) (rotation:Rotation) (flipped:bool) : st
 
 
 /// --------------------------------------- SYMBOL DRAWING ------------------------------------------------------ ///   
-let drawSymbol(symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float) = 
+let drawSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutputPorts:bool) (opacity: float) = 
     let comp = symbol.Component
     let h,w = getHAndW symbol
     let halfW = w/2
@@ -1475,7 +1478,7 @@ let rotateSymbolLeft (sym: Symbol) : Symbol =
 
         let newSTransform = 
             match sym.STransform.flipped with
-            | true -> {sym.STransform with Rotation = rotateAngleRight sym.STransform.Rotation}
+            | true -> {sym.STransform with Rotation = rotateAngleRight sym.STransform.Rotation} // hack for rotating when flipped 
             | false -> {sym.STransform with Rotation = rotateAngleLeft sym.STransform.Rotation}
 
         { sym with 
