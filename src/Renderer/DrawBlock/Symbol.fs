@@ -125,8 +125,8 @@ let getPrefix compType =
     match compType with
     | Not | And | Or | Xor | Nand | Nor | Xnor -> "G"
     | Mux2 -> "MUX"
-    | Mux4 -> "MUX"
-    | Mux8 -> "MUX"
+    | Mux4 -> "MUX-4"
+    | Mux8 -> "MUX-8"
     | Demux2 -> "DM"
     | Demux4 -> "DM-4"
     | Demux8 -> "DM-8"
@@ -469,12 +469,25 @@ let isMuxSel (sym:Symbol) (side:Edge): bool =
 
 /// Based on a symbol and an edge, if the port is a mux select, return an extra offset required for the port (because of the weird shape of the mux)
 let getMuxSelOffset (sym: Symbol) (side: Edge): XYPos =
-    if isMuxSel sym side then
+    let compType = sym.Component.Type
+    if isMuxSel sym side && (compType=Mux2 || compType=Demux2) then
         match side with 
             | Top -> {X = 0.0; Y = 10}
             | Bottom -> {X = 0.0; Y = -10}
             | Left -> {X = 10; Y = 0.0}
             | Right -> {X = -10; Y = 0.0}
+    elif isMuxSel sym side && (compType=Mux4 || compType=Demux4) then
+        match side with 
+            | Top -> {X = 0.0; Y = 15}
+            | Bottom -> {X = 0.0; Y = -15}
+            | Left -> {X = 15; Y = 0.0}
+            | Right -> {X = -15; Y = 0.0}
+    elif isMuxSel sym side && (compType=Mux8 || compType=Demux8) then
+        match side with 
+        | Top -> {X = 0.0; Y = 20}
+        | Bottom -> {X = 0.0; Y = -20}
+        | Left -> {X = 20; Y = 0.0}
+        | Right -> {X = -20; Y = 0.0}
     else
         {X=0.0; Y=0.0}
 
