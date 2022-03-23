@@ -1421,7 +1421,7 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
         ||> Array.fold (fun map wire ->
                 foldOverSegs updateJumpsInWire map wire)
     
-    { model with Wires = wiresWithJumps}
+    { model with Wires = wiresWithJumps }
 
 let updateWireSegmentJumps (wireList: list<ConnectionId>) (wModel: Model) : Model =
     let startT = TimeHelpers.getTimeMs()
@@ -1458,7 +1458,7 @@ let updateWires (model : Model) (compIdList : ComponentId list) (diff : XYPos) =
             else (cId, wire))
         |> Map.ofList
 
-    {model with Wires = newWires}
+    { model with Wires = newWires }
 
 ///
 let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
@@ -1562,7 +1562,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                     else wire
                 )
 
-        {model with Wires = newWires ; ErrorWires = connectionIds}, Cmd.none
+        { model with Wires = newWires ; ErrorWires = connectionIds }, Cmd.none
 
     | SelectWires (connectionIds : list<ConnectionId>) -> //selects all wires in connectionIds, and also deselects all other wires
         let newWires =
@@ -1580,14 +1580,14 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                         {wire with Color = HighLightColor.DarkSlateGrey}
                 )
 
-        {model with Wires = newWires}, Cmd.none
+        { model with Wires = newWires }, Cmd.none
 
     | DeleteWires (connectionIds : list<ConnectionId>) ->
         let newModel = resetWireSegmentJumps (connectionIds) (model)
         let newWires =
              newModel.Wires
              |> Map.filter (fun id wire -> not (List.contains id connectionIds))
-        {newModel with Wires = newWires}, Cmd.ofMsg BusWidths
+        { newModel with Wires = newWires }, Cmd.ofMsg BusWidths
 
     | DragWire (connId : ConnectionId, mMsg: MouseT) ->
         match mMsg.Op with
@@ -1611,7 +1611,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                 let newWire = moveSegment model seg distanceToMove 
                 let newWires = Map.add seg.HostId newWire model.Wires
 
-                {model with Wires = newWires}, Cmd.none
+                { model with Wires = newWires }, Cmd.none
             else
                 model, Cmd.none
 
@@ -1724,7 +1724,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
 
 //---------------Other interface functions--------------------//
 
-/// Checks if a wire intersects a bounding box by checking if any of its segments intersect (sts219)
+/// Checks if a wire intersects a bounding box by checking if any of its segments intersect
 let wireIntersectsBoundingBox (wire : Wire) (box : BoundingBox) =
     let segmentIntersectsBox segStart segEnd state seg =
         match state with
@@ -1733,22 +1733,22 @@ let wireIntersectsBoundingBox (wire : Wire) (box : BoundingBox) =
     
     foldOverSegs segmentIntersectsBox false wire
 
-///
+/// Returns a list of wire IDs in the model that intersect the given selectBox
 let getIntersectingWires (wModel : Model) (selectBox : BoundingBox) : list<ConnectionId> =
     wModel.Wires
-    |> Map.map (fun id wire -> wireIntersectsBoundingBox wire selectBox)
-    |> Map.filter (fun id boolVal -> boolVal)
+    |> Map.map (fun _id wire -> wireIntersectsBoundingBox wire selectBox)
+    |> Map.filter (fun _id bool -> bool)
     |> Map.toList
-    |> List.map (fun (id,bool) -> id)
+    |> List.map (fun (id, _bool) -> id)
 
-///searches if the position of the cursor is on a wire in a model
-///Where n is 5 pixels adjusted for top level zoom
+///Searches if the position of the cursor is on a wire in a model,
+///where n is 5 pixels adjusted for top level zoom
 let getClickedWire (wModel : Model) (pos : XYPos) (n : float) : ConnectionId Option =
     let boundingBox = {BoundingBox.TopLeft = {X = pos.X - n; Y = pos.Y - n}; H = n*2.; W = n*2.}
     let intersectingWires = getIntersectingWires (wModel : Model) boundingBox
     List.tryHead intersectingWires
 
-///
+/// Updates the model to have new wires between pasted components
 let pasteWires (wModel : Model) (newCompIds : list<ComponentId>) : (Model * list<ConnectionId>) =
     let oldCompIds = Symbol.getCopiedSymbols wModel.Symbol
     let pastedWires =
