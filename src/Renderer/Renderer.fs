@@ -134,6 +134,7 @@ let fileMenu (dispatch) =
 let viewMenu dispatch =
     let sheetDispatch sMsg = dispatch (Sheet sMsg)
     let dispatch = Sheet.KeyPress >> sheetDispatch
+    let wireTypeDispatch = Sheet.WireType >> sheetDispatch
 
     let devToolsKey = if isMac then "Alt+Command+I" else "Ctrl+Shift+I"
     makeMenu false "View" [
@@ -148,6 +149,10 @@ let viewMenu dispatch =
         makeItem "Diagram Zoom Out" (Some "Shift+-") (fun ev -> dispatch Sheet.KeyboardMsg.ZoomOut)
         makeItem "Diagram Zoom to Fit" (Some "CmdOrCtrl+W") (fun ev -> dispatch Sheet.KeyboardMsg.CtrlW)
         menuSeparator
+        makeItem "Jump" (Some "CmdOrCtrl+Shift+J") (fun ev -> wireTypeDispatch Sheet.WireTypeMsg.Jump)
+        makeItem "Radial" (Some "CmdOrCtrl+Shift+R") (fun ev -> wireTypeDispatch Sheet.WireTypeMsg.Radial)
+        makeItem "Modern" (Some "CmdOrCtrl+Shift+M") (fun ev -> wireTypeDispatch Sheet.WireTypeMsg.Modern)
+        menuSeparator
         makeCondItem (JSHelpers.debugLevel <> 0) "Toggle Dev Tools" (Some devToolsKey) (fun _ ->
             renderer.ipcRenderer.send("toggle-dev-tools", [||]) |> ignore)
     ]
@@ -161,7 +166,6 @@ let editMenu dispatch =
     let sheetDispatch sMsg = dispatch (Sheet sMsg)
     let dispatch = Sheet.KeyPress >> sheetDispatch
     let rotateDispatch = Sheet.Rotate >> sheetDispatch
-    let wireTypeDispatch = Sheet.WireType >> sheetDispatch
 
     jsOptions<MenuItemConstructorOptions> <| fun invisibleMenu ->
         invisibleMenu.``type`` <- Some MenuItemType.Submenu
@@ -179,10 +183,6 @@ let editMenu dispatch =
                makeElmItem "Undo" "CmdOrCtrl+Z" (fun () -> dispatch Sheet.KeyboardMsg.CtrlZ)
                makeElmItem "Redo" "CmdOrCtrl+Y" (fun () -> dispatch Sheet.KeyboardMsg.CtrlY)
                makeElmItem "Cancel" "ESC" (fun () -> dispatch Sheet.KeyboardMsg.ESC)
-               // Move these commands to view
-               makeElmItem "Jump" "CmdOrCtrl+Shift+J" (fun () -> wireTypeDispatch Sheet.WireTypeMsg.Jump)
-               makeElmItem "Radial" "CmdOrCtrl+Shift+R" (fun () -> wireTypeDispatch Sheet.WireTypeMsg.Radial)
-               makeElmItem "Modern" "CmdOrCtrl+Shift+M" (fun () -> wireTypeDispatch Sheet.WireTypeMsg.Modern)
             |]
             |> ResizeArray
             |> U2.Case1
