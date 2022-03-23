@@ -484,10 +484,10 @@ let getMuxSelOffset (sym: Symbol) (side: Edge): XYPos =
             | Right -> {X = -15; Y = 0.0}
     elif isMuxSel sym side && (compType=Mux8 || compType=Demux8) then
         match side with 
-        | Top -> {X = 0.0; Y = 20}
-        | Bottom -> {X = 0.0; Y = -20}
-        | Left -> {X = 20; Y = 0.0}
-        | Right -> {X = -20; Y = 0.0}
+            | Top -> {X = 0.0; Y = 20}
+            | Bottom -> {X = 0.0; Y = -20}
+            | Left -> {X = 20; Y = 0.0}
+            | Right -> {X = -20; Y = 0.0}
     else
         {X=0.0; Y=0.0}
 
