@@ -404,8 +404,9 @@ let posAdd (pos : XYPos) (a : float, b : float) : XYPos =
     {X = pos.X + a; Y = pos.Y + b}
 
 /// Finds all components (that are stored in the Sheet model) near pos
-let findNearbyComponents (model: Model) (pos: XYPos) =
-    List.allPairs [-50.0 .. 10.0 .. 50.0] [-50.0 .. 10.0 .. 50.0] // Larger Increments -> More Efficient. But can miss small components then.
+let findNearbyComponents (model: Model) (pos: XYPos) (range: float)  =
+
+    List.allPairs [-range .. 10.0 .. range] [-range .. 10.0 .. range] // Larger Increments -> More Efficient. But can miss small components then.
     |> List.map ((fun x -> posAdd pos x) >> insideBox model.BoundingBoxes)
     |> List.collect ((function | Some x -> [x] | _ -> []))
 
@@ -514,19 +515,20 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
         
         // printfn "%A" mMsg.Pos.X
         // printfn "%A" model.LastMousePos.X
-        let xMargins, yMargins =
-            let symbols = model.Wire.Symbol.Symbols
-            let extractSymbols lst id = 
-                match Map.tryFind id symbols with
-                | Some x -> lst @ [x]
-                | None -> lst
-            let nearbySymbols = List.fold extractSymbols [] model.NearbyComponents |> List.filter (fun (x:Symbol.Symbol) -> (not x.Moving) && (not (x.Id = compId))) 
 
-            let xLines = List.fold (fun lst (sym:Symbol.Symbol) -> lst @ [sym.Pos.X] @ [sym.Pos.X + float sym.Component.W]) [] nearbySymbols
-            let yLines = List.fold (fun lst (sym:Symbol.Symbol) -> lst @ [sym.Pos.Y] @ [sym.Pos.Y + float sym.Component.H]) [] nearbySymbols
+        /// Finds margins for moving shaped against other symbol sides 
+        let xMargins, yMargins =
+            let symbols = 
+                Map.toList model.Wire.Symbol.Symbols
+                |> List.map (fun x -> snd x) 
+                |> List.filter (fun (x:Symbol.Symbol) -> (not x.Moving) && (not (x.Id = compId)))
+
+            let extractEdges (prevList) (sym:Symbol.Symbol) = 
+                (fst prevList @ [sym.Pos.X] @ [sym.Pos.X + float sym.Component.W],snd prevList @ [sym.Pos.Y] @ [sym.Pos.Y + float sym.Component.H])
+            let x,y = List.fold extractEdges ([],[]) symbols
             
-            let xMarg = List.map (fun margin -> margin-x1, x1) xLines @ List.map (fun margin -> margin-x2, x2) xLines
-            let yMarg = List.map (fun margin -> margin-y1, y1) yLines @ List.map (fun margin -> margin-y2, y2) yLines
+            let xMarg = List.map (fun margin -> margin-x1, x1) x @ List.map (fun margin -> margin-x2, x2) x
+            let yMarg = List.map (fun margin -> margin-y1, y1) y @ List.map (fun margin -> margin-y2, y2) y
             xMarg, yMarg
 
 
@@ -722,7 +724,7 @@ let mDragUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
     | MovingSymbols | DragAndDrop ->
         moveSymbols model mMsg
     | ConnectingInput _ ->
-        let nearbyComponents = findNearbyComponents model mMsg.Pos
+        let nearbyComponents = findNearbyComponents model mMsg.Pos 50 
         let _, nearbyOutputPorts = findNearbyPorts model
 
         let targetPort, drawLineTarget =
@@ -738,7 +740,7 @@ let mDragUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
                     ScrollingLastMousePos = {Pos=mMsg.Pos;Move=mMsg.Movement}}
         , Cmd.ofMsg CheckAutomaticScrolling
     | ConnectingOutput _ ->
-        let nearbyComponents = findNearbyComponents model mMsg.Pos
+        let nearbyComponents = findNearbyComponents model mMsg.Pos 50
         let nearbyInputPorts, _ = findNearbyPorts model
 
         let targetPort, drawLineTarget =
@@ -849,7 +851,7 @@ let mMoveUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
                     symbolCmd (Symbol.SelectSymbols [])
                     symbolCmd (Symbol.PasteSymbols [ newCompId ]) ]
     | _ ->
-        let nearbyComponents = findNearbyComponents model mMsg.Pos // TODO Group Stage: Make this more efficient, update less often etc, make a counter?
+        let nearbyComponents = findNearbyComponents model mMsg.Pos 50 // TODO Group Stage: Make this more efficient, update less often etc, make a counter?
 
         let newCursor =
             match model.CursorType with
