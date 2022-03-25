@@ -670,7 +670,7 @@ let snapWire (model: Model) (mMsg: MouseT) (connId: ConnectionId): Model * Cmd<M
     Cmd.batch [ wireCmd (BusWire.DragWire (model.SelectedWires.Head, mMsg));
                 Cmd.ofMsg CheckAutomaticScrolling;
                 wireCmd (BusWire.UpdateWires (model.SelectedComponents, posDiff mMsg.Pos model.LastMousePos));
-                wireCmd (BusWire.MakeJumps [connId]) ]
+                wireCmd (BusWire.MakeJumps [connId]) ] 
 // ----------------------------------------- Mouse Update Helper Functions ----------------------------------------- //
 // (Kept in separate functions since Update function got too long otherwise)
 
