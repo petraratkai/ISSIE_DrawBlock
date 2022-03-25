@@ -523,11 +523,9 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
                 Map.toList model.Wire.Symbol.Symbols
                 |> List.map (fun x -> snd x) 
                 |> List.filter (fun (x:Symbol.Symbol) -> (not x.Moving) && (not (x.Id = compId)))
-
             let extractEdges (prevList) (sym:Symbol.Symbol) = 
                 (fst prevList @ [sym.Pos.X] @ [sym.Pos.X + float sym.Component.W],snd prevList @ [sym.Pos.Y] @ [sym.Pos.Y + float sym.Component.H])
             let x,y = List.fold extractEdges ([],[]) symbols
-            
             let xMarg = List.map (fun margin -> margin-x1, x1) x @ List.map (fun margin -> margin-x2, x2) x
             let yMarg = List.map (fun margin -> margin-y1, y1) y @ List.map (fun margin -> margin-y2, y2) y
             xMarg, yMarg

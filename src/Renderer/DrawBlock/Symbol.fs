@@ -460,21 +460,16 @@ let getPortBaseOffset (sym: Symbol) (side: Edge): XYPos=
 
 /// Returns true if an edge has the select port of a mux
 let isMuxSel (sym:Symbol) (side:Edge): bool =
-    let isFlipped = sym.STransform.flipped
-    if isFlipped = false then
-        match (sym.Component.Type, sym.STransform.Rotation, side) with
-        | (Mux2, Degree0, Bottom ) | (Mux4, Degree0, Bottom ) | (Mux8, Degree0, Bottom ) | (Demux2, Degree0, Bottom ) | (Demux4, Degree0, Bottom ) | (Demux8, Degree0, Bottom ) -> true
-        | (Mux2,Degree90, Right) | (Mux4, Degree90, Right) | (Mux8, Degree90, Right) | (Demux2,Degree90, Right) | (Demux4,Degree90, Right) | (Demux8,Degree90, Right) -> true
-        | (Mux2, Degree180, Top) | (Mux4, Degree180, Top) | (Mux8, Degree180, Top) | (Demux2, Degree180, Top) | (Demux4, Degree180, Top) | (Demux8, Degree180, Top) -> true
-        | (Mux2, Degree270, Left) | (Mux4, Degree270, Left) | (Mux8, Degree270, Left) | (Demux2, Degree270, Left) | (Demux4, Degree270, Left) | (Demux8, Degree270, Left) -> true
+    match sym.Component.Type with
+    | Mux2 | Mux4 | Mux8 | Demux2 | Demux4 | Demux8 ->
+        match sym.STransform.Rotation, side with
+        | Degree0, Bottom | Degree0, Top
+        | Degree90, Left | Degree90, Right
+        | Degree180, Bottom | Degree180, Top
+        | Degree270, Left | Degree270, Right
+             -> true
         | _ -> false
-    else
-        match (sym.Component.Type, sym.STransform.Rotation, side) with
-        | (Mux2, Degree0, Top) | (Mux4, Degree0, Top ) | (Mux8, Degree0, Top ) | (Demux2, Degree0, Top ) | (Demux4, Degree0, Top ) | (Demux8, Degree0, Top ) -> true
-        | (Mux2,Degree90, Left) | (Mux4, Degree90, Left) | (Mux8, Degree90, Left) | (Demux2,Degree90, Left) | (Demux4,Degree90, Left) | (Demux8,Degree90, Left) -> true
-        | (Mux2, Degree180, Bottom) | (Mux4, Degree180, Bottom) | (Mux8, Degree180, Bottom) | (Demux2, Degree180, Bottom) | (Demux4, Degree180, Bottom) | (Demux8, Degree180, Bottom) -> true
-        | (Mux2, Degree270, Right) | (Mux4, Degree270, Right) | (Mux8, Degree270, Right) | (Demux2, Degree270, Right) | (Demux4, Degree270, Right) | (Demux8, Degree270, Right) -> true
-        | _ -> false
+    | _ -> false
 
 
 /// Based on a symbol and an edge, if the port is a mux select, return an extra offset required for the port (because of the weird shape of the mux)
@@ -744,7 +739,7 @@ let drawSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
             let values = [(midt,0);(msb,midb);(msb,0)]
             List.fold (fun og i -> og @ mergeSplitLine splitWiresTextPos[i] (fst values[i]) (snd values[i]) ) [] [0..2]
         | DFF | DFFE | Register _ |RegisterE _ | ROM1 _ |RAM1 _ | AsyncRAM1 _  -> 
-            (addText (Array.head (rotatePoints [|{X = 15.; Y = float H - 11.}|] {X=W/2.;Y=H/2.} transformation )) " clk" "middle" "normal" "12px")
+            (addText (Array.head (rotatePoints [|{X = 15.; Y = float H - 13.}|] {X=W/2.;Y=H/2.} transformation )) " clk" "middle" "normal" "12px")
         | BusSelection(x,y) -> (addText {X = (float(w/2)); Y = ((float(h)/2.7)-2.)} (bustitle x y) "middle" "bold" "12px")
         | BusCompare (_,y) -> (addText {X = (float(w/2)-2.); Y = (float(h)/2.7-1.)} ("=" + NumberHelpers.hex(int y)) "middle" "bold" "10px")
         | Input (x) -> (addText {X = float(w/2); Y = (float(h)/2.7)-3.} (title "" x) "middle" "normal" "12px")
