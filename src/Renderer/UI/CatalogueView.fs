@@ -391,6 +391,8 @@ let viewCatalogue model dispatch =
                           catTip1 "Mux8" (fun _ -> createCompStdLabel Mux8 model dispatch) "Selects the one of its eight input busses numbered by the value of the select input
                                                                                             to be the output. Adjusts bus width to match."                                                                  
                           catTip1 "Demux2" (fun _ -> createCompStdLabel Demux2 model dispatch)  "The output is equal to the input, the other is 0"
+                          catTip1 "Demux4" (fun _ -> createCompStdLabel Demux4 model dispatch)  "The output is equal to the input"
+                          catTip1 "Demux8" (fun _ -> createCompStdLabel Demux8 model dispatch)  "The output is equal to the input"
                           catTip1 "Decode4" (fun _ -> createCompStdLabel Decode4 model dispatch) "The output numbered by the binary value 
                                                                                                 of the 2 bit sel input is equal to Data, the others are 0"]
                     makeMenuGroup
