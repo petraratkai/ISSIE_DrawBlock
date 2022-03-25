@@ -838,20 +838,20 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
         |> Array.map
             (
                 fun triangle ->
-                    let stringOutId =
-                            match triangle.OutputPort with
-                            | OutputPortId stringId -> stringId
-                    let outputPortLocation = Symbol.getPortLocation model.Symbol stringOutId 
-                    let outputPortEdge = Symbol.getOutputPortOrientation model.Symbol triangle.OutputPort 
+                    let stringInId =
+                            match triangle.InputPort with
+                            | InputPortId stringId -> stringId
+                    let InputPortLocation = Symbol.getPortLocation model.Symbol stringInId 
+                    let InputPortEdge = Symbol.getInputPortOrientation model.Symbol triangle.InputPort 
                     let str:string = 
-                        if outputPortEdge = CommonTypes.Top then
-                            sprintf "%f,%f %f,%f %f,%f " outputPortLocation.X outputPortLocation.Y (outputPortLocation.X+2.) (outputPortLocation.Y-4.) (outputPortLocation.X-2.) (outputPortLocation.Y-4.)
-                        else if outputPortEdge = CommonTypes.Bottom then
-                            sprintf "%f,%f %f,%f %f,%f " outputPortLocation.X outputPortLocation.Y (outputPortLocation.X+2.) (outputPortLocation.Y+4.) (outputPortLocation.X-2.) (outputPortLocation.Y+4.)
-                        else if outputPortEdge = CommonTypes.Right then
-                            sprintf "%f,%f %f,%f %f,%f " outputPortLocation.X outputPortLocation.Y (outputPortLocation.X+4.) (outputPortLocation.Y+2.) (outputPortLocation.X+4.) (outputPortLocation.Y-2.)
+                        if InputPortEdge = CommonTypes.Top then
+                            sprintf "%f,%f %f,%f %f,%f " InputPortLocation.X InputPortLocation.Y (InputPortLocation.X+2.) (InputPortLocation.Y-4.) (InputPortLocation.X-2.) (InputPortLocation.Y-4.)
+                        else if InputPortEdge = CommonTypes.Bottom then
+                            sprintf "%f,%f %f,%f %f,%f " InputPortLocation.X InputPortLocation.Y (InputPortLocation.X+2.) (InputPortLocation.Y+4.) (InputPortLocation.X-2.) (InputPortLocation.Y+4.)
+                        else if InputPortEdge = CommonTypes.Right then
+                            sprintf "%f,%f %f,%f %f,%f " InputPortLocation.X InputPortLocation.Y (InputPortLocation.X+4.) (InputPortLocation.Y+2.) (InputPortLocation.X+4.) (InputPortLocation.Y-2.)
                         else 
-                            sprintf "%f,%f %f,%f %f,%f " outputPortLocation.X outputPortLocation.Y (outputPortLocation.X-4.) (outputPortLocation.Y+2.) (outputPortLocation.X-4.) (outputPortLocation.Y-2.)
+                            sprintf "%f,%f %f,%f %f,%f " InputPortLocation.X InputPortLocation.Y (InputPortLocation.X-4.) (InputPortLocation.Y+2.) (InputPortLocation.X-4.) (InputPortLocation.Y-2.)
 
                     let polygon = {
                         defaultPolygon with
