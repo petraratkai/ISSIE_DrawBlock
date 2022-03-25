@@ -125,7 +125,11 @@ let getPrefix compType =
     match compType with
     | Not | And | Or | Xor | Nand | Nor | Xnor -> "G"
     | Mux2 -> "MUX"
+    | Mux4 -> "MUX-4"
+    | Mux8 -> "MUX-8"
     | Demux2 -> "DM"
+    | Demux4 -> "DM-4"
+    | Demux8 -> "DM-8"
     | NbitsAdder _ -> "A"
     | NbitsXor _ -> "XOR"
     | DFF | DFFE -> "FF"
@@ -178,14 +182,15 @@ let portNames (componentType:ComponentType)  = //(input port names, output port 
     | DFF -> (["D"]@["Q"])
     | DFFE -> (["D";"EN"]@["Q"])
     | Mux2 -> (["0"; "1";"SEL"]@["OUT"])
+    | Mux4 -> (["0"; "1"; "2"; "3" ;"SEL"]@["OUT"])
+    | Mux8 -> (["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7";"SEL"]@["OUT"])
     | Demux2 -> (["IN" ; "SEL"]@["0"; "1"])
+    | Demux4 -> (["IN"; "SEL"]@["0"; "1";"2"; "3";])
+    | Demux8 -> (["IN"; "SEL"]@["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7"])
     | NbitsXor _ -> (["P"; "Q"]@ ["Out"])
     | Custom x -> (List.map fst x.InputLabels)@ (List.map fst x.OutputLabels)
-    |_ -> ([]@[])
-   // |Mux4 -> (["0"; "1"; "2"; "3" ;"SEL"],["OUT"])
-   // |Demux4 -> (["IN"; "SEL"],["0"; "1";"2"; "3";])
+    | _ -> ([]@[])
    // |Demux8 -> (["IN"; "SEL"],["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7"])
-   // |Mux8 -> (["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7";"SEL"],["OUT"])
    // |_ -> ([],[])
    // EXTENSION: Extra Components made that are not currently in Issie. Can be extended later by using this code as it is .
 
@@ -258,13 +263,17 @@ let initPortOrientation (comp: Component) =
     match comp.Type with //need to put some ports to different edges
     | Mux2 -> //need to remove select port from left and move to bottom
         movePortToBottom res 2
+    | Mux4 -> //need to remove select port from left and move to right
+        movePortToBottom res 4
+    | Mux8 ->
+        movePortToBottom res 8
     | NbitsAdder _ -> 
         movePortToBottom res 0
     | DFFE ->
         movePortToBottom res 1
     | RegisterE _ ->
         movePortToBottom res 1
-    | Demux2 ->
+    | Demux2 | Demux4 | Demux8 ->
         movePortToBottom res 1
     | _ -> res
 
@@ -359,11 +368,11 @@ let makeComponent (pos: XYPos) (comptype: ComponentType) (id:string) (label:stri
         | MergeWires -> ( 2 , 1, 2*GridSize ,  2*GridSize) 
         | SplitWire (a) ->(  1 , 2 , 2*GridSize ,  2*GridSize) 
         | Mux2 -> ( 3  , 1, 3*GridSize ,  2*GridSize) 
-        // EXTENSION:    | Mux4 -> ( 5  , 1, 5*GridSize ,  2*GridSize)   
-        // EXTENSION:    | Mux8 -> ( 9  , 1, 7*GridSize ,  2*GridSize) 
+        | Mux4 -> ( 5  , 1, 5*GridSize ,  2*GridSize)   
+        | Mux8 -> ( 9  , 1, 7*GridSize ,  2*GridSize) 
         | Demux2 ->( 2  , 2, 3*GridSize ,  2*GridSize) 
-        // EXTENSION:   | Demux4 -> ( 2  , 4, 150 ,  50) 
-        // EXTENSION:    | Demux8 -> ( 2  , 8, 200 ,  50) 
+        | Demux4 -> ( 2  , 4, 150 ,  50) 
+        | Demux8 -> ( 2  , 8, 200 ,  50) 
         | BusSelection (a, b) -> (  1 , 1, GridSize,  2*GridSize) 
         | BusCompare (a, b) -> ( 1 , 1, GridSize ,  2*GridSize) 
         | DFF -> (  1 , 1, 3*GridSize  , 3*GridSize) 
@@ -451,24 +460,44 @@ let getPortBaseOffset (sym: Symbol) (side: Edge): XYPos=
 
 /// Returns true if an edge has the select port of a mux
 let isMuxSel (sym:Symbol) (side:Edge): bool =
+    let isFlipped = sym.STransform.flipped
+    if isFlipped = false then
         match (sym.Component.Type, sym.STransform.Rotation, side) with
-        | (Mux2, Degree0, Bottom ) | (Demux2, Degree0, Bottom )-> true
-        | (Mux2,Degree90, Right) | (Demux2,Degree90, Right)-> true
-        | (Mux2,Degree90, Left) | (Demux2,Degree90, Left)-> true
-        | (Mux2,Degree270, Right) | (Demux2,Degree270, Right)-> true
-        | (Mux2, Degree180, Top) | (Demux2, Degree180, Top) -> true
-        | (Mux2, Degree270, Left) | (Demux2, Degree270, Left)-> true
+        | (Mux2, Degree0, Bottom ) | (Mux4, Degree0, Bottom ) | (Mux8, Degree0, Bottom ) | (Demux2, Degree0, Bottom ) | (Demux4, Degree0, Bottom ) | (Demux8, Degree0, Bottom ) -> true
+        | (Mux2,Degree90, Right) | (Mux4, Degree90, Right) | (Mux8, Degree90, Right) | (Demux2,Degree90, Right) | (Demux4,Degree90, Right) | (Demux8,Degree90, Right) -> true
+        | (Mux2, Degree180, Top) | (Mux4, Degree180, Top) | (Mux8, Degree180, Top) | (Demux2, Degree180, Top) | (Demux4, Degree180, Top) | (Demux8, Degree180, Top) -> true
+        | (Mux2, Degree270, Left) | (Mux4, Degree270, Left) | (Mux8, Degree270, Left) | (Demux2, Degree270, Left) | (Demux4, Degree270, Left) | (Demux8, Degree270, Left) -> true
+        | _ -> false
+    else
+        match (sym.Component.Type, sym.STransform.Rotation, side) with
+        | (Mux2, Degree0, Top) | (Mux4, Degree0, Top ) | (Mux8, Degree0, Top ) | (Demux2, Degree0, Top ) | (Demux4, Degree0, Top ) | (Demux8, Degree0, Top ) -> true
+        | (Mux2,Degree90, Left) | (Mux4, Degree90, Left) | (Mux8, Degree90, Left) | (Demux2,Degree90, Left) | (Demux4,Degree90, Left) | (Demux8,Degree90, Left) -> true
+        | (Mux2, Degree180, Bottom) | (Mux4, Degree180, Bottom) | (Mux8, Degree180, Bottom) | (Demux2, Degree180, Bottom) | (Demux4, Degree180, Bottom) | (Demux8, Degree180, Bottom) -> true
+        | (Mux2, Degree270, Right) | (Mux4, Degree270, Right) | (Mux8, Degree270, Right) | (Demux2, Degree270, Right) | (Demux4, Degree270, Right) | (Demux8, Degree270, Right) -> true
         | _ -> false
 
 
 /// Based on a symbol and an edge, if the port is a mux select, return an extra offset required for the port (because of the weird shape of the mux)
 let getMuxSelOffset (sym: Symbol) (side: Edge): XYPos =
-    if isMuxSel sym side then
+    let compType = sym.Component.Type
+    if isMuxSel sym side && (compType=Mux2 || compType=Demux2) then
         match side with 
             | Top -> {X = 0.0; Y = 10}
             | Bottom -> {X = 0.0; Y = -10}
             | Left -> {X = 10; Y = 0.0}
             | Right -> {X = -10; Y = 0.0}
+    elif isMuxSel sym side && (compType=Mux4 || compType=Demux4) then
+        match side with 
+            | Top -> {X = 0.0; Y = 15}
+            | Bottom -> {X = 0.0; Y = -15}
+            | Left -> {X = 15; Y = 0.0}
+            | Right -> {X = -15; Y = 0.0}
+    elif isMuxSel sym side && (compType=Mux8 || compType=Demux8) then
+        match side with 
+            | Top -> {X = 0.0; Y = 20}
+            | Bottom -> {X = 0.0; Y = -20}
+            | Left -> {X = 20; Y = 0.0}
+            | Right -> {X = -20; Y = 0.0}
     else
         {X=0.0; Y=0.0}
 
@@ -663,6 +692,10 @@ let drawSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
             | Demux2 ->
                 [|{X=0;Y=H/5.};{X=0;Y=H*0.8};{X=W;Y=H};{X=W;Y=0}|]
             | Mux2 ->
+                [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H*0.8};{X=W;Y=H/5.}|]
+            | Demux2 | Demux4 | Demux8 ->
+                [|{X=0;Y=H/5.};{X=0;Y=H*0.8};{X=W;Y=H};{X=W;Y=0}|]
+            | Mux2 | Mux4 | Mux8 -> 
                 [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H*0.8};{X=W;Y=H/5.}|]
             | BusSelection _ |BusCompare _ -> 
                 [|{X=0;Y=0};{X=0;Y=H};{X=W*0.6;Y=H};{X=W*0.8;Y=H*0.7};{X=W;Y=H*0.7};{X=W;Y =H*0.3};{X=W*0.8;Y=H*0.3};{X=W*0.6;Y=0}|]
@@ -1078,26 +1111,6 @@ let getCopiedSymbol model portId =
 /// ComponentIds at same index in both list 1 and list 2 need to be of the same ComponentType.
 /// CompIds1 need to be in model.CopiedSymbols.
 /// Assumes ports are in the same order in equivalent symbols
-(*let getEquivalentCopiedPorts (model: Model) (copiedIds: ComponentId list) (pastedIds: ComponentId list) (InputPortId copiedInputPort, OutputPortId copiedOutputPort) =
-    let getPastedSymbol copiedPort =
-        ComponentId (getPortHostId model copiedPort)
-        |> tryGetPastedEl copiedIds pastedIds
-        |> Option.map (fun id -> model.Symbols[id])
-    printfn $"{model.Ports}"
-    printfn $"{copiedInputPort}"
-    let copiedInSymbol = getCopiedSymbol model copiedInputPort
-    let copiedOutSymbol = getCopiedSymbol model copiedOutputPort
-    let copiedInPortIds, copiedOutPortIds = getPortIds copiedInSymbol copiedOutSymbol
-
-    let pastedInSymbol = getPastedSymbol copiedInputPort
-    let pastedOutSymbol = getPastedSymbol copiedOutputPort
-    match pastedInSymbol, pastedOutSymbol with
-    | Some inSymbol, Some outSymbol ->
-        let pastedInPortIds, pastedOutPortIds = getPortIds inSymbol outSymbol
-        let equivInPorts = tryGetPastedEl copiedInPortIds pastedInPortIds copiedInputPort
-        let equivOutPorts = tryGetPastedEl copiedOutPortIds pastedOutPortIds copiedOutputPort 
-        mergeOptions (equivInPorts, equivOutPorts)
-    | _ -> None*)
 let getEquivalentCopiedPorts (model: Model) (copiedIds) (pastedIds) (InputPortId copiedInputPort, OutputPortId copiedOutputPort) =
     let findEquivalentPorts compId1 compId2 =
         let copiedComponent = model.CopiedSymbols[compId1].Component

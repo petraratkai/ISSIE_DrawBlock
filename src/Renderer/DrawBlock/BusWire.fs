@@ -498,8 +498,11 @@ let renderRadialWire (state : (string * Orientation)) (segmentpair : {| First : 
     let startSecondSegment = segmentpair.Second.Start
     let endSecondSegment = segmentpair.Second.End
     
-    let makeCommandString xStart yStart sweepflag xEnd yEnd : string =
-        $"L {xStart} {yStart} A 5 5, 45, 0, {sweepflag}, {xEnd} {yEnd}" 
+    let dist1 = euclideanDistance startFirstSegment endFirstSegment
+    let dist2 = euclideanDistance startSecondSegment endSecondSegment
+    let rad = System.Math.Floor(min 5.0 (max 0.0 (min dist1 dist2)))
+    let makeCommandString xStart yStart rad sweepflag xEnd yEnd : string =
+        $"L {xStart} {yStart} A {rad} {rad}, 45, 0, {sweepflag}, {xEnd} {yEnd}" 
 
     //Checking if horizontal followed by length 0 vertical
     if startFirstSegment.X = endFirstSegment.X && 
@@ -524,32 +527,32 @@ let renderRadialWire (state : (string * Orientation)) (segmentpair : {| First : 
         if snd(state) = Horizontal then
             if startFirstSegment.X - endFirstSegment.X > 0 then
                 if startSecondSegment.Y - endSecondSegment.Y > 0 then
-                    let current:string = makeCommandString (endFirstSegment.X+5.) endFirstSegment.Y 1 startSecondSegment.X (startSecondSegment.Y-5.)
+                    let current:string = makeCommandString (endFirstSegment.X+rad) endFirstSegment.Y rad 1 startSecondSegment.X (startSecondSegment.Y-rad)
                     ((fst(state)+current), Vertical)
                 else
-                    let current:string  =  makeCommandString (endFirstSegment.X+5.) endFirstSegment.Y 0 startSecondSegment.X (startSecondSegment.Y+5.)
+                    let current:string  =  makeCommandString (endFirstSegment.X+rad) endFirstSegment.Y rad 0 startSecondSegment.X (startSecondSegment.Y+rad)
                     ((fst(state)+current), Vertical)
             else
                 if startSecondSegment.Y - endSecondSegment.Y > 0 then
-                    let current:string =  makeCommandString (endFirstSegment.X-5.)endFirstSegment.Y 0 startSecondSegment.X (startSecondSegment.Y-5.)
+                    let current:string =  makeCommandString (endFirstSegment.X-rad)endFirstSegment.Y rad 0 startSecondSegment.X (startSecondSegment.Y-rad)
                     ((fst(state)+current), Vertical)
                 else
-                    let current:string = makeCommandString (endFirstSegment.X-5.) endFirstSegment.Y 1 startSecondSegment.X (startSecondSegment.Y+5.)
+                    let current:string = makeCommandString (endFirstSegment.X-rad) endFirstSegment.Y rad 1 startSecondSegment.X (startSecondSegment.Y+rad)
                     ((fst(state)+current), Vertical)
         else
             if startFirstSegment.Y - endFirstSegment.Y > 0 then
                 if startSecondSegment.X - endSecondSegment.X > 0 then
-                    let current :string =  makeCommandString endFirstSegment.X (endFirstSegment.Y+5.) 0 (startSecondSegment.X-5.) startSecondSegment.Y
+                    let current :string =  makeCommandString endFirstSegment.X (endFirstSegment.Y+rad) rad 0 (startSecondSegment.X-rad) startSecondSegment.Y
                     ((fst(state)+current), Horizontal)
                 else
-                    let current :string =  makeCommandString endFirstSegment.X (endFirstSegment.Y+5.) 1 (startSecondSegment.X+5.) startSecondSegment.Y
+                    let current :string =  makeCommandString endFirstSegment.X (endFirstSegment.Y+rad) rad 1 (startSecondSegment.X+rad) startSecondSegment.Y
                     ((fst(state)+current), Horizontal)
             else
                 if startSecondSegment.X - endSecondSegment.X > 0 then
-                    let current :string =  makeCommandString endFirstSegment.X (endFirstSegment.Y-5.)  1 (startSecondSegment.X-5.) startSecondSegment.Y
+                    let current :string =  makeCommandString endFirstSegment.X (endFirstSegment.Y-rad) rad 1 (startSecondSegment.X-rad) startSecondSegment.Y
                     ((fst(state)+current), Horizontal)
                 else
-                    let current :string =  makeCommandString endFirstSegment.X (endFirstSegment.Y-5.)  0 (startSecondSegment.X+5.) startSecondSegment.Y
+                    let current :string =  makeCommandString endFirstSegment.X (endFirstSegment.Y-rad) rad  0 (startSecondSegment.X+rad) startSecondSegment.Y
                     ((fst(state)+current), Horizontal)
 
 ///Renders a single segment in the display type of modern
@@ -824,21 +827,46 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
                             OutputPortLocation = outputPortLocation
                             DisplayType = model.Type
                         }
-                    //To test other display types need to change 2nd match to the relevant 
-                    //singleWire____View as section 3 has not yet implemented the model.Type properly
-                    //currently the model.Type is always Jump
                     match  model.Type with    
                     | Radial -> singleWireRadialView props
                     | Jump -> singleWireJumpView props
                     | Modern -> singleWireModernView props
 
-                    //Testing radial
-                    //
             )
+    let wiresAndTriangle = 
+        wires'
+        |> Array.map
+            (
+                fun triangle ->
+                    let stringOutId =
+                            match triangle.OutputPort with
+                            | OutputPortId stringId -> stringId
+                    let outputPortLocation = Symbol.getPortLocation model.Symbol stringOutId 
+                    let outputPortEdge = Symbol.getOutputPortOrientation model.Symbol triangle.OutputPort 
+                    let str:string = 
+                        if outputPortEdge = CommonTypes.Top then
+                            sprintf "%f,%f %f,%f %f,%f " outputPortLocation.X outputPortLocation.Y (outputPortLocation.X+2.) (outputPortLocation.Y-4.) (outputPortLocation.X-2.) (outputPortLocation.Y-4.)
+                        else if outputPortEdge = CommonTypes.Bottom then
+                            sprintf "%f,%f %f,%f %f,%f " outputPortLocation.X outputPortLocation.Y (outputPortLocation.X+2.) (outputPortLocation.Y+4.) (outputPortLocation.X-2.) (outputPortLocation.Y+4.)
+                        else if outputPortEdge = CommonTypes.Right then
+                            sprintf "%f,%f %f,%f %f,%f " outputPortLocation.X outputPortLocation.Y (outputPortLocation.X+4.) (outputPortLocation.Y+2.) (outputPortLocation.X+4.) (outputPortLocation.Y-2.)
+                        else 
+                            sprintf "%f,%f %f,%f %f,%f " outputPortLocation.X outputPortLocation.Y (outputPortLocation.X-4.) (outputPortLocation.Y+2.) (outputPortLocation.X-4.) (outputPortLocation.Y-2.)
+
+                    let polygon = {
+                        defaultPolygon with
+                            Fill = "black"
+                            }
+                    makePolygon str polygon
+            )
+    let res = 
+        wires 
+        |> Array.append wiresAndTriangle
+
     TimeHelpers.instrumentInterval "WirePrepareProps" rStart ()
     let symbols = Symbol.view model.Symbol (Symbol >> dispatch)
  
-    g [] [(g [] wires); symbols]
+    g [] [(g [] res); symbols]
     |> TimeHelpers.instrumentInterval "WireView" start
 
 /// Initialises an empty BusWire Model
@@ -1358,7 +1386,7 @@ let moveWire (wire: Wire) (displacement: XYPos) =
           EndPos = wire.EndPos + displacement }
 
 /// Returns an updated wireMap with the IntersectOrJumpList of targetSeg replaced by jumps
-let updateSegmentJumps targetSeg jumps wireMap =
+let updateSegmentJumpsOrIntersections targetSeg jumps wireMap =
     let wId = targetSeg.HostId
     let target = targetSeg.Index
 
@@ -1373,6 +1401,29 @@ let updateSegmentJumps targetSeg jumps wireMap =
 
     wireMap
     |> Map.add wId { wireMap[wId] with Segments = changeSegment wireMap[wId].Segments }
+
+/// Used as a folder in foldOverSegs. Finds all jump offsets in a wire for the segment defined in the state
+let findModernIntersects (segStart: XYPos) (segEnd: XYPos) (state: {| Start: XYPos; End: XYPos; Jumps: (float * SegmentId) list |}) (seg: Segment) =
+    let x1Start, x1End, x2Start, x2End = segStart.X, segEnd.X, state.Start.X, state.End.X
+    let y1Start, y1End, y2Start, y2End = segStart.Y, segEnd.Y, state.Start.Y, state.End.Y
+    let x1hi, x1lo = max x1Start x1End, min x1Start x1End
+    let x2hi, x2lo = max x2Start x2End, min x2Start x2End
+    let y1hi, y1lo = max y1Start y1End, min y1Start y1End
+    let y2hi, y2lo = max y2Start y2End, min y2Start y2End
+    if getSegmentOrientation segStart segEnd = Vertical then
+        if y2Start < y1hi  && y2Start > y1lo  && (x2Start > x1hi - 0.1 && x2Start < x1hi + 0.1) then
+            {| state with Jumps = (abs(0.0), seg.Id) :: state.Jumps |}
+        else if y2End < y1hi  && y2End > y1lo  && (x2End > x1hi - 0.1 && x2End < x1hi + 0.1) then
+            {| state with Jumps = (abs(x2End - x2Start), seg.Id) :: state.Jumps |}
+        else
+            state
+    else
+        if (y2Start > y1hi - 0.1 && y2Start < y1hi + 0.1) && x1hi > x2hi && x1lo < x2lo then
+            {| state with Jumps = (abs(0.0), seg.Id) :: (abs(x2End - x2Start), seg.Id) :: state.Jumps |}
+        else if (y2Start > y1hi - 0.1 && y2Start < y1hi + 0.1) && x2hi > x1hi && x1hi > x2lo && x2lo > x1lo then
+             {| state with Jumps = (abs(0.0), seg.Id) :: (abs(x1hi - x2lo), seg.Id) :: state.Jumps |}
+        else
+            state
 
 /// Used as a folder in foldOverSegs. Finds all jump offsets in a wire for the segment defined in the state
 let findJumpIntersects (segStart: XYPos) (segEnd: XYPos) (state: {| Start: XYPos; End: XYPos; Jumps: (float * SegmentId) list |}) (seg: Segment) =
@@ -1402,15 +1453,19 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
         if getSegmentOrientation segStart segEnd = Horizontal then
             ([], wires)
             ||> Array.fold (fun jumps wire -> 
-                if not (Array.contains wire.Id wiresWithNoJumpsA) then
+                if (model.Type = Jump) && not (Array.contains wire.Id wiresWithNoJumpsA) then
                     foldOverSegs findJumpIntersects {| Start = segStart; End = segEnd; Jumps = [] |} wire
+                    |> (fun res -> res.Jumps)
+                    |> List.append jumps
+                else if (model.Type = Modern) && not (Array.contains wire.Id wiresWithNoJumpsA) then
+                    foldOverSegs findModernIntersects {| Start = segStart; End = segEnd; Jumps = [] |} wire
                     |> (fun res -> res.Jumps)
                     |> List.append jumps
                 else
                     jumps)
             |> (fun jumps -> 
                 if jumps <> seg.IntersectOrJumpList then
-                    updateSegmentJumps seg jumps wireMap
+                    updateSegmentJumpsOrIntersections seg jumps wireMap
                 else 
                     wireMap)
         else
@@ -1421,7 +1476,7 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
         ||> Array.fold (fun map wire ->
                 foldOverSegs updateJumpsInWire map wire)
     
-    { model with Wires = wiresWithJumps}
+    { model with Wires = wiresWithJumps }
 
 let updateWireSegmentJumps (wireList: list<ConnectionId>) (wModel: Model) : Model =
     let startT = TimeHelpers.getTimeMs()
@@ -1458,7 +1513,7 @@ let updateWires (model : Model) (compIdList : ComponentId list) (diff : XYPos) =
             else (cId, wire))
         |> Map.ofList
 
-    {model with Wires = newWires}
+    { model with Wires = newWires }
 
 ///
 let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
@@ -1562,7 +1617,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                     else wire
                 )
 
-        {model with Wires = newWires ; ErrorWires = connectionIds}, Cmd.none
+        { model with Wires = newWires ; ErrorWires = connectionIds }, Cmd.none
 
     | SelectWires (connectionIds : list<ConnectionId>) -> //selects all wires in connectionIds, and also deselects all other wires
         let newWires =
@@ -1580,14 +1635,14 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                         {wire with Color = HighLightColor.DarkSlateGrey}
                 )
 
-        {model with Wires = newWires}, Cmd.none
+        { model with Wires = newWires }, Cmd.none
 
     | DeleteWires (connectionIds : list<ConnectionId>) ->
         let newModel = resetWireSegmentJumps (connectionIds) (model)
         let newWires =
              newModel.Wires
              |> Map.filter (fun id wire -> not (List.contains id connectionIds))
-        {newModel with Wires = newWires}, Cmd.ofMsg BusWidths
+        { newModel with Wires = newWires }, Cmd.ofMsg BusWidths
 
     | DragWire (connId : ConnectionId, mMsg: MouseT) ->
         match mMsg.Op with
@@ -1611,7 +1666,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                 let newWire = moveSegment model seg distanceToMove 
                 let newWires = Map.add seg.HostId newWire model.Wires
 
-                {model with Wires = newWires}, Cmd.none
+                { model with Wires = newWires }, Cmd.none
             else
                 model, Cmd.none
 
@@ -1724,7 +1779,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
 
 //---------------Other interface functions--------------------//
 
-/// Checks if a wire intersects a bounding box by checking if any of its segments intersect (sts219)
+/// Checks if a wire intersects a bounding box by checking if any of its segments intersect
 let wireIntersectsBoundingBox (wire : Wire) (box : BoundingBox) =
     let segmentIntersectsBox segStart segEnd state seg =
         match state with
@@ -1733,22 +1788,22 @@ let wireIntersectsBoundingBox (wire : Wire) (box : BoundingBox) =
     
     foldOverSegs segmentIntersectsBox false wire
 
-///
+/// Returns a list of wire IDs in the model that intersect the given selectBox
 let getIntersectingWires (wModel : Model) (selectBox : BoundingBox) : list<ConnectionId> =
     wModel.Wires
-    |> Map.map (fun id wire -> wireIntersectsBoundingBox wire selectBox)
-    |> Map.filter (fun id boolVal -> boolVal)
+    |> Map.map (fun _id wire -> wireIntersectsBoundingBox wire selectBox)
+    |> Map.filter (fun _id bool -> bool)
     |> Map.toList
-    |> List.map (fun (id,bool) -> id)
+    |> List.map (fun (id, _bool) -> id)
 
-///searches if the position of the cursor is on a wire in a model
-///Where n is 5 pixels adjusted for top level zoom
+///Searches if the position of the cursor is on a wire in a model,
+///where n is 5 pixels adjusted for top level zoom
 let getClickedWire (wModel : Model) (pos : XYPos) (n : float) : ConnectionId Option =
     let boundingBox = {BoundingBox.TopLeft = {X = pos.X - n; Y = pos.Y - n}; H = n*2.; W = n*2.}
     let intersectingWires = getIntersectingWires (wModel : Model) boundingBox
     List.tryHead intersectingWires
 
-///
+/// Updates the model to have new wires between pasted components
 let pasteWires (wModel : Model) (newCompIds : list<ComponentId>) : (Model * list<ConnectionId>) =
     let oldCompIds = Symbol.getCopiedSymbols wModel.Symbol
     let pastedWires =

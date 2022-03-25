@@ -11,6 +11,7 @@ open Elmish
 open DrawHelpers
 
 
+
 let mutable canvasDiv:Types.Element option = None
 
 
@@ -583,6 +584,122 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
                     Cmd.ofMsg CheckAutomaticScrolling
                     wireCmd (BusWire.UpdateWires (model.SelectedComponents, posDiff mMsg.Pos model.LastMousePos))]
 
+
+let snapWire (model: Model) (mMsg: MouseT) (connId: ConnectionId): Model * Cmd<Msg> = 
+    
+    let nextAction, isMovingWire =
+        match model.Action with
+        | MovingWire connId -> MovingWire connId, true
+        | _ -> Idle, false
+
+    let checkForSnap (input: {| SnapInfo: LastSnap Option; Indicator: float Option; CurrMPos: XYPos; LastMPos: XYPos; orientation: BusWire.Orientation |}) =
+        
+        let clickedWireId = model.SelectedWires.Head
+        let clickedWire = model.Wire.Wires |> Map.find clickedWireId
+
+        let clickedSegId = BusWire.getClickedSegment model.Wire clickedWireId input.CurrMPos
+
+        let segPositions (wire: BusWire.Wire) (target) =
+            (None, wire)
+            ||> BusWire.foldOverSegs (fun startPos endPos state seg ->
+                                            if seg.Id = target then Some (startPos, endPos)
+                                            else state)
+
+        let segStart, segEnd = Option.get (segPositions clickedWire clickedSegId)
+
+        let segOrientation: BusWire.Orientation = BusWire.getSegmentOrientation segStart segEnd
+
+        let distanceFromPrevGridline: float =
+            match segOrientation with
+            | BusWire.Orientation.Vertical -> segStart.X % gridSize
+            | BusWire.Orientation.Horizontal -> segStart.Y % gridSize
+
+        let margin: float =
+            if distanceFromPrevGridline > (gridSize / 2.0) then
+                gridSize - distanceFromPrevGridline
+            else distanceFromPrevGridline
+        
+        match input.SnapInfo with
+        | Some {Pos = oldPos; SnapLength = previousSnap} -> //already snapped, see if far enough to unsnap
+            match segOrientation, input.orientation with
+            | BusWire.Orientation.Vertical , BusWire.Orientation.Vertical->
+                if abs (input.CurrMPos.X - oldPos) - previousSnap > unSnapMargin then
+                    {| DeltaPos = (input.CurrMPos.X - oldPos) - previousSnap; SnapInfo = None; Indicator = None |} //unSnap
+                else {| DeltaPos = input.CurrMPos.X-input.LastMPos.X; SnapInfo = input.SnapInfo; Indicator = input.Indicator |} // no unSnap
+            | BusWire.Orientation.Horizontal, BusWire.Orientation.Horizontal->
+                if abs (input.CurrMPos.Y - oldPos) - previousSnap > unSnapMargin then
+                    {| DeltaPos = (input.CurrMPos.Y - oldPos) - previousSnap; SnapInfo = None; Indicator = None |}
+                else {| DeltaPos = 0.; SnapInfo = input.SnapInfo; Indicator = input.Indicator |}
+            | _ -> {| DeltaPos = input.CurrMPos.Y-input.LastMPos.Y; SnapInfo = None; Indicator = None |}
+        | None ->
+            match segOrientation, input.orientation with
+            | BusWire.Orientation.Vertical, BusWire.Orientation.Vertical ->
+                match (margin < snapMargin), (not model.AutomaticScrolling), (distanceFromPrevGridline - margin < 1.) with
+                | true, true, true -> 
+                    {| DeltaPos = margin;
+                       SnapInfo = Some {Pos = input.CurrMPos.X; SnapLength = -margin};
+                       Indicator = Some (segStart.X - margin) |}
+                | true, true, false ->
+                    {| DeltaPos = -margin;
+                       SnapInfo = Some {Pos = input.CurrMPos.X; SnapLength = margin};
+                       Indicator = Some (segStart.X + margin) |}
+                | _ ->
+                    {| DeltaPos = (input.CurrMPos.X - input.LastMPos.X);
+                       SnapInfo = None;
+                       Indicator = None |}
+            | BusWire.Orientation.Horizontal, BusWire.Orientation.Horizontal ->
+                match (margin < snapMargin), (not model.AutomaticScrolling), (distanceFromPrevGridline - margin < 1.) with
+                | true, true, true -> 
+                    {| DeltaPos = margin;
+                       SnapInfo = Some {Pos = input.CurrMPos.Y; SnapLength = -margin};
+                       Indicator = Some (segStart.Y - margin) |}
+                | true, true, false -> 
+                    {| DeltaPos = -margin;
+                       SnapInfo = Some {Pos = input.CurrMPos.Y; SnapLength = margin};
+                       Indicator = Some (segStart.Y + margin) |}
+                | _ ->
+                    {| DeltaPos = (input.CurrMPos.Y - input.LastMPos.Y);
+                       SnapInfo = None;
+                       Indicator = None |}
+            | _ ->  {| DeltaPos = 0.; SnapInfo = None; Indicator = None |}
+    
+    let snapX = checkForSnap {| SnapInfo = model.Snap.XSnap;
+                                Indicator = model.SnapIndicator.XLine;
+                                CurrMPos = mMsg.Pos;
+                                LastMPos = model.LastMousePos;
+                                orientation = BusWire.Vertical    |}
+
+    let snapY = checkForSnap {| SnapInfo = model.Snap.YSnap;
+                                Indicator = model.SnapIndicator.YLine;
+                                CurrMPos = mMsg.Pos;   
+                                LastMPos = model.LastMousePos;
+                                orientation = BusWire.Horizontal    |}
+
+    let updateLastMousePosForSnap, updateMouseCounter =
+        if model.MouseCounter > 5 then
+            mMsg.Pos, 0
+        else model.LastMousePos, model.MouseCounter + 1
+    let wirePos = 
+        match snapX.SnapInfo, snapY.SnapInfo with
+        | Some sInfo , None -> {X=sInfo.Pos; Y=mMsg.Pos.Y}
+        | None, Some sInfo -> {X=mMsg.Pos.X; Y=sInfo.Pos}
+        | _ -> mMsg.Pos
+
+    let mMsg' = 
+        {mMsg with Pos = wirePos} 
+                                
+    { model with
+        Action = nextAction;
+        LastMousePos = mMsg.Pos;
+        ScrollingLastMousePos = {Pos = mMsg.Pos; Move = mMsg.Movement};
+        ErrorComponents = [];
+        Snap = {XSnap = snapX.SnapInfo; YSnap = snapY.SnapInfo};
+        SnapIndicator = {XLine = snapX.Indicator; YLine = snapY.Indicator};
+        MouseCounter = updateMouseCounter;
+        LastMousePosForSnap = updateLastMousePosForSnap },
+    Cmd.batch [ wireCmd (BusWire.DragWire (model.SelectedWires.Head, mMsg'));
+                Cmd.ofMsg CheckAutomaticScrolling;
+                wireCmd (BusWire.MakeJumps [connId]) ] 
 // ----------------------------------------- Mouse Update Helper Functions ----------------------------------------- //
 // (Kept in separate functions since Update function got too long otherwise)
 
@@ -708,7 +825,7 @@ let mDownUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
 /// Mouse Drag Update, can be: drag-to-selecting, moving symbols, connecting wire between ports.
 let mDragUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
     match model.Action with
-    | MovingWire connId -> model, wireCmd (BusWire.DragWire (connId, mMsg))
+    | MovingWire connId -> snapWire model mMsg connId 
     | Selecting ->
         let initialX = model.DragToSelectBox.TopLeft.X
         let initialY = model.DragToSelectBox.TopLeft.Y
@@ -1332,6 +1449,8 @@ let view (model:Model) (headerHeight: float) (style) (dispatch : Msg -> unit) =
         displaySvgWithZoom model headerHeight style ( displayElements @ connectingPortsWire ) dispatch
     | MovingSymbols | DragAndDrop ->
         displaySvgWithZoom model headerHeight style ( displayElements @ snapIndicatorLineX @ snapIndicatorLineY ) dispatch
+    | MovingWire connId -> 
+        displaySvgWithZoom model headerHeight style (displayElements @ snapIndicatorLineX @ snapIndicatorLineY) dispatch
     | _ ->
         displaySvgWithZoom model headerHeight style displayElements dispatch
     |> TimeHelpers.instrumentInterval "SheetView" start
