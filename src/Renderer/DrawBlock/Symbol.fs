@@ -459,11 +459,20 @@ let getPortBaseOffset (sym: Symbol) (side: Edge): XYPos=
 
 /// Returns true if an edge has the select port of a mux
 let isMuxSel (sym:Symbol) (side:Edge): bool =
+    let isFlipped = sym.STransform.flipped
+    if isFlipped = false then
         match (sym.Component.Type, sym.STransform.Rotation, side) with
         | (Mux2, Degree0, Bottom ) | (Mux4, Degree0, Bottom ) | (Mux8, Degree0, Bottom ) | (Demux2, Degree0, Bottom ) | (Demux4, Degree0, Bottom ) | (Demux8, Degree0, Bottom ) -> true
         | (Mux2,Degree90, Right) | (Mux4, Degree90, Right) | (Mux8, Degree90, Right) | (Demux2,Degree90, Right) | (Demux4,Degree90, Right) | (Demux8,Degree90, Right) -> true
         | (Mux2, Degree180, Top) | (Mux4, Degree180, Top) | (Mux8, Degree180, Top) | (Demux2, Degree180, Top) | (Demux4, Degree180, Top) | (Demux8, Degree180, Top) -> true
         | (Mux2, Degree270, Left) | (Mux4, Degree270, Left) | (Mux8, Degree270, Left) | (Demux2, Degree270, Left) | (Demux4, Degree270, Left) | (Demux8, Degree270, Left) -> true
+        | _ -> false
+    else
+        match (sym.Component.Type, sym.STransform.Rotation, side) with
+        | (Mux2, Degree0, Top) | (Mux4, Degree0, Top ) | (Mux8, Degree0, Top ) | (Demux2, Degree0, Top ) | (Demux4, Degree0, Top ) | (Demux8, Degree0, Top ) -> true
+        | (Mux2,Degree90, Left) | (Mux4, Degree90, Left) | (Mux8, Degree90, Left) | (Demux2,Degree90, Left) | (Demux4,Degree90, Left) | (Demux8,Degree90, Left) -> true
+        | (Mux2, Degree180, Bottom) | (Mux4, Degree180, Bottom) | (Mux8, Degree180, Bottom) | (Demux2, Degree180, Bottom) | (Demux4, Degree180, Bottom) | (Demux8, Degree180, Bottom) -> true
+        | (Mux2, Degree270, Right) | (Mux4, Degree270, Right) | (Mux8, Degree270, Right) | (Demux2, Degree270, Right) | (Demux4, Degree270, Right) | (Demux8, Degree270, Right) -> true
         | _ -> false
 
 
@@ -623,6 +632,7 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
     let halfW = w/2
     let halfH = h/2
     let rotation = symbol.STransform.Rotation
+    let isFlipped = symbol.STransform.flipped
 
 
     let mergeSplitLine posX1 posX2 posY msb lsb =
@@ -678,7 +688,8 @@ let drawSymbol(symbol:Symbol) (comp:Component) (colour:string) (showInputPorts:b
             | Degree90 -> sprintf $"0,0 {w},0 {float(w)*0.8},{h} {float(w)*0.2},{h}"
             | Degree180 -> sprintf $"0,0 {w},{float(h)/5.} {w},{float(h)*0.8} 0,{h}"
             | Degree270 -> sprintf $"{float(w)*0.2},0 {float(w)*0.8},0 {w},{h} 0,{h}"
-        | Mux2 | Mux4 | Mux8 ->
+
+        | Mux2 | Mux4 | Mux8 -> 
             match rotation with 
             | Degree0 -> sprintf $"0,0 {w},{float(h)/5.} {w},{float(h)*0.8} 0,{h}"
             | Degree90 -> sprintf $"{float(w)*0.2},0 {float(w)*0.8},0 {w},{h} 0,{h}"               
@@ -1507,7 +1518,7 @@ let rotateSymbolRight (sym: Symbol) : Symbol =
 /// Flips an angle horizontally
 let flipAngleHorizontal (rotation: Rotation): Rotation =
     match rotation with
-    | Degree90 | Degree270 -> 
+    | Degree0 | Degree180 -> 
         rotation
         |> rotateAngleRight
         |> rotateAngleRight
