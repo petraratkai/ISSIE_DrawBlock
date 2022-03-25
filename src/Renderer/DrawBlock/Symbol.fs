@@ -617,27 +617,27 @@ let addHorizontalColorLine posX1 posX2 posY opacity (color:string) = // TODO: Li
     [makePolygon points {defaultPolygon with Fill = "olcolor"; Stroke=outlineColor; StrokeWidth = "2.0"; FillOpacity = opacity}]
 
 /// Takes points, height and width of original shape and returns the points for it given a rotation / flipped status.
-let rotatePoints (points) (centre:XYPos) (transformation:STransform) = 
+let rotatePoints (points) (centre:XYPos) (transform:STransform) = 
     let offset = 
-            match transformation.Rotation with
+            match transform.Rotation with
             | Degree0 | Degree180 -> centre
             | Degree90 | Degree270 -> {X = centre.Y; Y = centre.X}
 
     let relativeToCentre = Array.map (fun x -> x - centre)
     let rotateAboutCentre pointsIn = 
-        match transformation.Rotation with
+        match transform.Rotation with
         | Degree0   -> pointsIn
         | Degree270 -> Array.map (fun (pos:XYPos) -> {X = -pos.Y ; Y = pos.X}) pointsIn
         | Degree180 -> Array.map (fun (pos:XYPos) -> {X = -pos.X ; Y = -pos.Y}) pointsIn
         | Degree90  -> Array.map (fun (pos:XYPos) -> {X = pos.Y ; Y = -pos.X}) pointsIn
 
     let relativeToTopLeft = Array.map (fun x -> x + offset ) 
-    /// Flips the points, needed some hacks to avoid saving transformations somewhere / saving current points
+    /// Flips the points, needed some hacks to avoid saving transforms somewhere / saving current points
     /// Also can't guarantee it will work if there are changes to rotation / flip with funkier shapes
     let flipIfNecessary pts =
-        if not transformation.flipped then pts
+        if not transform.flipped then pts
         else
-            match transformation.Rotation with
+            match transform.Rotation with
             | _ -> Array.map (fun (point:XYPos) -> {X = -point.X; Y = point.Y}) pts
 
     points
@@ -653,7 +653,7 @@ let drawSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
     let h,w = getHAndW symbol
     let H = float comp.H
     let W = float comp.W
-    let transformation = symbol.STransform
+    let transform = symbol.STransform
 
     let mergeSplitLine pos msb lsb =
         let text = 
@@ -662,6 +662,17 @@ let drawSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
             | true, _ -> sprintf $"({msb})"
             | false, _ -> sprintf $"({msb}:{lsb})"
         addText pos text "middle" "bold" "9px"
+
+    let clockTxtPos = 
+        match transform.Rotation, transform.flipped with
+        | Degree0, false -> {X = 17.; Y = H - 13.}
+        | Degree180, true -> {X = 17.; Y = 2.}
+        | Degree90, false -> {X = float w - 8.; Y = float h - 20.}
+        | Degree270, true ->  {X = float w - 10.; Y = 11.}
+        | Degree180, false -> {X = W - 19.; Y = 2.}
+        | Degree0, true -> {X = W - 17.; Y = H - 13.}
+        | Degree270, false -> {X = 10.; Y = 11.}
+        | Degree90, true -> {X = 8.; Y = float h - 20.}
 
     /// Points that define the edges of the symbol
     let points =
@@ -702,21 +713,21 @@ let drawSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
                 [|{X=0;Y=H-13.};{X=8.;Y=H-7.};{X=0;Y=H-1.};{X=0;Y=0};{X=W;Y=0};{X=W;Y=H};{X=0;Y=H}|]
             | _ -> 
                 [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H};{X=W;Y=0}|]
-        rotatePoints originalPoints {X=W/2.;Y=H/2.} transformation
+        rotatePoints originalPoints {X=W/2.;Y=H/2.} transform
         |> toString 
 
 
 
     let additions =       // Helper function to add certain characteristics on specific symbols (inverter, enables, clocks)
         let mergeWiresTextPos =
-            let textPoints = rotatePoints [|{X=W/5.;Y=H/6.+2.};{X=W/5.;Y=H*5./6.+2.};{X=W*0.75;Y=H/2.+2.}|] {X=W/2.;Y=H/2.} transformation
-            match transformation.Rotation with
+            let textPoints = rotatePoints [|{X=W/5.;Y=H/6.+2.};{X=W/5.;Y=H*5./6.+2.};{X=W*0.75;Y=H/2.+2.}|] {X=W/2.;Y=H/2.} transform
+            match transform.Rotation with
             | Degree90 | Degree270 -> Array.map (fun pos -> pos + {X=12.;Y=0}) textPoints
             | Degree180 -> Array.map (fun pos -> pos + {X=0;Y= +5.}) textPoints
             | _ -> textPoints
         let splitWiresTextPos =
-            let textPoints = rotatePoints [|{X=W*0.75;Y=H/6.+2.};{X=W*0.75;Y=H*5./6.+2.};{X=W/4.;Y=H/2.+2.}|] {X=W/2.;Y=H/2.} transformation
-            match transformation.Rotation with
+            let textPoints = rotatePoints [|{X=W*0.75;Y=H/6.+2.};{X=W*0.75;Y=H*5./6.+2.};{X=W/4.;Y=H/2.+2.}|] {X=W/2.;Y=H/2.} transform
+            match transform.Rotation with
             | Degree90 | Degree270 -> Array.map (fun pos -> pos + {X=12.;Y=0}) textPoints
             | Degree180 -> Array.map (fun pos -> pos + {X=0;Y= +5.}) textPoints
             | _ -> textPoints
@@ -739,13 +750,13 @@ let drawSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
             let values = [(midt,0);(msb,midb);(msb,0)]
             List.fold (fun og i -> og @ mergeSplitLine splitWiresTextPos[i] (fst values[i]) (snd values[i]) ) [] [0..2]
         | DFF | DFFE | Register _ |RegisterE _ | ROM1 _ |RAM1 _ | AsyncRAM1 _  -> 
-            (addText (Array.head (rotatePoints [|{X = 15.; Y = float H - 13.}|] {X=W/2.;Y=H/2.} transformation )) " clk" "middle" "normal" "12px")
+            (addText clockTxtPos " clk" "middle" "normal" "12px")
         | BusSelection(x,y) -> (addText {X = (float(w/2)); Y = ((float(h)/2.7)-2.)} (bustitle x y) "middle" "bold" "12px")
         | BusCompare (_,y) -> (addText {X = (float(w/2)-2.); Y = (float(h)/2.7-1.)} ("=" + NumberHelpers.hex(int y)) "middle" "bold" "10px")
         | Input (x) -> (addText {X = float(w/2); Y = (float(h)/2.7)-3.} (title "" x) "middle" "normal" "12px")
         | Output (x) -> (addText {X = float(w/2); Y = (float(h)/2.7)-3.} (title "" x) "middle" "normal" "12px")
         | Viewer (x) -> (addText {X = float(w/2); Y = (float(h)/2.7)-1.25} (title "" x) "middle" "normal" "9px")
-        | _ when isClocked comp -> (addText (Array.head (rotatePoints [|{X = 15.; Y = float H - 11.}|] {X=W/2.;Y=H/2.} transformation )) " clk" "middle" "normal" "12px")
+        | _ when isClocked comp -> (addText (Array.head (rotatePoints [|{X = 15.; Y = float H - 11.}|] {X=W/2.;Y=H/2.} transform )) " clk" "middle" "normal" "12px")
         | _ -> []
 
     let outlineColour, strokeWidth =
@@ -754,12 +765,12 @@ let drawSymbol (symbol:Symbol) (colour:string) (showInputPorts:bool) (showOutput
         | _ -> "black", "1.0"
     
     let labelRotation = 
-        match transformation.flipped with
-        | true -> match transformation.Rotation with
+        match transform.flipped with
+        | true -> match transform.Rotation with
                      | Degree90 -> Degree270
                      | Degree270 -> Degree90
-                     | _ -> transformation.Rotation
-        | false -> transformation.Rotation
+                     | _ -> transform.Rotation
+        | false -> transform.Rotation
    
     // Put everything together 
 
