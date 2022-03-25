@@ -619,11 +619,11 @@ let rec private findName (compIds: ComponentId Set) (sd: SimulationData) (net: N
             | ROM _ | RAM _ | AsyncROM _ -> 
                     failwithf "What? Legacy RAM component types should never occur"
 
-            | Not | And | Or | Xor | Nand | Nor | Xnor | Decode4 | Mux2 | BusCompare _ -> 
+            | Not | And | Or | Xor | Nand | Nor | Xnor | Decode4 | Mux2 | Mux4 | Mux8 | BusCompare _ -> 
                 [ { LabName = compLbl; BitLimits = 0, 0 } ] 
             | Input w | Output w | Constant1(w, _,_) | Constant(w,_) | Viewer w -> 
                 [ { LabName = compLbl; BitLimits = w - 1, 0 } ] 
-            | Demux2 -> 
+            | Demux2 | Demux4 | Demux8 -> 
                 [ { LabName = compLbl + "." + string outPortInt; BitLimits = 0, 0 } ]
             | NbitsXor w -> 
                 [ { LabName = compLbl; BitLimits = w - 1, 0 } ]
