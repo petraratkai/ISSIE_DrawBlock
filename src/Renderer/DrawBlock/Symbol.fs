@@ -12,6 +12,7 @@ open System.Text.RegularExpressions
 
 
 /// --------- STATIC VARIABLES --------- ///
+[<Literal>]
 let GridSize = 30 
 
 /// ---------- SYMBOL TYPES ---------- ///
@@ -225,10 +226,6 @@ let customStringToLength (lst: string list) =
     if List.isEmpty labelLengths then 0
     else List.max labelLengths
 
-//---------------------------------------------------------------------------------//
-//--------------------PR2518 CODE SECTION STARTS-------------------------------------//
-//---------------------------------------------------------------------------------//
-
 let initPortOrientation (comp: Component) =
     
     let movePortToBottom (res: Map<Edge, string list>*Map<string, Edge>) index =
@@ -280,10 +277,6 @@ let initPortOrientation (comp: Component) =
     | Demux2 | Demux4 | Demux8 ->
         movePortToBottom res 1
     | _ -> res
-
-//---------------------------------------------------------------------------------//
-//--------------------PR2518 CODE SECTION ENDS-------------------------------------//
-//---------------------------------------------------------------------------------//
 
 let autoScaleHAndW (sym:Symbol) : (int*int) =
     //height same as before, just take max of left and right
@@ -438,10 +431,6 @@ let inline getPortPosEdgeGap (ct: ComponentType) =
     | MergeWires | SplitWire _  -> 0.25
     | _ -> 1.0
 
-//---------------------------------------------------------------------------------//
-//--------------------PR2518 CODE SECTION STARTS-------------------------------------//
-//---------------------------------------------------------------------------------//
-
 ///Given a symbol and a Port, it returns the orientation of the port
 let getSymbolPortOrientation (sym: Symbol) (port: Port): Edge =
     let portId = port.Id
@@ -532,10 +521,6 @@ let getPortPosToRender (sym: Symbol) (port: Port) : XYPos =
 
 let getPortPosModel (model: Model) (port:Port) =
     getPortPos (Map.find (ComponentId port.HostId) model.Symbols) port
-
-//---------------------------------------------------------------------------------//
-//--------------------PR2518 CODE SECTION ENDS-------------------------------------//
-//---------------------------------------------------------------------------------//
 
 //-----------------------------------------DRAWING HELPERS ---------------------------------------------------
 // Text adding function with many parameters (such as bold, position and text)
@@ -853,10 +838,6 @@ let view (model : Model) (dispatch : Msg -> unit) =
     )
     |> ofList
     |> TimeHelpers.instrumentInterval "SymbolView" start
-
-//---------------------------------------------------------------------------------//
-//--------------------PR2518 CODE SECTION STARTS-------------------------------------//
-//---------------------------------------------------------------------------------//
 
 //------------------------GET BOUNDING BOXES FUNCS--------------------------------used by sheet.
 /// Returns the bounding box of a symbol. It is defined by the height and the width as well as the x,y position of the symbol.
@@ -1832,7 +1813,3 @@ let extractComponents (symModel: Model) : Component list =
     symModel.Symbols
     |> Map.toList
     |> List.map (fun (key, _) -> extractComponent symModel key)
-
-//---------------------------------------------------------------------------------//
-//--------------------PR2518 CODE SECTION ENDS-------------------------------------//
-//---------------------------------------------------------------------------------//

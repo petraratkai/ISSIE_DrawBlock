@@ -13,9 +13,6 @@ open Fable.React.Props
 open Elmish
 open DrawHelpers
 
-//Static Vars
-let minSegLen = 5.
-
 //------------------------------------------------------------------------//
 //------------------------------BusWire Types-----------------------------//
 //------------------------------------------------------------------------//
@@ -26,7 +23,7 @@ type Orientation =  Horizontal | Vertical
 ///
 type SnapPosition = High | Mid | Low
 
-///
+/// Represents how wires are rendered
 type WireType = Radial | Modern | Jump
 
 /// Represents how a wire segment is currently being routed
@@ -45,7 +42,6 @@ type Segment =
         Mode : RoutingMode
     }
 
-
 type Wire =
     {
         Id: ConnectionId 
@@ -61,9 +57,18 @@ type Wire =
     }
 
     /// The minimum length of the initial segments (nubs) leaving the ports
-    with static member nubLength = 8.0
+    with static member nubLength = 8.
+         /// The standard radius of a radial curve, modern circle or jump width
+         static member radius = 5. 
+         /// The standard height of a jump
+         static member jumpHeight = 7.
 
-///
+/// Defines offsets used to render wire width text
+type TextOffset =
+    static member yOffset = 7.
+    static member xOffset = 1.
+    static member xLeftOffset = 20.
+
 type Model =
     {
         Symbol: Symbol.Model
@@ -78,7 +83,6 @@ type Model =
 
 //----------------------------Message Type-----------------------------------//
 
-///
 type Msg =
     | Symbol of Symbol.Msg
     | AddWire of (InputPortId * OutputPortId)
@@ -531,7 +535,7 @@ let renderRadialWire (state : (string * Orientation)) (segmentpair : {| First : 
     
     let dist1 = euclideanDistance startFirstSegment endFirstSegment
     let dist2 = euclideanDistance startSecondSegment endSecondSegment
-    let rad = System.Math.Floor(min 5.0 (max 0.0 (min dist1 dist2)))
+    let rad = System.Math.Floor(min Wire.radius (max 0.0 (min dist1 dist2)))
     let makeCommandString xStart yStart rad sweepflag xEnd yEnd : string =
         $"L {xStart} {yStart} A {rad} {rad}, 45, 0, {sweepflag}, {xEnd} {yEnd}" 
 
@@ -632,14 +636,14 @@ let renderJumpSegment (param : {| AbsSegment : AbsSegment; Colour :string; Width
     //Generate all sections of a left to right segment that don't have jumps
     let lefttoright (state : (float * ReactElement List)) xPos =
         let element =
-            makeLine (fst(state)) startVertex.Y (xPos-5.) endVertex.Y lineParameters
-        (xPos+5.,List.append (snd(state)) [element])
+            makeLine (fst(state)) startVertex.Y (xPos-Wire.radius) endVertex.Y lineParameters
+        (xPos+Wire.radius,List.append (snd(state)) [element])
 
     //Generate all sections of a right to left segment that don't have jumps
     let righttoleft (state : (float * ReactElement List)) xPos =
         let element =
-            makeLine (fst(state)) startVertex.Y (xPos+5.) endVertex.Y lineParameters
-        (xPos-5.,List.append (snd(state)) [element])
+            makeLine (fst(state)) startVertex.Y (xPos+Wire.radius) endVertex.Y lineParameters
+        (xPos-Wire.radius,List.append (snd(state)) [element])
     
     //If no jumps then straight line
     if List.isEmpty param.AbsSegment.IntersectCoordinateList then 
@@ -649,7 +653,7 @@ let renderJumpSegment (param : {| AbsSegment : AbsSegment; Colour :string; Width
             let jumps =
                 param.AbsSegment.IntersectCoordinateList 
                 |> List.map (fun x -> startVertex.X + fst(x))
-                |> List.map (fun x -> makePath {X = x - 5.; Y = startVertex.Y} {X = x - 5.; Y = startVertex.Y - 7.} {X = x + 5.; Y = startVertex.Y - 7.} {X = x + 5.; Y = startVertex.Y} pathParameters)
+                |> List.map (fun x -> makePath {X = x - Wire.radius; Y = startVertex.Y} {X = x - Wire.radius; Y = startVertex.Y - Wire.jumpHeight} {X = x + Wire.radius; Y = startVertex.Y - Wire.jumpHeight} {X = x + Wire.radius; Y = startVertex.Y} pathParameters)
             let lines =
                 param.AbsSegment.IntersectCoordinateList
                 |> List.map (fun x -> startVertex.X + fst(x))
@@ -668,7 +672,7 @@ let renderJumpSegment (param : {| AbsSegment : AbsSegment; Colour :string; Width
             let jumps =
                 param.AbsSegment.IntersectCoordinateList 
                 |> List.map (fun x -> startVertex.X - fst(x))
-                |> List.map (fun x -> makePath {X = x - 5.; Y = startVertex.Y} {X = x - 5.; Y = startVertex.Y - 7.} {X = x + 5.; Y = startVertex.Y - 7.} {X = x + 5.; Y = startVertex.Y} pathParameters)
+                |> List.map (fun x -> makePath {X = x - Wire.radius; Y = startVertex.Y} {X = x - Wire.radius; Y = startVertex.Y - Wire.jumpHeight} {X = x + Wire.radius; Y = startVertex.Y - Wire.jumpHeight} {X = x + Wire.radius; Y = startVertex.Y} pathParameters)
             let lines =
                 param.AbsSegment.IntersectCoordinateList
                 |> List.map (fun x -> startVertex.X - fst(x))
@@ -716,10 +720,10 @@ let singleWireJumpView props =
             }
         let textString = if props.StrokeWidthP = 1 then "" else string props.StrokeWidthP //Only print width > 1
         match props.OutputPortEdge with 
-        | CommonTypes.Top -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
-        | CommonTypes.Bottom -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y+7.0) (textString) textParameters
-        | CommonTypes.Right -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
-        | CommonTypes.Left -> makeText (props.OutputPortLocation.X-20.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | CommonTypes.Top -> makeText (props.OutputPortLocation.X+TextOffset.xOffset) (props.OutputPortLocation.Y-TextOffset.yOffset) (textString) textParameters
+        | CommonTypes.Bottom -> makeText (props.OutputPortLocation.X+TextOffset.xOffset) (props.OutputPortLocation.Y+TextOffset.yOffset) (textString) textParameters
+        | CommonTypes.Right -> makeText (props.OutputPortLocation.X+TextOffset.xOffset) (props.OutputPortLocation.Y-TextOffset.yOffset) (textString) textParameters
+        | CommonTypes.Left -> makeText (props.OutputPortLocation.X-TextOffset.xLeftOffset) (props.OutputPortLocation.Y-TextOffset.yOffset) (textString) textParameters
 
     g [] ([ renderWireWidthText ] @ renderedSegmentList)
 
@@ -755,10 +759,10 @@ let singleWireModernView props =
             }
         let textString = if props.StrokeWidthP = 1 then "" else string props.StrokeWidthP //Only print width > 1
         match props.OutputPortEdge with 
-        | CommonTypes.Top -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
-        | CommonTypes.Bottom -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y+7.0) (textString) textParameters
-        | CommonTypes.Right -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
-        | CommonTypes.Left -> makeText (props.OutputPortLocation.X-20.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | CommonTypes.Top -> makeText (props.OutputPortLocation.X+TextOffset.xOffset) (props.OutputPortLocation.Y-TextOffset.yOffset) (textString) textParameters
+        | CommonTypes.Bottom -> makeText (props.OutputPortLocation.X+TextOffset.xOffset) (props.OutputPortLocation.Y+TextOffset.yOffset) (textString) textParameters
+        | CommonTypes.Right -> makeText (props.OutputPortLocation.X+TextOffset.xOffset) (props.OutputPortLocation.Y-TextOffset.yOffset) (textString) textParameters
+        | CommonTypes.Left -> makeText (props.OutputPortLocation.X-TextOffset.xLeftOffset) (props.OutputPortLocation.Y-TextOffset.yOffset) (textString) textParameters
 
     g [] ([ renderWireWidthText ] @ renderedSegmentList)
 
@@ -813,10 +817,10 @@ let singleWireRadialView props =
             }
         let textString = if props.StrokeWidthP = 1 then "" else string props.StrokeWidthP //Only print width > 1
         match props.OutputPortEdge with 
-        | CommonTypes.Top -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
-        | CommonTypes.Bottom -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y+7.0) (textString) textParameters
-        | CommonTypes.Right -> makeText (props.OutputPortLocation.X+1.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
-        | CommonTypes.Left -> makeText (props.OutputPortLocation.X-20.0) (props.OutputPortLocation.Y-7.0) (textString) textParameters
+        | CommonTypes.Top -> makeText (props.OutputPortLocation.X+TextOffset.xOffset) (props.OutputPortLocation.Y-TextOffset.yOffset) (textString) textParameters
+        | CommonTypes.Bottom -> makeText (props.OutputPortLocation.X+TextOffset.xOffset) (props.OutputPortLocation.Y+TextOffset.yOffset) (textString) textParameters
+        | CommonTypes.Right -> makeText (props.OutputPortLocation.X+TextOffset.xOffset) (props.OutputPortLocation.Y-TextOffset.yOffset) (textString) textParameters
+        | CommonTypes.Left -> makeText (props.OutputPortLocation.X-TextOffset.xLeftOffset) (props.OutputPortLocation.Y-TextOffset.yOffset) (textString) textParameters
 
     g [] ([ renderWireWidthText ] @ [renderedSVGPath])
 
@@ -931,7 +935,7 @@ let toY (pos: XYPos) = pos.Y
 /// Returns the X and Y fields of an XYPos as a pair of floats
 let getXY (pos: XYPos) = pos.X, pos.Y
 
-/// Returns pos with the X and Y fields scaled by factor
+/// Returns pos with the X and Y fields scaled by factor (I didn't like the order of parameters for the * operator in XYPos)
 let scalePos (factor: float) (pos: XYPos) : XYPos =
     { X = factor * pos.X; Y = factor * pos.Y}
 
@@ -1509,18 +1513,17 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
     
     { model with Wires = wiresWithJumps }
 
-let updateWireSegmentJumps (wireList: list<ConnectionId>) (wModel: Model) : Model =
+let updateWireSegmentJumps (wireList: list<ConnectionId>) (model: Model) : Model =
     let startT = TimeHelpers.getTimeMs()
-    let model = makeAllJumps [] wModel
+    let model = makeAllJumps [] model
     TimeHelpers.instrumentTime "UpdateJumps" startT
     model
 
 /// This function updates the wire model by removing from the stored lists of intersections
 /// all those generated by wireList wires.
 /// intersetcions are stored in maps on the model and on the horizontal segments containing the jumps
-let resetWireSegmentJumps (wireList : list<ConnectionId>) (wModel : Model) : Model =
-    //wModel //
-    makeAllJumps wireList wModel
+let resetWireSegmentJumps (wireList : list<ConnectionId>) (model : Model) : Model =
+    makeAllJumps wireList model
 
 
 /// Re-routes the wires in the model based on a list of components that have been altered.
