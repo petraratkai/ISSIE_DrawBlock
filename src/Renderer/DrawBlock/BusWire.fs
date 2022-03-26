@@ -1687,7 +1687,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
         { model with Wires = newWires }, Cmd.none
 
     | ResetJumps connIds ->
-        printfn $"resetting jumps on {connIds.Length} wires"
+        //printfn $"resetting jumps on {connIds.Length} wires"
 
         let newModel =
             model
@@ -1696,7 +1696,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
         newModel, Cmd.none
 
     | MakeJumps connIds ->
-        printfn $"making jumps on {connIds.Length} wires"
+        //printfn $"making jumps on {connIds.Length} wires"
 
         let newModel =
             model
@@ -1737,7 +1737,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                                             |> Option.map (fun port -> port.HostId)
                                             |> Option.bind (fun symId -> Map.tryFind (ComponentId symId) model.Symbol.Symbols)
                                             |> Option.map (fun sym -> sym.Component.Label)
-                                        printfn $"Updating loaded wire from {getS conn.Source.Id}->{getS conn.Target.Id} of wire "
+                                        //printfn $"Updating loaded wire from {getS conn.Source.Id}->{getS conn.Target.Id} of wire "
                                         updateWire model wire inOut)
 
 
