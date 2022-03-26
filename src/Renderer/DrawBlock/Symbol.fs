@@ -268,7 +268,11 @@ let initPortOrientation (comp: Component) =
     | Mux8 ->
         movePortToBottom res 8
     | NbitsAdder _ -> 
-        movePortToBottom res 0
+        let rightSide = (fst res)[Right]
+        let newRightSide = List.rev rightSide
+        let newPortOrder = Map.add Right newRightSide (fst res)
+        let res' = newPortOrder, snd res
+        movePortToBottom res' 0
     | DFFE ->
         movePortToBottom res 1
     | RegisterE _ ->
