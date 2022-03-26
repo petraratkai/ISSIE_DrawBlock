@@ -1416,8 +1416,8 @@ let moveWire (wire: Wire) (displacement: XYPos) =
           StartPos = wire.StartPos + displacement
           EndPos = wire.EndPos + displacement }
 
-/// Returns an updated wireMap with the IntersectOrJumpList of targetSeg replaced by jumps
-let updateSegmentJumpsOrIntersections targetSeg jumps wireMap =
+/// Returns an updated wireMap with the IntersectOrJumpList of targetSeg replaced by jumps or modern intersections
+let updateSegmentJumpsOrIntersections targetSeg intersectOrJump wireMap =
     let wId = targetSeg.HostId
     let target = targetSeg.Index
 
@@ -1427,14 +1427,14 @@ let updateSegmentJumpsOrIntersections targetSeg jumps wireMap =
                 if seg.Index <> target then
                     seg
                 else
-                    { seg with IntersectOrJumpList = jumps })
+                    { seg with IntersectOrJumpList = intersectOrJump })
             segs
 
     wireMap
     |> Map.add wId { wireMap[wId] with Segments = changeSegment wireMap[wId].Segments }
 
-/// Used as a folder in foldOverSegs. Finds all jump offsets in a wire for the segment defined in the state
-let findModernIntersects (segStart: XYPos) (segEnd: XYPos) (state: {| Start: XYPos; End: XYPos; Jumps: (float * SegmentId) list |}) (seg: Segment) =
+/// Used as a folder in foldOverSegs. Finds all Modern offsets in a wire for the segment defined in the state
+let findModernIntersects (segStart: XYPos) (segEnd: XYPos) (state: {| Start: XYPos; End: XYPos; JumpsOrIntersections: (float * SegmentId) list |}) (seg: Segment) =
     let x1Start, x1End, x2Start, x2End = segStart.X, segEnd.X, state.Start.X, state.End.X
     let y1Start, y1End, y2Start, y2End = segStart.Y, segEnd.Y, state.Start.Y, state.End.Y
     let x1hi, x1lo = max x1Start x1End, min x1Start x1End
@@ -1443,21 +1443,21 @@ let findModernIntersects (segStart: XYPos) (segEnd: XYPos) (state: {| Start: XYP
     let y2hi, y2lo = max y2Start y2End, min y2Start y2End
     if getSegmentOrientation segStart segEnd = Vertical then
         if y2Start < y1hi  && y2Start > y1lo  && (x2Start > x1hi - 0.1 && x2Start < x1hi + 0.1) then
-            {| state with Jumps = (abs(0.0), seg.Id) :: state.Jumps |}
+            {| state with JumpsOrIntersections = (abs(0.0), seg.Id) :: state.JumpsOrIntersections |}
         else if y2End < y1hi  && y2End > y1lo  && (x2End > x1hi - 0.1 && x2End < x1hi + 0.1) then
-            {| state with Jumps = (abs(x2End - x2Start), seg.Id) :: state.Jumps |}
+            {| state with JumpsOrIntersections = (abs(x2End - x2Start), seg.Id) :: state.JumpsOrIntersections |}
         else
             state
     else
         if (y2Start > y1hi - 0.1 && y2Start < y1hi + 0.1) && x1hi > x2hi && x1lo < x2lo then
-            {| state with Jumps = (abs(0.0), seg.Id) :: (abs(x2End - x2Start), seg.Id) :: state.Jumps |}
+            {| state with JumpsOrIntersections = (abs(0.0), seg.Id) :: (abs(x2End - x2Start), seg.Id) :: state.JumpsOrIntersections |}
         else if (y2Start > y1hi - 0.1 && y2Start < y1hi + 0.1) && x2hi > x1hi && x1hi > x2lo && x2lo > x1lo then
-             {| state with Jumps = (abs(0.0), seg.Id) :: (abs(x1hi - x2lo), seg.Id) :: state.Jumps |}
+             {| state with JumpsOrIntersections = (abs(0.0), seg.Id) :: (abs(x1hi - x2lo), seg.Id) :: state.JumpsOrIntersections |}
         else
             state
 
 /// Used as a folder in foldOverSegs. Finds all jump offsets in a wire for the segment defined in the state
-let findJumpIntersects (segStart: XYPos) (segEnd: XYPos) (state: {| Start: XYPos; End: XYPos; Jumps: (float * SegmentId) list |}) (seg: Segment) =
+let findJumpIntersects (segStart: XYPos) (segEnd: XYPos) (state: {| Start: XYPos; End: XYPos; JumpsOrIntersections: (float * SegmentId) list |}) (seg: Segment) =
     if getSegmentOrientation segStart segEnd = Vertical then
         let xVStart, xHStart, xHEnd = segStart.X, state.Start.X, state.End.X
         let yVStart, yVEnd, yHEnd = segStart.Y, segEnd.Y, state.End.Y
@@ -1465,10 +1465,10 @@ let findJumpIntersects (segStart: XYPos) (segEnd: XYPos) (state: {| Start: XYPos
         let yhi, ylo = max yVStart yVEnd, min yVStart yVEnd
 
         if xVStart < xhi  && xVStart > xlo  && yHEnd < yhi && yHEnd > ylo then
-            {| state with Jumps = (abs(xVStart - xHStart), seg.Id) :: state.Jumps |}
+            {| state with JumpsOrIntersections = (abs(xVStart - xHStart), seg.Id) :: state.JumpsOrIntersections |}
         else
             state
-    else
+    else   
         state
 
 /// Returns a model with all the jumps updated
@@ -1483,20 +1483,20 @@ let makeAllJumps (wiresWithNoJumps: ConnectionId list) (model: Model) =
     let updateJumpsInWire (segStart: XYPos) (segEnd: XYPos) (wireMap: Map<ConnectionId, Wire>) (seg: Segment) =
         if getSegmentOrientation segStart segEnd = Horizontal then
             ([], wires)
-            ||> Array.fold (fun jumps wire -> 
+            ||> Array.fold (fun jumpsOrIntersections wire -> 
                 if (model.Type = Jump) && not (Array.contains wire.Id wiresWithNoJumpsA) then
-                    foldOverSegs findJumpIntersects {| Start = segStart; End = segEnd; Jumps = [] |} wire
-                    |> (fun res -> res.Jumps)
-                    |> List.append jumps
+                    foldOverSegs findJumpIntersects {| Start = segStart; End = segEnd; JumpsOrIntersections = [] |} wire
+                    |> (fun res -> res.JumpsOrIntersections)
+                    |> List.append jumpsOrIntersections
                 else if (model.Type = Modern) && not (Array.contains wire.Id wiresWithNoJumpsA) then
-                    foldOverSegs findModernIntersects {| Start = segStart; End = segEnd; Jumps = [] |} wire
-                    |> (fun res -> res.Jumps)
-                    |> List.append jumps
+                    foldOverSegs findModernIntersects {| Start = segStart; End = segEnd; JumpsOrIntersections = [] |} wire
+                    |> (fun res -> res.JumpsOrIntersections)
+                    |> List.append jumpsOrIntersections
                 else
-                    jumps)
-            |> (fun jumps -> 
-                if jumps <> seg.IntersectOrJumpList then
-                    updateSegmentJumpsOrIntersections seg jumps wireMap
+                    jumpsOrIntersections)
+            |> (fun jumpsOrIntersections -> 
+                if jumpsOrIntersections <> seg.IntersectOrJumpList then
+                    updateSegmentJumpsOrIntersections seg jumpsOrIntersections wireMap
                 else 
                     wireMap)
         else
