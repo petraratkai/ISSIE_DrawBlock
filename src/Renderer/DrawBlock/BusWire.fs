@@ -256,21 +256,21 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
     let xStart, yStart, xEnd, yEnd = wireStartPos.X, wireStartPos.Y, wireEndPos.X, wireEndPos.Y
     match xStart - xEnd + 20. < 0 with //add 20 to prevent issues in the case that the ports are directly on in line with one another
     | true -> //Right of startpos
-        match yStart - yEnd < 0 with 
+        match yStart - yEnd + 20. < 0 with 
         | true -> //Below startpos
             match portOrientation with
             | CommonTypes.Top  ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xEnd; Y = yStart};
-                    {X = xEnd; Y = yEnd-5.0}; 
-                    {X = xEnd; Y = yEnd-5.0};// Length 0 horizontal
+                    {X = xEnd; Y = yEnd-Wire.nubLength}; 
+                    {X = xEnd; Y = yEnd-Wire.nubLength};// Length 0 horizontal
                     {X = xEnd; Y = yEnd}] // Stick vertical
             | CommonTypes.Right ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
-                    {X = xEnd+20.; Y = yStart};
-                    {X = xEnd+20.; Y = yEnd};
+                    {X = xEnd+10.; Y = yStart};
+                    {X = xEnd+10.; Y = yEnd};
                     {X = xEnd+Wire.nubLength; Y = yEnd}; 
                     {X = xEnd+Wire.nubLength; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
@@ -278,8 +278,8 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = (xEnd+xStart)/2.; Y = yStart};
-                    {X = (xEnd+xStart)/2.; Y = yEnd+20.};
-                    {X = xEnd; Y = yEnd+20.};
+                    {X = (xEnd+xStart)/2.; Y = yEnd+10.};
+                    {X = xEnd; Y = yEnd+10.};
                     {X = xEnd; Y = yEnd+Wire.nubLength}; 
                     {X = xEnd; Y = yEnd+Wire.nubLength}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
@@ -303,8 +303,8 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
             | CommonTypes.Right ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
-                    {X = xEnd+20.; Y = yStart};
-                    {X = xEnd+20.; Y = yEnd};
+                    {X = xEnd+10.; Y = yStart};
+                    {X = xEnd+10.; Y = yEnd};
                     {X = xEnd+Wire.nubLength; Y = yEnd}; 
                     {X = xEnd+Wire.nubLength; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
@@ -312,8 +312,8 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = (xEnd+xStart)/2.; Y = yStart};
-                    {X = (xEnd+xStart)/2.; Y = yEnd-20.};
-                    {X = xEnd; Y = yEnd-20.};
+                    {X = (xEnd+xStart)/2.; Y = yEnd-10.};
+                    {X = xEnd; Y = yEnd-10.};
                     {X = xEnd; Y = yEnd-Wire.nubLength}; 
                     {X = xEnd; Y = yEnd-Wire.nubLength}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
@@ -326,15 +326,15 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd-Wire.nubLength; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
     | false-> //left of startpos
-        match yStart - yEnd < 0 with
+        match yStart - yEnd + 20. < 0 with
         | true -> //below startpos
             match portOrientation with
             | CommonTypes.Bottom ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xStart+Wire.nubLength+10.; Y = yStart}; //Small horizontal for dragging  
-                    {X = xStart+Wire.nubLength+10.; Y = yEnd+20.};
-                    {X = xEnd; Y = yEnd+20.};
+                    {X = xStart+Wire.nubLength+10.; Y = yEnd+10.};
+                    {X = xEnd; Y = yEnd+10.};
                     {X = xEnd; Y = yEnd+Wire.nubLength}; 
                     {X = xEnd; Y = yEnd+Wire.nubLength}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
@@ -358,8 +358,8 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xStart+Wire.nubLength+10.; Y = yStart}; //Small horizontal for dragging
                     {X = xStart+Wire.nubLength+10.; Y = (yStart+yEnd)/2.}; 
-                    {X = xEnd-20.; Y = (yStart+yEnd)/2.}; 
-                    {X = xEnd-20.; Y = yEnd};
+                    {X = xEnd-10.; Y = (yStart+yEnd)/2.}; 
+                    {X = xEnd-10.; Y = yEnd};
                     {X = xEnd-Wire.nubLength; Y = yEnd}; 
                     {X = xEnd-Wire.nubLength; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
@@ -367,8 +367,8 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
             match portOrientation with
             | CommonTypes.Top ->  [{X = xStart; Y = yStart};
                     {X = xStart+Wire.nubLength; Y = yStart}; //Stick horizontal
-                    {X = xStart+Wire.nubLength; Y = yEnd-20.}; //Length 0 vertical
-                    {X = xEnd; Y = yEnd-20.};
+                    {X = xStart+Wire.nubLength; Y = yEnd-10.}; //Length 0 vertical
+                    {X = xEnd; Y = yEnd-10.};
                     {X = xEnd; Y = yEnd-Wire.nubLength}; 
                     {X = xEnd; Y = yEnd-Wire.nubLength}; //Length 0 horizontal
                     {X = xEnd; Y = yEnd}] //Stick vertical
@@ -392,8 +392,8 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xStart+Wire.nubLength; Y = yStart}; //Length 0 vertical
                     {X = xStart+Wire.nubLength+10.; Y = yStart}; //Small horizontal for dragging
                     {X = xStart+Wire.nubLength+10.; Y = (yStart+yEnd)/2.}; 
-                    {X = xEnd-20.; Y = (yStart+yEnd)/2.}; 
-                    {X = xEnd-20.; Y = yEnd};
+                    {X = xEnd-10.; Y = (yStart+yEnd)/2.}; 
+                    {X = xEnd-10.; Y = yEnd};
                     {X = xEnd-Wire.nubLength; Y = yEnd}; 
                     {X = xEnd-Wire.nubLength; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
@@ -444,15 +444,15 @@ let issieVerticesToSegments
     let verticesToSegments connId (xyVerticesList: {| Pos: XYPos; Mode: RoutingMode |} list) =
         List.pairwise xyVerticesList
         |> List.mapi (
-            fun i (startV,endV) ->    
+            fun i (startVertex,endVertex) ->    
                 let id = SegmentId(JSHelpers.uuid())
                 {
                     Id = id
                     Index = i
-                    Length = endV.Pos.X-startV.Pos.X+endV.Pos.Y-startV.Pos.Y
+                    Length = endVertex.Pos.X-startVertex.Pos.X+endVertex.Pos.Y-startVertex.Pos.Y
                     HostId  = connId;
                     IntersectOrJumpList = [] ; // To test jump and modern wire types need to manually insert elements into this list.
-                    Mode = endV.Mode
+                    Mode = endVertex.Mode
                     Draggable =
                         if i = 0 || i = xyVerticesList.Length - 2 then //First and Last should not be draggable
                             false
