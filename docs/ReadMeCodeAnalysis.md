@@ -43,7 +43,7 @@ Segments are generated based off of the two ports for each wire, with the assump
 
 ## Partial Auto-routing
 Partial auto-routing attempts to preserve any manual routing when symbols (and their ports) are moved. The conditions for this preservation is as follows:
-- For a given port being moved, the **fixed point** is defined as the end of the first manual segment, traversing the wire **from the port being moved**
+- For a given port being moved, the **fixed point** is defined as the end of the first manual segment, traversing the wire **from the port being moved**.
 - If the moved port is in the same quadrant relative to the **fixed point**, manual routing is preserved by scaling the segment containing the fixed point and the one preceding it by the appropriate XY offset.
 - Else, we revert to full auto-routing.
 
