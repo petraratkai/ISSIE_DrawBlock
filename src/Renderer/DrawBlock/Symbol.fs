@@ -1414,8 +1414,8 @@ let inline createSymbol prevSymbols comp =
               InWidth0 = None
               InWidth1 = None
               STransform = comp.SymbolInfo.STransform
-              PortOrientation = comp.SymbolInfo.PortOrientation
-              PortOrder = comp.SymbolInfo.PortOrder
+              PortOrientation = portOrientation
+              PortOrder = portOrder
               MovingPort = None
             }
 
