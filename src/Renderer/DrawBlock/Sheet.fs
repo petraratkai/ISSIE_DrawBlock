@@ -405,8 +405,9 @@ let posAdd (pos : XYPos) (a : float, b : float) : XYPos =
     {X = pos.X + a; Y = pos.Y + b}
 
 /// Finds all components (that are stored in the Sheet model) near pos
-let findNearbyComponents (model: Model) (pos: XYPos) =
-    List.allPairs [-50.0 .. 10.0 .. 50.0] [-50.0 .. 10.0 .. 50.0] // Larger Increments -> More Efficient. But can miss small components then.
+let findNearbyComponents (model: Model) (pos: XYPos) (range: float)  =
+
+    List.allPairs [-range .. 10.0 .. range] [-range .. 10.0 .. range] // Larger Increments -> More Efficient. But can miss small components then.
     |> List.map ((fun x -> posAdd pos x) >> insideBox model.BoundingBoxes)
     |> List.collect ((function | Some x -> [x] | _ -> []))
 
@@ -469,8 +470,9 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
 
         /// Checks for snap-to-grid in one dimension (x-coordinates or y-coordinates)
         /// Input / output is an anonymous record to deal with too many arguments otherwise
-        let checkForSnap1D (input: {| SnapInfo: LastSnap Option; Indicator: float Option; CurrMPos: float; LastMPos: float; Side1: float; Side2: float; PosDirection: float |}) =
 
+        let checkForSnap1D (input: {| SnapInfo: LastSnap Option; Indicator: float Option; CurrMPos: float; LastMPos: float; Side1: float; Side2: float; PosDirection: float; SymbolMargins: list<float*float> |}) =
+ 
             match input.SnapInfo with
             | Some { Pos = oldPos; SnapLength = previousSnap } -> // Already snapped, see if mouse is far enough to un-snap
                 if abs (input.CurrMPos - oldPos) > unSnapMargin
@@ -480,7 +482,7 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
                 let margins = [ (input.Side1 % gridSize), input.Side1
                                 ((input.Side1 % gridSize) - gridSize), input.Side1
                                 (input.Side2 % gridSize), input.Side2
-                                ((input.Side2 % gridSize) - gridSize), input.Side2 ]
+                                ((input.Side2 % gridSize) - gridSize), input.Side2 ] @ input.SymbolMargins
 
                 let getMarginWithDirection (sortedMargins: (float*float)list) (dir: float) =
                     if abs(fst(sortedMargins[0]) - fst(sortedMargins[1])) < 0.1 then
@@ -515,13 +517,28 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
         // printfn "%A" mMsg.Pos.X
         // printfn "%A" model.LastMousePos.X
 
+        /// Finds margins for moving shaped against other symbol sides 
+        let xMargins, yMargins =
+            let symbols = 
+                Map.toList model.Wire.Symbol.Symbols
+                |> List.map (fun x -> snd x) 
+                |> List.filter (fun (x:Symbol.Symbol) -> (not x.Moving) && (not (x.Id = compId)))
+            let extractEdges (prevList) (sym:Symbol.Symbol) = 
+                (fst prevList @ [sym.Pos.X] @ [sym.Pos.X + float sym.Component.W],snd prevList @ [sym.Pos.Y] @ [sym.Pos.Y + float sym.Component.H])
+            let x,y = List.fold extractEdges ([],[]) symbols
+            let xMarg = List.map (fun margin -> margin-x1, x1) x @ List.map (fun margin -> margin-x2, x2) x
+            let yMarg = List.map (fun margin -> margin-y1, y1) y @ List.map (fun margin -> margin-y2, y2) y
+            xMarg, yMarg
+
+
         let snapX = checkForSnap1D {| SnapInfo = model.Snap.XSnap
                                       Indicator = model.SnapIndicator.XLine
                                       CurrMPos = mMsg.Pos.X
                                       LastMPos = model.LastMousePos.X
                                       Side1 = x1
                                       Side2 = x2
-                                      PosDirection = (mMsg.Pos.X - model.LastMousePosForSnap.X)  |}
+                                      PosDirection = (mMsg.Pos.X - model.LastMousePosForSnap.X)  
+                                      SymbolMargins = xMargins|}
 
         let snapY = checkForSnap1D {| SnapInfo = model.Snap.YSnap
                                       Indicator = model.SnapIndicator.YLine
@@ -529,7 +546,8 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
                                       LastMPos = model.LastMousePos.Y
                                       Side1 = y1
                                       Side2 = y2
-                                      PosDirection = (mMsg.Pos.Y - model.LastMousePosForSnap.Y) |}
+                                      PosDirection = (mMsg.Pos.Y - model.LastMousePosForSnap.Y) 
+                                      SymbolMargins = yMargins|}
 
         let errorComponents  =
             if notIntersectingComponents model boundingBox compId then [] else [compId]
@@ -823,7 +841,7 @@ let mDragUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
     | MovingSymbols | DragAndDrop ->
         moveSymbols model mMsg
     | ConnectingInput _ ->
-        let nearbyComponents = findNearbyComponents model mMsg.Pos
+        let nearbyComponents = findNearbyComponents model mMsg.Pos 50 
         let _, nearbyOutputPorts = findNearbyPorts model
 
         let targetPort, drawLineTarget =
@@ -839,7 +857,7 @@ let mDragUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
                     ScrollingLastMousePos = {Pos=mMsg.Pos;Move=mMsg.Movement}}
         , Cmd.ofMsg CheckAutomaticScrolling
     | ConnectingOutput _ ->
-        let nearbyComponents = findNearbyComponents model mMsg.Pos
+        let nearbyComponents = findNearbyComponents model mMsg.Pos 50
         let nearbyInputPorts, _ = findNearbyPorts model
 
         let targetPort, drawLineTarget =
@@ -950,7 +968,7 @@ let mMoveUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
                     symbolCmd (Symbol.SelectSymbols [])
                     symbolCmd (Symbol.PasteSymbols [ newCompId ]) ]
     | _ ->
-        let nearbyComponents = findNearbyComponents model mMsg.Pos // TODO Group Stage: Make this more efficient, update less often etc, make a counter?
+        let nearbyComponents = findNearbyComponents model mMsg.Pos 50 // TODO Group Stage: Make this more efficient, update less often etc, make a counter?
 
         let newCursor =
             match model.CursorType with
