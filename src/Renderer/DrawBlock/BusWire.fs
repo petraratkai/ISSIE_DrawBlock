@@ -256,7 +256,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
     let xStart, yStart, xEnd, yEnd = wireStartPos.X, wireStartPos.Y, wireEndPos.X, wireEndPos.Y
     match xStart - xEnd + 20. < 0 with //add 20 to prevent issues in the case that the ports are directly on in line with one another
     | true -> //Right of startpos
-        match yStart - yEnd + 20. < 0 with 
+        match yStart - yEnd  < 0 with 
         | true -> //Below startpos
             match portOrientation with
             | CommonTypes.Top  ->  [{X = xStart; Y = yStart};
@@ -326,7 +326,7 @@ let makeInitialWireVerticesList (wireStartPos : XYPos) (wireEndPos : XYPos) (por
                     {X = xEnd-Wire.nubLength; Y = yEnd}; //Length 0 vertical
                     {X = xEnd; Y = yEnd}] //Stick horizontal
     | false-> //left of startpos
-        match yStart - yEnd + 20. < 0 with
+        match yStart - yEnd < 0 with
         | true -> //below startpos
             match portOrientation with
             | CommonTypes.Bottom ->  [{X = xStart; Y = yStart};
