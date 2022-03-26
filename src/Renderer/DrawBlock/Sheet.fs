@@ -731,7 +731,8 @@ let mDownUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
             else
                 let  portIdstr = match portId with | InputPortId x -> x
                 {model with Action = MovingPort portIdstr}
-                , symbolCmd (Symbol.MovePort (portIdstr, mMsg.Pos))
+                , Cmd.batch [symbolCmd (Symbol.MovePort (portIdstr, mMsg.Pos)); 
+                wireCmd (BusWire.RerouteWire (Symbol.getCompId model.Wire.Symbol portIdstr))]
 
         | OutputPort (portId, portLoc) ->
             if not model.Toggle then
@@ -740,7 +741,8 @@ let mDownUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
             else
                 let  portIdstr = match portId with | OutputPortId x -> x
                 {model with Action = MovingPort portIdstr}
-                , symbolCmd (Symbol.MovePort (portIdstr, mMsg.Pos))
+                , Cmd.batch [symbolCmd (Symbol.MovePort (portIdstr, mMsg.Pos));
+                wireCmd (BusWire.UpdateWires ([Symbol.getCompId model.Wire.Symbol portIdstr], {X=0.;Y=0.}))]
 
         | Component compId ->
 

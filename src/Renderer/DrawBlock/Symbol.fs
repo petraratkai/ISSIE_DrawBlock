@@ -859,9 +859,18 @@ let getCopiedSymbols (symModel: Model) : (ComponentId list) =
     |> Map.toList
     |> List.map fst
 
+
 /// Returns the port object associated with a given portId
 let getPort (symModel: Model) (portId: string) =
     symModel.Ports[portId]
+
+let getSymbol (model: Model) (portId: string) =
+    let port = getPort model portId
+    model.Symbols[ComponentId port.HostId]
+
+let getCompId (model: Model) (portId: string) =
+    let symbol = getSymbol model portId
+    symbol.Id
 
 /// Returns the string of a PortId
 let getPortIdStr (portId: PortId) = 
