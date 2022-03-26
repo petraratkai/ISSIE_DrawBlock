@@ -1781,14 +1781,17 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
     | RerouteWire (portId: string) ->
         let reroutedWire = 
             model.Wires
-            |> Map.pick (fun _id wire -> 
+            |> Map.tryPick (fun _id wire -> 
                 if wire.InputPort = InputPortId portId  || wire.OutputPort = OutputPortId portId then
                     Some wire
                 else
                     None)
-            |> autoroute model
+            |> Option.map (autoroute model)
 
-        { model with Wires = Map.add reroutedWire.Id reroutedWire model.Wires }, Cmd.none
+        match reroutedWire with
+        | Some wire ->
+            { model with Wires = Map.add wire.Id wire model.Wires }, Cmd.none
+        | None -> model, Cmd.none
 
         
 
