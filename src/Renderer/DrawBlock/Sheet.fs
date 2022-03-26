@@ -1224,21 +1224,27 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
     | SaveSymbols ->
         model, symbolCmd Symbol.SaveSymbols
     | WireType Jump ->
+        let wires = model.Wire.Wires |> Map.toList |> List.map fst
         model,
         Cmd.batch [
             wireCmd (BusWire.UpdateWireType BusWire.Jump)
+            wireCmd (BusWire.MakeJumps wires)
         ]
 
     | WireType Radial ->
+        let wires = model.Wire.Wires |> Map.toList |> List.map fst
         model,
         Cmd.batch [
             wireCmd (BusWire.UpdateWireType BusWire.Radial)
+            wireCmd (BusWire.MakeJumps wires)
         ]
        
     | WireType Modern ->
+        let wires = model.Wire.Wires |> Map.toList |> List.map fst
         model,
         Cmd.batch [
             wireCmd (BusWire.UpdateWireType BusWire.Modern)
+            wireCmd (BusWire.MakeJumps wires)
         ]
                 
     // ---------------------------- Issie Messages ---------------------------- //
