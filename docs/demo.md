@@ -6,8 +6,8 @@ This file contains a list of features which will be shown in the demo:
 - Automatically clocked custom components
 - Saving and reloading customized components
 - Different ways to display wire jumps / intersections
+- MUX4/8 + DEMUX4/8
+- Partial routing sticking to gridlines
 
 Features to add ?
-- MUX4/8 + DEMUX4/8
 - Smart autorouting
-- Partial routing sticking to gridlines

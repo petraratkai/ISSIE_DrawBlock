@@ -96,6 +96,7 @@ type Msg =
     | ResetModel // For Issie Integration
     | LoadConnections of list<Connection> // For Issie Integration
     | Rotate of list<ComponentId>
+    | RerouteWire of string
 
 /// Returns an XYPos shifted by length in an X or Y direction defined by orientation.
 let addLengthToPos (position: XYPos) orientation length =
@@ -1776,6 +1777,20 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
         let updatedWires = Map.fold (fun merged id wire -> Map.add id wire merged) model.Wires updatedWireEntries
 
         { model with Wires = updatedWires }, Cmd.none
+
+    | RerouteWire (portId: string) ->
+        let reroutedWire = 
+            model.Wires
+            |> Map.pick (fun _id wire -> 
+                if wire.InputPort = InputPortId portId  || wire.OutputPort = OutputPortId portId then
+                    Some wire
+                else
+                    None)
+            |> autoroute model
+
+        { model with Wires = Map.add reroutedWire.Id reroutedWire model.Wires }, Cmd.none
+
+        
 
 //---------------Other interface functions--------------------//
 
