@@ -485,7 +485,7 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
                                 ((input.Side2 % gridSize) - gridSize), input.Side2 ] @ input.SymbolMargins
 
                 let getMarginWithDirection (sortedMargins: (float*float)list) (dir: float) =
-                    if abs(fst(sortedMargins[0]) - fst(sortedMargins[1])) < 0.1 then
+                    if abs(fst(sortedMargins[0]) - fst(sortedMargins[1])) < 0.05 then
                         //printfn "HERE"
                         //printfn "%A" dir
                         if dir > 0. then
@@ -494,13 +494,13 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
                         else sortedMargins[1]
                     else
                         sortedMargins[0]
-
-                let sortedMargins = List.rev (List.sortByDescending (fun (margin, _) -> abs margin) margins)
+                let absMargins = List.map (fun (margin,x) -> (abs margin,x) ) margins
+                let sortedMargins = List.rev (List.sortByDescending (fun (margin, _) -> margin) absMargins)
 
                 //printfn "%A" sortedMargins
 
                 match getMarginWithDirection sortedMargins input.PosDirection with // abs since there negative margins as well (e.g. snap left)
-                | margin, side when abs margin < snapMargin && not model.AutomaticScrolling -> // disable snap if autoscrolling
+                | margin, side when margin < 0.4 && not model.AutomaticScrolling -> // disable snap if autoscrolling
                     // Snap to grid and save info for future un-snapping
                     {| DeltaPos = -margin
                        SnapInfo = Some {Pos = input.CurrMPos; SnapLength = -margin - (input.CurrMPos - input.LastMPos)} // Offset with (CurrMPos - LastMPos), so that the symbol stays aligned with the mouse after un-snapping
