@@ -346,7 +346,7 @@ module CommonTypes
         Id : string
         Source : Port
         Target : Port
-        Vertices : (float * float) list
+        Vertices : (float * float * bool) list
     }
 
     /// F# data describing the contents of a single schematic sheet.

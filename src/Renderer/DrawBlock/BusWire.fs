@@ -433,16 +433,46 @@ let makeInitialSegmentsList (hostId : ConnectionId) (startPos : XYPos) (endPos :
 /// Convert a (possibly legacy) issie Connection stored as a list of vertices to a list of segments
 let issieVerticesToSegments 
         (connId) 
-        (verticesList: list<float*float>) =
-    let xyVerticesList =
+        (verticesList: list<float*float*bool>) =
+    let verticesList' =
         verticesList
-        |> List.map (fun (x,y) -> {X=x;Y=y})
+        |> List.map (fun (x,y,m) -> 
+            let mode = if m then Manual else Auto
+            {| Pos = {X=x;Y=y}; Mode = mode |})
 
-    let makeSegmentsFromVertices (xyList: XYPos list) =
-        xyVerticesToSegments connId  xyList
+    /// Converts a list of vertices into a list of segments
+    let verticesToSegments connId (xyVerticesList: {| Pos: XYPos; Mode: RoutingMode |} list) =
+        List.pairwise xyVerticesList
+        |> List.mapi (
+            fun i (startV,endV) ->    
+                let id = SegmentId(JSHelpers.uuid())
+                {
+                    Id = id
+                    Index = i
+                    Length = endV.Pos.X-startV.Pos.X+endV.Pos.Y-startV.Pos.Y
+                    HostId  = connId;
+                    IntersectOrJumpList = [] ; // To test jump and modern wire types need to manually insert elements into this list.
+                    Mode = endV.Mode
+                    Draggable =
+                        if i = 0 || i = xyVerticesList.Length - 2 then //First and Last should not be draggable
+                            false
+                        else
+                            true
+                })
         
-    makeSegmentsFromVertices xyVerticesList
+    verticesToSegments connId verticesList'
 
+/// Converts a segment list into a list of vertices to store inside Connection
+let segmentsToIssieVertices (segList:Segment list) (wire:Wire) = 
+    ((wire.StartPos, wire.InitialOrientation, false),segList)
+    ||> List.scan(fun (currPos, currOrientation, _) seg ->
+        let (nextPos, nextOrientation) =
+            match currOrientation with
+            | Horizontal -> { currPos with X = currPos.X + seg.Length}, Vertical
+            | Vertical -> { currPos with Y = currPos.Y + seg.Length}, Horizontal
+        let manual = (seg.Mode = Manual)
+        (nextPos,nextOrientation,manual))
+    |> List.map ( fun (pos,_,manual) -> pos.X,pos.Y,manual)
 
 /// This function is given a ConnectionId and it
 /// converts the corresponding BusWire.Wire type to a
@@ -455,7 +485,7 @@ let extractConnection (wModel : Model) (cId : ConnectionId) : Connection =
         Id = strId
         Source = { Symbol.getPort wModel.Symbol strOutputPort with PortNumber = None } // None for connections 
         Target = { Symbol.getPort wModel.Symbol strInputPort with PortNumber = None } // None for connections 
-        Vertices = segmentsToVertices conn.Segments conn
+        Vertices = segmentsToIssieVertices conn.Segments conn
     }
 
 /// This function is given a list of ConnectionId and it
@@ -1709,8 +1739,8 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
     | LoadConnections conns -> // we assume components (and hence ports) are loaded before connections
         let posMatchesVertex (pos:XYPos) (vertex: float*float) =
             let epsilon = 0.00001
-            abs (abs pos.X - abs (fst vertex)) < epsilon &&
-            abs (abs pos.Y - abs (snd vertex)) < epsilon
+            abs (pos.X - (fst vertex)) < epsilon &&
+            abs (pos.Y - (snd vertex)) < epsilon
             |> (fun b -> if not b then printf $"Bad wire endpoint match on {pos} {vertex}"; b else b)
         let newWires =
             conns
@@ -1718,16 +1748,18 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                             let inputId = InputPortId conn.Target.Id
                             let outputId = OutputPortId conn.Source.Id
                             let connId = ConnectionId conn.Id
+                            let getVertex (x,y,_) = (x,y)
                             let segments = issieVerticesToSegments connId conn.Vertices
                             let makeWirePosMatchSymbol inOut (wire:Wire) =
                                 match inOut with
-                                | true -> posMatchesVertex
+                                | true -> 
+                                    posMatchesVertex
                                             (Symbol.getInputPortLocation model.Symbol inputId)
-                                            (List.head conn.Vertices)
+                                            (List.last conn.Vertices |> getVertex)
                                 | false ->
-                                          posMatchesVertex
-                                            (Symbol.getOutputPortLocation model.Symbol outputId)
-                                            (List.last conn.Vertices)
+                                    posMatchesVertex
+                                        (Symbol.getOutputPortLocation model.Symbol outputId)
+                                        (List.head conn.Vertices |> getVertex)
                                 |> (fun b ->
                                     if b then
                                         wire
@@ -1748,10 +1780,10 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                               Color = HighLightColor.DarkSlateGrey
                               Width = 1
                               Segments = segments
-                              StartPos = Symbol.getInputPortLocation model.Symbol inputId
-                              EndPos = Symbol.getOutputPortLocation model.Symbol outputId
-                              InitialOrientation = Symbol.getInputPortOrientation model.Symbol inputId |> getOrientation
-                              EndOrientation = Symbol.getOutputPortOrientation model.Symbol outputId |> getOrientation }
+                              StartPos = Symbol.getOutputPortLocation model.Symbol outputId
+                              EndPos = Symbol.getInputPortLocation model.Symbol inputId
+                              InitialOrientation = Symbol.getOutputPortOrientation model.Symbol outputId |> getOrientation
+                              EndOrientation = Symbol.getInputPortOrientation model.Symbol inputId |> getOrientation }
                             |> makeWirePosMatchSymbol false
                             |> makeWirePosMatchSymbol true
                         )
