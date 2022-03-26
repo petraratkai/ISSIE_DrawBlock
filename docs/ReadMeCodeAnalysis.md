@@ -19,6 +19,7 @@ Manual routing has been fully reworked to have the following behaviour:
 - A **binding segment** cannot be dragged past the **nebLength** of the wire, which is the minimum length of the nubs coming out of the ports (defined as `static member nubLength = 8.0` in `Wire` type)
 
 A segment is defined as binding for a particular port if it is the first segment of non-zero length perpendicular to the port's nub. See the diagram below for examples:
+
 ![binding_segments](img/analysis/bindingSegment.svg)
 
 ## Auto-route
