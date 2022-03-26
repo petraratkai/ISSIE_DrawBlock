@@ -1,6 +1,3 @@
-
-    Algorithms for: auto-route, auto-sizing and placing of ports, stickiness or smart routing
-    Algorithmic descriptions should refer to any relevant style or configuration constants, which should be easily accessible in a configuration section of the code.
 # DrawBlock Analysis <!-- omit in toc -->
 
 # Table of Contents <!-- omit in toc -->
@@ -55,8 +52,7 @@ See the diagram below for an example of the region where partial auto-routing wi
 ![partial_autoroute_example](img/analysis/partialAutoroute.svg)
 
 ## Smart auto-routing
-Following the discussion during the project demonstration, the following section has been added to detail the design philosophy around smart auto-routing. Implementing smart auto-routing was considered, and after some exploratory discussions was ultimately rejected. Although a heuristic 
-- A heuristic based approach 
+Following the discussion during the project demonstration, the following section has been added to detail the design philosophy around smart auto-routing. Implementing smart auto-routing was considered, and after some exploratory discussions was ultimately rejected. It is of critical importance that a smart auto-routing implementation does not cause un-intutive behaviour for routing problems (i.e. either it works well or it does nothing). Although a heuristic based approach could work well for simple cases, and could be disabled for complex ones, but we felt as though this approach was not forward thinking. A complete routing solution, involving a pathfinding algorithm like A* or Dijkstra's, was considered to be the ideal approach. However, this would require completely rewriting the current routing logic, which is non-trivial, particularly for a project of this scope. We felt as though building on the complexity of the current implementation would make re-writing the autorouting more difficult for the future maintainers of the code.
 
 ## Radial wires
 Radial wires are one of the wire types selectable in the view menu, which shows if wire are connected by having a curve. The default radius for these curves is defined as `static member radius = 5.0` in `Wire` type. However, for very small wires, this radius is changed to prevent visual bugs. When drawing radii, the length of the smalles segment the curve connects to is checked, and if its length is <5, the radius is shrunk to match it.
@@ -64,12 +60,15 @@ Radial wires are one of the wire types selectable in the view menu, which shows 
 # Symbols
 
 ## Auto-sizing
-Custom components are dynamically resized depending on their port configuration. Some The minimum distance distance between 2 ports is set as `GridSize = 30`, which is defined as a `[<Literal>]` at the top of `Symbol.fs`. 
+Custom components are dynamically resized depending on their port configuration. Some The minimum distance distance between 2 ports is set as `GridSize = 30`, which is defined as a `[<Literal>]` at the top of `Symbol.fs`. The dimensions of a component are determined as follows:
+- **Height:** Determined purely from the maximum number of ports on the left or right edge (n), setting the height to (n+1)`GridSize`, and spreading the ports GridSize apart.
+- **Width:** The distance between ports is determined by the maximum the largest port label and `GridSize`. This ensures that the labels of the ports cannot overlap, whilst still being a minimum distance apart. The width can be calculated for both the Top and Bottom edges using the same approach as above using the maximum value, and taking the largest of these 2 values. In addition, the length of the longest labels from the Left and Right sides, as well as the component label (displayed in the center of the component) are added up and compared to the width obtained from the previous calculation. By selecting the component width as the maximum of these values, it can be ensured that labels associated with the component / ports do not overlap.
 
 Custom components' ports can be placed to different edges on the Symbol by pressing Ctrl and dragging the port.
 When a port is dragged onto a different edge, the width and height of the component is automatically resized. The ports on one edge are always equidistant. The height of the component is determined purely from the number of ports on the left or right edge, depending on which one has more ports. The width of the component also considers the lengths of the ports on the top and bottom edges. The distance between ports on the top and bottom edges is going to be big enough, that it can fit the longest portlabel on the edge, but never smaller than 1 gridsize. The necessary width of the top/bottom edge is determined from this distance and from the number of ports on this edge. The width of the component is given by the top or bottom edge width that is bigger.
 
 ## Port placement
+The ordering of the ports is represented by their index in the list associated to a particular edge of the Symbol (Top, Left, Bottom, Right). We allow ports to be moved for custom components by clicking and dragging the port while holding down the `Ctrl` key. When a port is dropped, the target index is determined from it's position along an edge, (in a process inverse to how the position of the port is calculated based on its index). The port is then removed from its old list, and inserted into the target index of the new list. This also allows the order of ports on the same edge to be re-arranged, by simply removing it and inserting it into the same list.
 
 ## Symbol Drawing
 The function `rotatePoints` is a useful function that allowed us to avoid the hassle of endless match statements when drawing the react element for the shape outline. It can take a set of points (which usually map to the points needed to draw the shape) and rotate them about the centre of a shape depending on the transformations applied to the shape (flipped / rotated) without additional storage for the current points / transformation history. To achieve this it uses a small hack so that while a shape is flipped a rotateLeft cmd will tell the points to rotate right. This is a limitation of the function as it always performs any rotation then flipping first. This was needed because a flip then rotation 90&deg; clockwise is not necessarily equivalent to a rotation 90&deg; clockwise then flip. However a flip then rotation 90&deg; clockwise is equivalent to a rotation 90&deg; anti-clockwise then flip.
