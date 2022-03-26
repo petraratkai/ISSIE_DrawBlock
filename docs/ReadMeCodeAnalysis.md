@@ -42,7 +42,7 @@ Auto-routing is done in 3 stages:
 Segments are generated based off of the two ports for each wire, with the assumption that the output port is always facing right. The orientation of the input port is checked as well as its relative position to the output port, allowing us to generate an initial segment list. This segment list consists of a small “nub” segment immediately joining the input and output port. These are followed by 0 length segments in order to facilitate previous functionality of ISSIE where we could drag wires fully. After these 0 length segments we create the remaining segments to link the two ports. These distances are either set to halfway between the two ports, or a small distance in order to get past the boundaries of a symbol.
 
 ## Partial Auto-routing
-Partial auto-routing attempts to preserve any manual routing when symbols (and thier ports) are moved. The conditions for this preservation is as follows:
+Partial auto-routing attempts to preserve any manual routing when symbols (and their ports) are moved. The conditions for this preservation is as follows:
 - For a given port being moved, the **fixed point** is defined as the end of the first manual segment, traversing the wire **from the port being moved**
 - If the moved port is in the same quadrant relative to the **fixed point**, manual routing is preserved by scaling the segment containing the fixed point and the one preceding it by the appropriate XY offset.
 - Else, we revert to full auto-routing.
