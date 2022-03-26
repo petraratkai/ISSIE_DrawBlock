@@ -1549,7 +1549,7 @@ let updateWires (model : Model) (compIdList : ComponentId list) (diff : XYPos) =
 
     { model with Wires = newWires }
 
-///
+/// Handles messages
 let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
 
     match msg with
