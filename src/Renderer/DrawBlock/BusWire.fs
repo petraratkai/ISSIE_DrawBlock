@@ -1787,6 +1787,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                 else
                     None)
             |> autoroute model
+            |> logWire
 
         { model with Wires = Map.add reroutedWire.Id reroutedWire model.Wires }, Cmd.none
 

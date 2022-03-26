@@ -749,8 +749,7 @@ let mDownUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
             else
                 let  portIdstr = match portId with | InputPortId x -> x
                 {model with Action = MovingPort portIdstr}
-                , Cmd.batch [symbolCmd (Symbol.MovePort (portIdstr, mMsg.Pos)); 
-                wireCmd (BusWire.RerouteWire (Symbol.getCompId model.Wire.Symbol portIdstr))]
+                , symbolCmd (Symbol.MovePort (portIdstr, mMsg.Pos))
 
         | OutputPort (portId, portLoc) ->
             if not model.Toggle then
@@ -759,8 +758,7 @@ let mDownUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> =
             else
                 let  portIdstr = match portId with | OutputPortId x -> x
                 {model with Action = MovingPort portIdstr}
-                , Cmd.batch [symbolCmd (Symbol.MovePort (portIdstr, mMsg.Pos));
-                wireCmd (BusWire.UpdateWires ([Symbol.getCompId model.Wire.Symbol portIdstr], {X=0.;Y=0.}))]
+                , symbolCmd (Symbol.MovePort (portIdstr, mMsg.Pos))
 
         | Component compId ->
 
@@ -947,7 +945,9 @@ let mUpUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> = // mMsg is curr
             else Cmd.none , model.UndoList , model.RedoList
         { model with Action = Idle; TargetPortId = ""; UndoList = undoList ; RedoList = redoList ; AutomaticScrolling = false  }, cmd
     | MovingPort portId ->
-        {model with Action = Idle}, symbolCmd (Symbol.MovePortDone (portId, mMsg.Pos))
+        {model with Action = Idle},
+        Cmd.batch [symbolCmd (Symbol.MovePortDone (portId, mMsg.Pos));
+        wireCmd (BusWire.RerouteWire portId)]
     | _ -> model, Cmd.none
 
 /// Mouse Move Update, looks for nearby components and looks if mouse is on a port
